@@ -1,12 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Outlet } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 
 const HARD_RELOAD_KEY = "cfr_last_hard_reload_at_ms";
 const HARD_RELOAD_COOLDOWN_MS = 3 * 60 * 1000; // 3 minutes
 
 async function pingRiders() {
-  // tiny query to verify DB is reachable + auth is valid
   const { error } = await supabase.from("riders").select("name").limit(1);
   if (error) throw error;
 }
@@ -20,12 +19,21 @@ function fmtTime(ts) {
   }
 }
 
+function navPillClass(isActive) {
+  return [
+    "rounded-2xl px-4 py-2 text-xs font-black tracking-wide border transition",
+    isActive
+      ? "bg-lime-300 text-black border-lime-200"
+      : "bg-black/40 text-white/75 border-white/10 hover:border-white/20 hover:bg-black/55",
+  ].join(" ");
+}
+
 export default function AppShell() {
   const checkingRef = useRef(false);
   const lastResumeAtRef = useRef(0);
 
   const [health, setHealth] = useState({
-    net: typeof navigator !== "undefined" && navigator.onLine === false ? "offline" : "online", // online|offline
+    net: typeof navigator !== "undefined" && navigator.onLine === false ? "offline" : "online",
     phase: "ok", // ok|checking|error
     msg: "",
     lastOkAt: null,
@@ -50,20 +58,17 @@ export default function AppShell() {
       checkingRef.current = true;
 
       try {
-        // Don’t do anything if offline
         if (typeof navigator !== "undefined" && navigator.onLine === false) {
           setHealth((h) => ({ ...h, net: "offline", phase: "ok", msg: "" }));
           return;
         }
 
-        // Prevent hammering recovery (some browsers fire focus/vis multiple times)
         const now = Date.now();
         if (now - lastResumeAtRef.current < 1500) return;
         lastResumeAtRef.current = now;
 
         setHealth((h) => ({ ...h, net: "online", phase: "checking", msg: "Reconnecting…" }));
 
-        // 1) Try ping directly
         try {
           await pingRiders();
           setHealth((h) => ({ ...h, phase: "ok", msg: "", lastOkAt: Date.now() }));
@@ -72,22 +77,17 @@ export default function AppShell() {
           // ignore and try refresh
         }
 
-        // 2) Force refresh token after tab sleep
         await supabase.auth.refreshSession();
-
-        // 3) Try ping again
         await pingRiders();
         setHealth((h) => ({ ...h, phase: "ok", msg: "", lastOkAt: Date.now() }));
       } catch {
-        // If we STILL can't talk to Supabase while online, a full reload is the cleanest recovery.
-        // But: avoid reload loops when Supabase/network is down.
         const now = Date.now();
         const last = Number(localStorage.getItem(HARD_RELOAD_KEY) || "0");
         const canReload = !Number.isFinite(last) || now - last > HARD_RELOAD_COOLDOWN_MS;
 
         if (canReload) {
           localStorage.setItem(HARD_RELOAD_KEY, String(now));
-          window.location.reload(); // preserves URL, so you return to same view
+          window.location.reload();
           return;
         }
 
@@ -133,7 +133,7 @@ export default function AppShell() {
         </div>
       </div>
 
-      {/* Tiny status indicator */}
+      {/* Status indicator */}
       <div className="fixed top-3 right-3 z-50">
         <div className="rounded-2xl border border-white/10 bg-black/55 backdrop-blur px-3 py-2 text-[11px] font-semibold text-white/75">
           <div className="flex items-center gap-2">
@@ -164,6 +164,21 @@ export default function AppShell() {
       </div>
 
       <div className="mx-auto w-full max-w-6xl px-4 py-6">
+        {/* Top nav (module switch) */}
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            {/* ✅ Settings first (default workflow) */}
+            <NavLink to="/settings" className={({ isActive }) => navPillClass(isActive)}>
+              Settings
+            </NavLink>
+            <NavLink to="/measurements" className={({ isActive }) => navPillClass(isActive)}>
+              Measurements
+            </NavLink>
+          </div>
+
+          <div className="text-[11px] text-white/45 font-semibold">Default: Settings</div>
+        </div>
+
         <Outlet />
       </div>
     </div>

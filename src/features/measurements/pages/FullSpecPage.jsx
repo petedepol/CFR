@@ -29,6 +29,102 @@ function normalizeSpec(maybeSpec) {
   return null;
 }
 
+function isIOS() {
+  if (typeof navigator === "undefined" || typeof window === "undefined") return false;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+
+function readSessionNumber(key) {
+  try {
+    const raw = sessionStorage.getItem(key);
+    const n = raw ? Number(raw) : 0;
+    return Number.isFinite(n) ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function writeSessionNumber(key, n) {
+  try {
+    sessionStorage.setItem(key, String(n));
+  } catch {
+    // ignore
+  }
+}
+
+// Keeps scroll position stable across iOS tab-out/tab-in + keyboard hide/show.
+function useStickyScroll(scrollKey, enabled = true) {
+  const lastGoodYRef = useRef(0);
+
+  useEffect(() => {
+    if (!enabled || !scrollKey) return;
+
+    const restore = () => {
+      const y = readSessionNumber(scrollKey);
+      if (y > 0) {
+        // iOS sometimes needs multiple passes as layout settles
+        requestAnimationFrame(() => window.scrollTo(0, y));
+        setTimeout(() => window.scrollTo(0, y), 50);
+        setTimeout(() => window.scrollTo(0, y), 250);
+      }
+    };
+
+    const save = () => {
+      const y = window.scrollY || 0;
+      lastGoodYRef.current = y;
+      writeSessionNumber(scrollKey, y);
+    };
+
+    const onVis = () => {
+      if (document.visibilityState === "hidden") save();
+      if (document.visibilityState === "visible") restore();
+    };
+
+    const onPageHide = () => save();
+    const onScroll = () => save();
+
+    // When keyboard closes, iOS sometimes snaps to top — put you back.
+    let focusStartY = 0;
+    const onFocusIn = () => {
+      focusStartY = window.scrollY || 0;
+    };
+    const onFocusOut = () => {
+      const before = focusStartY || 0;
+      setTimeout(() => {
+        const after = window.scrollY || 0;
+        const lastGood = lastGoodYRef.current || before;
+        // Only correct if it *clearly* jumped unexpectedly.
+        if (after < 10 && lastGood > 150) {
+          window.scrollTo(0, lastGood);
+        }
+      }, 80);
+    };
+
+    // initial restore
+    restore();
+
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    if (isIOS()) {
+      window.addEventListener("focusin", onFocusIn);
+      window.addEventListener("focusout", onFocusOut);
+    }
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("scroll", onScroll);
+
+      if (isIOS()) {
+        window.removeEventListener("focusin", onFocusIn);
+        window.removeEventListener("focusout", onFocusOut);
+      }
+    };
+  }, [scrollKey, enabled]);
+}
+
 export default function FullSpecPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -39,6 +135,10 @@ export default function FullSpecPage() {
   const mechanic = (displayName || mechanicFromUrl || "").trim();
 
   const rider = params.get("rider") || "";
+
+  // ✅ iOS scroll stability across tab-out/tab-in
+  const scrollKey = rider ? `cfr_scroll_fullspec__${encodeURIComponent(rider)}` : "";
+  useStickyScroll(scrollKey, Boolean(rider));
 
   const [spec, setSpec] = useState(clone(BASE_DEFAULTS));
   const [loading, setLoading] = useState(true);

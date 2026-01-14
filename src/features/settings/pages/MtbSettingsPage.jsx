@@ -150,6 +150,50 @@ function clearDraft(rider) {
   }
 }
 
+function changedCellClass(changed) {
+  return changed
+    ? "bg-lime-400/10 p-2 rounded border border-lime-400/25"
+    : "p-2 rounded border border-white/0";
+}
+
+function fmtPsi(v) {
+  const s = String(v ?? "").trim();
+  return s ? `${s} psi` : "—";
+}
+
+function fmtClicks(v) {
+  const s = String(v ?? "").trim();
+  return s ? `${s} clicks` : "—";
+}
+
+function buildCollapsedSummary(cur, prev, isLatest, changes) {
+  const changedKeys = new Set((isLatest && changes?.defaultChanged) || []);
+
+  const mk = (label, keys, value, prevValue) => {
+    const changed = isLatest && keys.some((k) => changedKeys.has(k));
+    return { label, value: value || "—", prevValue: prevValue || "—", changed };
+  };
+
+  return [
+    mk("Front tyre", ["front_tyre"], cur.front_tyre || "—", prev.front_tyre || "—"),
+    mk("Rear tyre", ["rear_tyre"], cur.rear_tyre || "—", prev.rear_tyre || "—"),
+    mk("Front pressure", ["front_pressure"], fmtPsi(cur.front_pressure), fmtPsi(prev.front_pressure)),
+    mk("Rear pressure", ["rear_pressure"], fmtPsi(cur.rear_pressure), fmtPsi(prev.rear_pressure)),
+    mk(
+      "Fork",
+      ["fork_pressure", "fork_rebound"],
+      `${fmtPsi(cur.fork_pressure)} / ${fmtClicks(cur.fork_rebound)}`,
+      `${fmtPsi(prev.fork_pressure)} / ${fmtClicks(prev.fork_rebound)}`
+    ),
+    mk(
+      "Shock",
+      ["shock_pressure", "shock_rebound"],
+      `${fmtPsi(cur.shock_pressure)} / ${fmtClicks(cur.shock_rebound)}`,
+      `${fmtPsi(prev.shock_pressure)} / ${fmtClicks(prev.shock_rebound)}`
+    ),
+  ];
+}
+
 export default function MtbSettingsPage() {
   const nav = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -248,7 +292,6 @@ export default function MtbSettingsPage() {
   // Draft-save while editing (only for rider currently open)
   useEffect(() => {
     if (!selectedRider) return;
-    // keep draft light; no throttling needed for this size
     writeDraft(selectedRider, eventContext, setup);
   }, [selectedRider, eventContext, setup]);
 
@@ -471,8 +514,8 @@ export default function MtbSettingsPage() {
               const id = row.id || `${row.timestamp}-${idx}`;
               const isExpanded = expandedHistoryIds.has(id);
 
-              const cur = row?.full_spec?.setup || {};
-              const prev = history?.[idx + 1]?.full_spec?.setup || {};
+              const cur = normalizeSetup(row?.full_spec?.setup || {});
+              const prev = normalizeSetup(history?.[idx + 1]?.full_spec?.setup || {});
               const changes = isLatest ? getChanges(cur, prev) : null;
 
               const hasExpandedOnlyChanges =
@@ -482,11 +525,13 @@ export default function MtbSettingsPage() {
                 changes.defaultChanged.length === 0 &&
                 !changes.notesChanged;
 
+              const summaryItems = buildCollapsedSummary(cur, prev, isLatest, changes);
+
               return (
                 <div
                   key={id}
                   className={`bg-black/40 rounded-xl border overflow-hidden cursor-pointer transition ${
-                    isLatest && (changes?.defaultChanged.length || hasExpandedOnlyChanges)
+                    isLatest && (changes?.defaultChanged.length || hasExpandedOnlyChanges || changes?.notesChanged)
                       ? "border-lime-400/40"
                       : "border-white/10 hover:border-white/20"
                   }`}
@@ -515,23 +560,30 @@ export default function MtbSettingsPage() {
                               Other changed
                             </span>
                           )}
+
+                          {isLatest && changes?.notesChanged && (
+                            <span className="text-xs font-bold text-lime-300 px-2 py-0.5 bg-lime-400/10 rounded border border-lime-400/20">
+                              Notes changed
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
                   </div>
 
+                  {/* ✅ Collapsed summary with latest-change highlighting */}
                   <div className="px-4 pb-4 grid grid-cols-2 gap-3 text-sm">
-                    {[
-                      ["Front tyre", cur.front_tyre],
-                      ["Rear tyre", cur.rear_tyre],
-                      ["Front pressure", cur.front_pressure ? `${cur.front_pressure} psi` : ""],
-                      ["Rear pressure", cur.rear_pressure ? `${cur.rear_pressure} psi` : ""],
-                      ["Fork", `${cur.fork_pressure || "—"} psi / ${cur.fork_rebound || "—"} clicks`],
-                      ["Shock", `${cur.shock_pressure || "—"} psi / ${cur.shock_rebound || "—"} clicks`],
-                    ].map(([label, value]) => (
-                      <div key={label}>
-                        <div className="text-white/50 text-xs">{label}</div>
-                        <div className="text-white font-medium truncate">{value || "—"}</div>
+                    {summaryItems.map((it) => (
+                      <div key={it.label} className={changedCellClass(it.changed)}>
+                        <div className="text-white/50 text-xs">{it.label}</div>
+                        <div className={`font-medium truncate ${it.changed ? "text-lime-200" : "text-white"}`}>
+                          {it.value || "—"}
+                        </div>
+                        {it.changed && (
+                          <div className="text-[11px] text-white/45 truncate mt-0.5">
+                            Prev: <span className="text-white/55">{it.prevValue || "—"}</span>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

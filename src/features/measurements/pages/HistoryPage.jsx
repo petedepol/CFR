@@ -16,6 +16,17 @@ function quickTypeForBikeType(bikeType) {
   return "quick";
 }
 
+function isDeltaNonZero(d) {
+  if (d === null || d === undefined) return false;
+  return Math.abs(Number(d)) >= 0.05; // ignore tiny float noise
+}
+
+function metricCellClass({ isLatest, delta }) {
+  // Highlight ONLY the latest row when that metric changed vs baseline
+  if (!isLatest || !isDeltaNonZero(delta)) return "px-4 py-3 text-white/70 whitespace-nowrap";
+  return "px-4 py-3 text-white/85 whitespace-nowrap bg-lime-300/10 border-l border-r border-lime-300/20";
+}
+
 export default function HistoryPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -27,13 +38,24 @@ export default function HistoryPage() {
   const [items, setItems] = useState([]);
   const [status, setStatus] = useState({ kind: "idle", msg: "" }); // idle|loading|err
 
-  // ✅ dropdown should be Jig or Bike Spec (and keep All as an extra option)
+  // dropdown: Jig / Bike Spec / All
   const [filter, setFilter] = useState("quick"); // quick|full|all
 
   const [openFullKey, setOpenFullKey] = useState(null); // id|timestamp of expanded full-spec row
 
   // Default is MTB so Road/CX are minimal visibility
   const [jigBikeType, setJigBikeType] = useState("mtb"); // mtb|road|cx|all
+
+  // iOS Safari sometimes doesn't paint the page until the first scroll.
+  // This 1px nudge forces a paint without changing where the user ends up.
+  useEffect(() => {
+    const isiOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (!isiOS) return;
+    requestAnimationFrame(() => {
+      window.scrollBy(0, 1);
+      window.scrollBy(0, -1);
+    });
+  }, []);
 
   async function load({ silent = false } = {}) {
     if (!rider) return;
@@ -138,7 +160,10 @@ export default function HistoryPage() {
         <ArrowLeft size={18} /> Back
       </button>
 
-      <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-6">
+      <div
+        className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-6"
+        style={{ WebkitTransform: "translateZ(0)" }}
+      >
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div>
             <div className="text-sm text-white/60 uppercase tracking-widest">History</div>
@@ -216,6 +241,8 @@ export default function HistoryPage() {
                         </thead>
                         <tbody>
                           {jigFilteredNewestFirst.map((row, idx) => {
+                            const isLatest = idx === 0;
+
                             const sb = toNum(row.saddle_setback);
                             const h4 = toNum(row.height_4cm);
                             const h15 = toNum(row.height_15cm);
@@ -226,41 +253,60 @@ export default function HistoryPage() {
                             const d15 = base ? diff(h15, base.h15) : null;
 
                             return (
-                              <tr key={row.id || row.timestamp} className="border-t border-white/10">
+                              <tr
+                                key={row.id || row.timestamp}
+                                className={`border-t border-white/10 ${isLatest ? "bg-white/[0.02]" : ""}`}
+                              >
                                 <td className="px-4 py-3 text-white/80 whitespace-nowrap">
                                   <div className="font-semibold">{formatDateTime(row.timestamp)}</div>
                                   <div className="text-xs text-white/40">{formatTime(row.timestamp)}</div>
                                 </td>
-                                <td className="px-4 py-3 text-white/70 whitespace-nowrap">{bikeLabelFromType(row.type)}</td>
                                 <td className="px-4 py-3 text-white/70 whitespace-nowrap">
+                                  {bikeLabelFromType(row.type)}
+                                </td>
+
+                                <td className={metricCellClass({ isLatest, delta: dSB })}>
                                   <div className="font-semibold">{fmtNum(sb)}</div>
                                   {dSB !== null ? (
-                                    <div className="text-xs text-white/45">{fmtSigned(dSB)}</div>
+                                    <div className={`text-xs ${isLatest && isDeltaNonZero(dSB) ? "text-lime-200/90" : "text-white/45"}`}>
+                                      {fmtSigned(dSB)}
+                                    </div>
                                   ) : (
                                     <div className="text-xs text-white/25">—</div>
                                   )}
                                 </td>
-                                <td className="px-4 py-3 text-white/70 whitespace-nowrap">
+
+                                <td className={metricCellClass({ isLatest, delta: d4 })}>
                                   <div className="font-semibold">{fmtNum(h4)}</div>
                                   {d4 !== null ? (
-                                    <div className="text-xs text-white/45">{fmtSigned(d4)}</div>
+                                    <div className={`text-xs ${isLatest && isDeltaNonZero(d4) ? "text-lime-200/90" : "text-white/45"}`}>
+                                      {fmtSigned(d4)}
+                                    </div>
                                   ) : (
                                     <div className="text-xs text-white/25">—</div>
                                   )}
                                 </td>
-                                <td className="px-4 py-3 text-white/70 whitespace-nowrap">
+
+                                <td className={metricCellClass({ isLatest, delta: d15 })}>
                                   <div className="font-semibold">{fmtNum(h15)}</div>
                                   {d15 !== null ? (
-                                    <div className="text-xs text-white/45">{fmtSigned(d15)}</div>
+                                    <div className={`text-xs ${isLatest && isDeltaNonZero(d15) ? "text-lime-200/90" : "text-white/45"}`}>
+                                      {fmtSigned(d15)}
+                                    </div>
                                   ) : (
                                     <div className="text-xs text-white/25">—</div>
                                   )}
                                 </td>
+
                                 <td className="px-4 py-3 text-white/70 align-top break-words">
                                   {row.location ? <span>{row.location}</span> : <span className="text-white/25">—</span>}
                                 </td>
                                 <td className="px-4 py-3 text-white/70 align-top break-words">
-                                  {row.notes ? <span className="text-lime-200/80 italic">“{row.notes}”</span> : <span className="text-white/25">—</span>}
+                                  {row.notes ? (
+                                    <span className="text-lime-200/80 italic">“{row.notes}”</span>
+                                  ) : (
+                                    <span className="text-white/25">—</span>
+                                  )}
                                 </td>
                               </tr>
                             );

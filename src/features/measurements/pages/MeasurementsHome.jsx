@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ensureSession, fetchRiders } from "../api/measurementsApi";
 import { useAuth } from "../../auth/AuthProvider";
-import { History, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 export default function MeasurementsHome() {
   const navigate = useNavigate();
@@ -94,32 +94,17 @@ export default function MeasurementsHome() {
                 offline={offline}
                 onJigUpdate={() => go("/measurements/quick", r.name)}
                 onBikeSpec={() => go("/measurements/full", r.name)}
-                onJigHistory={() => go("/measurements/history", r.name)}
+                onHistory={() => go("/measurements/history", r.name)}
               />
             ))}
           </div>
         )}
-
-        <div className="mt-6 border-t border-white/10 pt-5">
-          <button
-            disabled={!mechanic}
-            onClick={() => navigate("/measurements/history")}
-            className={`w-full rounded-2xl px-4 py-4 font-black inline-flex items-center justify-center gap-2 transition ${
-              mechanic
-                ? "bg-white/5 text-white/80 border border-white/15 hover:bg-white/10"
-                : "bg-white/5 text-white/20 cursor-not-allowed border border-white/10"
-            }`}
-          >
-            <History size={18} />
-            HISTORY
-          </button>
-        </div>
       </div>
     </div>
   );
 }
 
-function RiderCard({ rider, mechanic, offline, onJigUpdate, onBikeSpec, onJigHistory }) {
+function RiderCard({ rider, mechanic, offline, onJigUpdate, onBikeSpec, onHistory }) {
   const bgStyle = rider.photo
     ? { backgroundImage: `url(${rider.photo})` }
     : { backgroundImage: "linear-gradient(135deg, rgba(255,255,255,0.10), rgba(0,0,0,0.35))" };
@@ -170,7 +155,7 @@ function RiderCard({ rider, mechanic, offline, onJigUpdate, onBikeSpec, onJigHis
 
         <button
           disabled={!mechanic}
-          onClick={onJigHistory}
+          onClick={onHistory}
           className={`w-full rounded-2xl px-4 py-3 font-black inline-flex items-center justify-between transition ${
             mechanic
               ? "bg-white/5 text-white/80 border border-white/15 hover:bg-white/10"

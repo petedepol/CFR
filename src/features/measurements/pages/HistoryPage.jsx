@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ensureSession, fetchHistory } from "../api/measurementsApi";
-import { ArrowLeft, RefreshCcw, Share2 } from "lucide-react";
+import { ArrowLeft, Share2 } from "lucide-react";
 import { useAuth } from "../../auth/AuthProvider.jsx";
 
 export default function HistoryPage() {
@@ -9,9 +9,7 @@ export default function HistoryPage() {
   const [params] = useSearchParams();
   const { displayName } = useAuth();
 
-  const mechanicFromUrl = params.get("mech") || "";
-  const mechanic = (displayName || mechanicFromUrl || "").trim();
-
+  const mechanic = (displayName || "").trim();
   const rider = params.get("rider") || "";
 
   const [items, setItems] = useState([]);
@@ -53,17 +51,21 @@ export default function HistoryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rider]);
 
-  const jigRowsNewestFirst = useMemo(() => {
-    return (items || [])
-      .filter((x) => (x.type || "").toLowerCase() === "quick") // DB stays "quick"
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }, [items]);
+  const jigRowsNewestFirst = useMemo(
+    () =>
+      (items || [])
+        .filter((x) => (x.type || "").toLowerCase() === "quick")
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
+    [items]
+  );
 
-  const fullRowsNewestFirst = useMemo(() => {
-    return (items || [])
-      .filter((x) => (x.type || "").toLowerCase() === "full") // DB stays "full"
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }, [items]);
+  const fullRowsNewestFirst = useMemo(
+    () =>
+      (items || [])
+        .filter((x) => (x.type || "").toLowerCase() === "full")
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
+    [items]
+  );
 
   const filteredJig = useMemo(() => {
     if (filter === "full") return [];
@@ -113,10 +115,7 @@ export default function HistoryPage() {
 
   return (
     <div className="space-y-4">
-      <button
-        onClick={() => navigate(`/measurements?mech=${encodeURIComponent(mechanic)}&rider=${encodeURIComponent(rider)}`)}
-        className="inline-flex items-center gap-2 text-white/70 hover:text-white"
-      >
+      <button onClick={() => navigate("/measurements")} className="inline-flex items-center gap-2 text-white/70 hover:text-white">
         <ArrowLeft size={18} /> Back
       </button>
 
@@ -146,13 +145,6 @@ export default function HistoryPage() {
               <option value="all">All</option>
               <option value="full">Bike Spec</option>
             </select>
-
-            <button
-              onClick={() => load()}
-              className="rounded-2xl px-4 py-3 font-bold bg-white/10 text-white hover:bg-white/15 border border-white/10 inline-flex items-center gap-2"
-            >
-              <RefreshCcw size={16} /> Refresh
-            </button>
           </div>
         </div>
 
@@ -161,6 +153,9 @@ export default function HistoryPage() {
         ) : status.kind === "err" ? (
           <div className="mt-6 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-red-200 text-sm">
             {status.msg}
+            <div className="mt-2 text-xs text-red-100/70">
+              Tip: switch tabs and come back (or go back and open History again) to re-trigger auto-recover.
+            </div>
           </div>
         ) : filteredJig.length === 0 && filteredFull.length === 0 ? (
           <div className="mt-6 text-white/60">No entries yet.</div>
@@ -170,7 +165,6 @@ export default function HistoryPage() {
               <div className="space-y-3">
                 <div className="text-xs text-white/60 uppercase tracking-widest">Jig History</div>
 
-                {/* Desktop table */}
                 <div className="hidden md:block overflow-hidden rounded-2xl border border-white/10 bg-black/30">
                   <div className="max-h-[70vh] overflow-auto">
                     <table className="w-full text-sm table-fixed">
@@ -212,45 +206,23 @@ export default function HistoryPage() {
                                 {row.location ? <div className="text-xs text-white/40 mt-1">{row.location}</div> : null}
                               </td>
 
-                              <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">
-                                {fmtNum(sb)}
-                              </td>
+                              <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">{fmtNum(sb)}</td>
                               <td className="px-2 py-3 text-right tabular-nums align-top border-r border-white/10">
-                                {dSB !== null ? (
-                                  <span className="text-red-300">{fmtSigned(dSB)}</span>
-                                ) : (
-                                  <span className="text-white/25">—</span>
-                                )}
+                                {dSB !== null ? <span className="text-red-300">{fmtSigned(dSB)}</span> : <span className="text-white/25">—</span>}
                               </td>
 
-                              <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">
-                                {fmtNum(h4)}
-                              </td>
+                              <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">{fmtNum(h4)}</td>
                               <td className="px-2 py-3 text-right tabular-nums align-top border-r border-white/10">
-                                {d4 !== null ? (
-                                  <span className="text-red-300">{fmtSigned(d4)}</span>
-                                ) : (
-                                  <span className="text-white/25">—</span>
-                                )}
+                                {d4 !== null ? <span className="text-red-300">{fmtSigned(d4)}</span> : <span className="text-white/25">—</span>}
                               </td>
 
-                              <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">
-                                {fmtNum(h15)}
-                              </td>
+                              <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">{fmtNum(h15)}</td>
                               <td className="px-2 py-3 text-right tabular-nums align-top border-r border-white/10">
-                                {d15 !== null ? (
-                                  <span className="text-red-300">{fmtSigned(d15)}</span>
-                                ) : (
-                                  <span className="text-white/25">—</span>
-                                )}
+                                {d15 !== null ? <span className="text-red-300">{fmtSigned(d15)}</span> : <span className="text-white/25">—</span>}
                               </td>
 
                               <td className="px-4 py-3 text-white/70 align-top break-words">
-                                {row.notes ? (
-                                  <span className="text-lime-200/80 italic">“{row.notes}”</span>
-                                ) : (
-                                  <span className="text-white/25">—</span>
-                                )}
+                                {row.notes ? <span className="text-lime-200/80 italic">“{row.notes}”</span> : <span className="text-white/25">—</span>}
                               </td>
                             </tr>
                           );
@@ -260,7 +232,6 @@ export default function HistoryPage() {
                   </div>
                 </div>
 
-                {/* Mobile cards */}
                 <div className="md:hidden space-y-3">
                   {filteredJig.map((row) => (
                     <JigCard key={row.id || row.timestamp} row={row} jigRows={filteredJig} />
@@ -344,10 +315,6 @@ function Line({ label, value, delta }) {
   );
 }
 
-/**
- * Baseline for a given index in a newest-first list:
- * baseline = avg of next 3 rows (older entries).
- */
 function rollingBaselineForIndex(rowsNewestFirst, index) {
   const older = [];
   for (let i = index + 1; i < rowsNewestFirst.length && older.length < 3; i++) {

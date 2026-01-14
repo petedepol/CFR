@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ensureSession, fetchLatestFull, insertFull } from "../api/measurementsApi";
 import { FULL_SPEC_DEFAULTS } from "../utils/fullSpecDefaults";
-import { ArrowLeft, Save, WifiOff, RefreshCcw } from "lucide-react";
+import { ArrowLeft, Save, WifiOff } from "lucide-react";
 import { useAuth } from "../../auth/AuthProvider.jsx";
 
 export default function FullSpecPage() {
@@ -10,11 +10,7 @@ export default function FullSpecPage() {
   const [params] = useSearchParams();
   const { displayName } = useAuth();
 
-  // Prefer the authenticated displayName (e.g. "Pete") instead of the URL param.
-  // Fallback to URL param only if displayName is missing for some reason.
-  const mechanicFromUrl = params.get("mech") || "";
-  const mechanic = (displayName || mechanicFromUrl || "").trim();
-
+  const mechanic = (displayName || "").trim();
   const rider = params.get("rider") || "";
 
   const [spec, setSpec] = useState(clone(FULL_SPEC_DEFAULTS));
@@ -23,7 +19,6 @@ export default function FullSpecPage() {
   const [snapshot, setSnapshot] = useState(null);
 
   const lastSaveRef = useRef({ at: 0, sig: "" });
-  const lastAttemptRef = useRef(null);
 
   const canSave = useMemo(() => mechanic && rider, [mechanic, rider]);
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;
@@ -36,11 +31,8 @@ export default function FullSpecPage() {
       await ensureSession();
       const latest = await fetchLatestFull(rider);
 
-      if (latest?.full_spec) {
-        setSpec(mergeDefaults(FULL_SPEC_DEFAULTS, latest.full_spec));
-      } else {
-        setSpec(clone(FULL_SPEC_DEFAULTS));
-      }
+      if (latest?.full_spec) setSpec(mergeDefaults(FULL_SPEC_DEFAULTS, latest.full_spec));
+      else setSpec(clone(FULL_SPEC_DEFAULTS));
 
       if (!silent) setStatus({ kind: "idle", msg: "" });
     } catch (e) {
@@ -89,7 +81,6 @@ export default function FullSpecPage() {
       return;
     }
 
-    lastAttemptRef.current = payload;
     setStatus({ kind: "saving", msg: "Saving…" });
 
     try {
@@ -104,32 +95,16 @@ export default function FullSpecPage() {
   }
 
   async function onSave() {
-    // mechanic now comes from displayName ("Pete") by default
     await doSave({ rider, mechanic, fullSpec: spec });
   }
 
-  async function onRetrySave() {
-    if (!lastAttemptRef.current) return;
-    await doSave(lastAttemptRef.current);
-  }
-
-  const showRetrySave = status.kind === "err" && lastAttemptRef.current && !offline;
-
   function setField(section, key, value) {
-    setSpec((prev) => ({
-      ...prev,
-      [section]: { ...prev[section], [key]: value },
-    }));
+    setSpec((prev) => ({ ...prev, [section]: { ...prev[section], [key]: value } }));
   }
 
   return (
     <div className="space-y-4 pb-28">
-      <button
-        onClick={() =>
-          navigate(`/measurements?mech=${encodeURIComponent(mechanic)}&rider=${encodeURIComponent(rider)}`)
-        }
-        className="inline-flex items-center gap-2 text-white/70 hover:text-white"
-      >
+      <button onClick={() => navigate("/measurements")} className="inline-flex items-center gap-2 text-white/70 hover:text-white">
         <ArrowLeft size={18} /> Back
       </button>
 
@@ -155,17 +130,12 @@ export default function FullSpecPage() {
               <Row>
                 <Input label="Model" value={spec.saddle.model} onChange={(v) => setField("saddle", "model", v)} />
                 <Input label="Angle" value={spec.saddle.angle} onChange={(v) => setField("saddle", "angle", v)} />
-                {/* Removed: Setback, Height @4cm, Height @15cm (duplicated with Jig) */}
               </Row>
             </Section>
 
             <Section title="Cockpit">
               <Row>
-                <Input
-                  label="Stem model"
-                  value={spec.cockpit.stemModel}
-                  onChange={(v) => setField("cockpit", "stemModel", v)}
-                />
+                <Input label="Stem model" value={spec.cockpit.stemModel} onChange={(v) => setField("cockpit", "stemModel", v)} />
                 <Input
                   label="Spacer under stem"
                   value={spec.cockpit.spacerUnderStem}
@@ -184,38 +154,22 @@ export default function FullSpecPage() {
 
             <Section title="Drivetrain">
               <Row>
-                <Input
-                  label="Crank length"
-                  value={spec.drivetrain.crankLength}
-                  onChange={(v) => setField("drivetrain", "crankLength", v)}
-                />
-                <Input
-                  label="Pedals axle"
-                  value={spec.drivetrain.pedalsAxle}
-                  onChange={(v) => setField("drivetrain", "pedalsAxle", v)}
-                />
+                <Input label="Crank length" value={spec.drivetrain.crankLength} onChange={(v) => setField("drivetrain", "crankLength", v)} />
+                <Input label="Pedals axle" value={spec.drivetrain.pedalsAxle} onChange={(v) => setField("drivetrain", "pedalsAxle", v)} />
               </Row>
             </Section>
 
             <Section title="Seatpost">
               <Row>
                 <Input label="Model" value={spec.seatpost.model} onChange={(v) => setField("seatpost", "model", v)} />
-                <Input
-                  label="Lever option"
-                  value={spec.seatpost.leverOption}
-                  onChange={(v) => setField("seatpost", "leverOption", v)}
-                />
+                <Input label="Lever option" value={spec.seatpost.leverOption} onChange={(v) => setField("seatpost", "leverOption", v)} />
               </Row>
             </Section>
 
             <Section title="Brakes">
               <Row>
                 <Input label="Model" value={spec.brakes.model} onChange={(v) => setField("brakes", "model", v)} />
-                <Input
-                  label="Lever angle"
-                  value={spec.brakes.leverAngle}
-                  onChange={(v) => setField("brakes", "leverAngle", v)}
-                />
+                <Input label="Lever angle" value={spec.brakes.leverAngle} onChange={(v) => setField("brakes", "leverAngle", v)} />
                 <Input
                   label="Clamp to end bar"
                   value={spec.brakes.clampToEndBar}
@@ -226,52 +180,24 @@ export default function FullSpecPage() {
 
             <Section title="Suspension">
               <Row>
-                <Input
-                  label="Shock tune"
-                  value={spec.suspension.shockTune}
-                  onChange={(v) => setField("suspension", "shockTune", v)}
-                />
-                <Input
-                  label="Fork tune"
-                  value={spec.suspension.forkTune}
-                  onChange={(v) => setField("suspension", "forkTune", v)}
-                />
+                <Input label="Shock tune" value={spec.suspension.shockTune} onChange={(v) => setField("suspension", "shockTune", v)} />
+                <Input label="Fork tune" value={spec.suspension.forkTune} onChange={(v) => setField("suspension", "forkTune", v)} />
               </Row>
             </Section>
 
             <Section title="Wheels / Tyres">
               <Row>
                 <Input label="Tyres" value={spec.wheels.tyres} onChange={(v) => setField("wheels", "tyres", v)} />
-                <Input
-                  label="Pressure front"
-                  value={spec.wheels.pressureFront}
-                  onChange={(v) => setField("wheels", "pressureFront", v)}
-                />
-                <Input
-                  label="Pressure rear"
-                  value={spec.wheels.pressureRear}
-                  onChange={(v) => setField("wheels", "pressureRear", v)}
-                />
+                <Input label="Pressure front" value={spec.wheels.pressureFront} onChange={(v) => setField("wheels", "pressureFront", v)} />
+                <Input label="Pressure rear" value={spec.wheels.pressureRear} onChange={(v) => setField("wheels", "pressureRear", v)} />
               </Row>
             </Section>
 
             <Section title="Base settings">
               <Row>
-                <Input
-                  label="Fork PSI"
-                  value={spec.basesettings.forkPsi}
-                  onChange={(v) => setField("basesettings", "forkPsi", v)}
-                />
-                <Input
-                  label="Shock PSI"
-                  value={spec.basesettings.shockPsi}
-                  onChange={(v) => setField("basesettings", "shockPsi", v)}
-                />
-                <Input
-                  label="Bottle cage"
-                  value={spec.basesettings.bottleCage}
-                  onChange={(v) => setField("basesettings", "bottleCage", v)}
-                />
+                <Input label="Fork PSI" value={spec.basesettings.forkPsi} onChange={(v) => setField("basesettings", "forkPsi", v)} />
+                <Input label="Shock PSI" value={spec.basesettings.shockPsi} onChange={(v) => setField("basesettings", "shockPsi", v)} />
+                <Input label="Bottle cage" value={spec.basesettings.bottleCage} onChange={(v) => setField("basesettings", "bottleCage", v)} />
               </Row>
             </Section>
           </div>
@@ -295,29 +221,10 @@ export default function FullSpecPage() {
               ) : (
                 <div className="text-xs text-white/50">Ready</div>
               )}
-
               {status.kind === "err" && <div className="mt-1 text-xs text-red-200/90 truncate">{status.msg}</div>}
             </div>
 
             <div className="flex items-center gap-2">
-              {status.kind === "err" && (
-                <button
-                  onClick={() => load()}
-                  className="rounded-2xl px-3 py-2 text-xs font-black border border-white/10 bg-white/5 hover:bg-white/10 inline-flex items-center gap-2"
-                >
-                  <RefreshCcw size={14} /> Reload
-                </button>
-              )}
-
-              {showRetrySave && (
-                <button
-                  onClick={onRetrySave}
-                  className="rounded-2xl px-3 py-2 text-xs font-black border border-lime-300/30 bg-lime-300/10 text-lime-200 hover:bg-lime-300/15 inline-flex items-center gap-2"
-                >
-                  <Save size={14} /> Retry
-                </button>
-              )}
-
               <button
                 disabled={status.kind === "saving" || !canSave || offline}
                 onClick={onSave}

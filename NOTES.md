@@ -1,43 +1,24 @@
 # Bike App V2 — Notes
 
 ## Snapshot
-- Tag: `v2-stable-2026-01-14`
 - Goal: stable mobile workflow (switch apps / tab out) without hangs.
+- Current mechanic display: `displayName` (default: **Pete**).
 
 ## What’s working
-- Riders load reliably (no more “stuck loading” after tab/app switch).
-- History loads without hanging.
-- Supabase requests have a hard timeout (prevents endless spinners).
-- Auth resumes on app/tab focus (refreshes session).
+- Riders load reliably (no more infinite loading after tab/app switch).
+- Jig Update / Bike Spec saves are guarded by hard timeouts (no endless spinners).
+- Auth recovers on resume (focus / visibility change) and refreshes session.
+- History view loads and shares latest jig update (copy/share).
 
-## Pending (next)
-1) Mechanic name mapping
-- Fill `MECH_BY_EMAIL` so it shows “Pete / Cal / Maksym” consistently.
+## Cleanup done
+- Removed `mech=` from navigation/URLs (mechanic is internal).
+- Removed most manual Reload/Retry buttons (self-healing + status text).
+- Added a tiny global status pill (online/offline + last OK time) in AppShell.
+- Added hard-reload cooldown to avoid reload loops when Supabase/network is down.
 
-2) Remove remaining “Reload / Retry / Reconnect” UI
-- Keep the app self-healing; only show status text if needed.
+## Pending (if anything comes up)
+- If you ever want multi-mechanic support later: replace `displayName` with a mapping from login email → mechanic name.
+- Bike Settings module: plan schema/UX and reuse the same save/timeout patterns.
 
-3) Login UI polish
-- Ensure login matches dark theme (no white background).
-- Confirm session persists across reloads on the same domain.
-
-4) Labels consistency
-- “Jig Update / Jig History”
-- “Bike Spec” everywhere (pages + buttons + history filter labels)
-
-5) Bike Spec field cleanup
-- Hide duplicated fields: setback, height @4cm, height @15cm.
-
-## Test checklist (do this on mobile)
-- Open Jig Update → type one value → switch apps for 10–30s → return → finish → Save.
-- Go to History → Back → confirm riders load immediately.
-- Repeat once on weak signal / airplane mode toggle (optional).
-
-## Notes / Bugs seen
-- Sometimes login screen shows white background (theme/CSS issue).
-- Previously: “No API key found in request” (env/config sanity check if it returns).
-
-## Decisions
-- No extra reconnect buttons unless absolutely necessary.
-- Prefer auto-recover on resume (visibility/focus) + request timeouts.
-
+## Repo hygiene
+- Keep **only this** NOTES.md at repo root.

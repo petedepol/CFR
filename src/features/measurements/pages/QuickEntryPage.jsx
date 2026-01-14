@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ensureSession, fetchLatestQuick, insertQuick } from "../api/measurementsApi";
-import { ArrowLeft, Save, WifiOff, RefreshCcw, AlertTriangle, X } from "lucide-react";
+import { ArrowLeft, Save, WifiOff, AlertTriangle, X } from "lucide-react";
 import { useAuth } from "../../auth/AuthProvider.jsx";
 
 const WARN_THRESHOLD_MM = 4; // deviation that triggers warning modal
@@ -11,9 +11,7 @@ export default function QuickEntryPage() {
   const [params] = useSearchParams();
   const { displayName } = useAuth();
 
-  const mechanicFromUrl = params.get("mech") || "";
-  const mechanic = (displayName || mechanicFromUrl || "").trim();
-
+  const mechanic = (displayName || "").trim();
   const rider = params.get("rider") || "";
 
   const [form, setForm] = useState({
@@ -26,22 +24,15 @@ export default function QuickEntryPage() {
 
   const [status, setStatus] = useState({ kind: "idle", msg: "" }); // idle|saving|ok|err
   const [loading, setLoading] = useState(true);
-
   const [snapshot, setSnapshot] = useState(null);
 
-  // last saved quick we loaded (baseline for warning modal)
   const lastLoadedQuickRef = useRef(null);
 
-  // warning modal state
   const [warnOpen, setWarnOpen] = useState(false);
   const [warnInfo, setWarnInfo] = useState(null);
   const pendingPayloadRef = useRef(null);
 
-  // prevent accidental double-saves
   const lastSaveRef = useRef({ at: 0, sig: "" });
-
-  // store last attempted payload for retry
-  const lastAttemptRef = useRef(null);
 
   const canSave = useMemo(() => mechanic && rider, [mechanic, rider]);
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;
@@ -113,7 +104,6 @@ export default function QuickEntryPage() {
       return;
     }
 
-    lastAttemptRef.current = payload;
     setStatus({ kind: "saving", msg: "Saving…" });
 
     try {
@@ -128,7 +118,7 @@ export default function QuickEntryPage() {
       });
 
       setStatus({ kind: "ok", msg: "✓ Saved" });
-      await load({ silent: true }); // refresh baseline
+      await load({ silent: true });
     } catch (e) {
       setStatus({ kind: "err", msg: `Save failed: ${e.message || "unknown error"}` });
     }
@@ -165,7 +155,6 @@ export default function QuickEntryPage() {
   }
 
   async function onSave() {
-    // mechanic now comes from displayName ("Pete") by default
     const payload = { rider, mechanic, ...form };
 
     const info = computeDeviationWarning(payload);
@@ -193,29 +182,17 @@ export default function QuickEntryPage() {
     pendingPayloadRef.current = null;
   }
 
-  async function onRetrySave() {
-    if (!lastAttemptRef.current) return;
-    await doSave(lastAttemptRef.current);
-  }
-
-  const showRetrySave = status.kind === "err" && lastAttemptRef.current && !offline;
-
   return (
     <div className="space-y-4 pb-28">
-      <button
-        onClick={() => navigate(`/measurements?mech=${encodeURIComponent(mechanic)}&rider=${encodeURIComponent(rider)}`)}
-        className="inline-flex items-center gap-2 text-white/70 hover:text-white"
-      >
+      <button onClick={() => navigate("/measurements")} className="inline-flex items-center gap-2 text-white/70 hover:text-white">
         <ArrowLeft size={18} /> Back
       </button>
 
       <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-6">
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-          <div>
-            <div className="text-sm text-white/60 uppercase tracking-widest">Jig Update</div>
-            <div className="text-2xl font-black mt-1">{rider || "No rider selected"}</div>
-            <div className="text-white/50 text-sm mt-1">Mechanic: {mechanic || "—"}</div>
-          </div>
+        <div>
+          <div className="text-sm text-white/60 uppercase tracking-widest">Jig Update</div>
+          <div className="text-2xl font-black mt-1">{rider || "No rider selected"}</div>
+          <div className="text-white/50 text-sm mt-1">Mechanic: {mechanic || "—"}</div>
         </div>
 
         {loading ? (
@@ -278,7 +255,6 @@ export default function QuickEntryPage() {
         )}
       </div>
 
-      {/* Warning modal (appears on Save if deviation is big) */}
       {warnOpen && warnInfo && (
         <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70" onClick={cancelWarn} />
@@ -292,8 +268,7 @@ export default function QuickEntryPage() {
                   <div className="text-lg font-black text-white">Significant change detected</div>
                   <div className="text-sm text-white/60 mt-1">
                     Compared to the last saved jig update
-                    {warnInfo.prevWhen ? ` (${warnInfo.prevWhen.toLocaleString()})` : ""}. Threshold:{" "}
-                    {warnInfo.threshold}mm.
+                    {warnInfo.prevWhen ? ` (${warnInfo.prevWhen.toLocaleString()})` : ""}. Threshold: {warnInfo.threshold}mm.
                   </div>
                 </div>
               </div>
@@ -326,10 +301,7 @@ export default function QuickEntryPage() {
             </div>
 
             <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-end">
-              <button
-                onClick={cancelWarn}
-                className="rounded-2xl px-4 py-3 font-black border border-white/10 bg-white/5 hover:bg-white/10 text-white"
-              >
+              <button onClick={cancelWarn} className="rounded-2xl px-4 py-3 font-black border border-white/10 bg-white/5 hover:bg-white/10 text-white">
                 Cancel
               </button>
               <button
@@ -343,7 +315,6 @@ export default function QuickEntryPage() {
         </div>
       )}
 
-      {/* Sticky save bar */}
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-5xl px-4 z-30">
         <div className="rounded-3xl border border-white/10 bg-black/50 backdrop-blur-xl p-4 shadow-lg">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -356,8 +327,7 @@ export default function QuickEntryPage() {
                 <div className="text-xs text-white/70">
                   <span className="text-white/85 font-black">Saved:</span>{" "}
                   <span className="font-black text-white/85 tabular-nums">
-                    SB {fmt(snapshot.saddleSetback)} • 4cm {fmt(snapshot.height4cm)} • 15cm{" "}
-                    {fmt(snapshot.height15cm)}
+                    SB {fmt(snapshot.saddleSetback)} • 4cm {fmt(snapshot.height4cm)} • 15cm {fmt(snapshot.height15cm)}
                   </span>
                   <span className="text-white/40"> • {snapshot.at.toLocaleTimeString()}</span>
                 </div>
@@ -369,24 +339,6 @@ export default function QuickEntryPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              {status.kind === "err" && (
-                <button
-                  onClick={() => load()}
-                  className="rounded-2xl px-3 py-2 text-xs font-black border border-white/10 bg-white/5 hover:bg-white/10 inline-flex items-center gap-2"
-                >
-                  <RefreshCcw size={14} /> Reload
-                </button>
-              )}
-
-              {showRetrySave && (
-                <button
-                  onClick={onRetrySave}
-                  className="rounded-2xl px-3 py-2 text-xs font-black border border-lime-300/30 bg-lime-300/10 text-lime-200 hover:bg-lime-300/15 inline-flex items-center gap-2"
-                >
-                  <Save size={14} /> Retry
-                </button>
-              )}
-
               <button
                 disabled={status.kind === "saving" || !canSave || offline}
                 onClick={onSave}

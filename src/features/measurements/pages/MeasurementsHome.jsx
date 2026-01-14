@@ -1,14 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ensureSession, fetchRiders } from "../api/measurementsApi";
 import { useAuth } from "../../auth/AuthProvider";
 import { History, ChevronRight } from "lucide-react";
 
 export default function MeasurementsHome() {
   const navigate = useNavigate();
-  const [params, setParams] = useSearchParams();
-
-  // ✅ Single source of truth for mechanic name (set in AuthProvider)
   const { displayName } = useAuth();
 
   const [riders, setRiders] = useState([]);
@@ -18,10 +15,7 @@ export default function MeasurementsHome() {
   const mountedRef = useRef(true);
   const reqIdRef = useRef(0);
 
-  const mechanic = useMemo(() => {
-    return (displayName || "").trim();
-  }, [displayName]);
-
+  const mechanic = useMemo(() => (displayName || "").trim(), [displayName]);
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;
 
   async function loadRiders({ silent = false } = {}) {
@@ -75,19 +69,8 @@ export default function MeasurementsHome() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keep URL mech param in sync so other pages continue working,
-  // but now it will be "Pete" (displayName), not "Info".
-  useEffect(() => {
-    if (!mechanic) return;
-    if (params.get("mech") === mechanic) return;
-    params.set("mech", mechanic);
-    setParams(params, { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mechanic]);
-
   function go(path, riderName) {
     const p = new URLSearchParams();
-    if (mechanic) p.set("mech", mechanic);
     if (riderName) p.set("rider", riderName);
     navigate(`${path}?${p.toString()}`);
   }

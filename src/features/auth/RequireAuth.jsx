@@ -3,10 +3,14 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthProvider";
 
 export default function RequireAuth({ children }) {
-  const { loading, session } = useAuth();
+  const auth = useAuth();
   const loc = useLocation();
 
-  if (loading) {
+  // Support both naming styles (older code used loading, new AuthProvider uses booting)
+  const isLoading = Boolean(auth.booting ?? auth.loading);
+  const session = auth.session ?? null;
+
+  if (isLoading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center text-white/70">
         Loading…

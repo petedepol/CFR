@@ -4,27 +4,12 @@ import { ensureSession, fetchRiders } from "../api/measurementsApi";
 import { useAuth } from "../../auth/AuthProvider";
 import { History, ChevronRight } from "lucide-react";
 
-/**
- * Map team emails → mechanic name shown in the app.
- * Fill these in (lowercase emails).
- */
-const MECH_BY_EMAIL = {
-  // "pete@yourteam.com": "Pete",
-  // "cal@yourteam.com": "Cal",
-  // "maksym@yourteam.com": "Maksym",
-};
-
-function fallbackNameFromEmail(email) {
-  if (!email) return "";
-  const local = String(email).split("@")[0] || "";
-  if (!local) return "";
-  return local.charAt(0).toUpperCase() + local.slice(1);
-}
-
 export default function MeasurementsHome() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const { user } = useAuth();
+
+  // ✅ Single source of truth for mechanic name (set in AuthProvider)
+  const { displayName } = useAuth();
 
   const [riders, setRiders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,10 +19,8 @@ export default function MeasurementsHome() {
   const reqIdRef = useRef(0);
 
   const mechanic = useMemo(() => {
-    const email = (user?.email || "").toLowerCase().trim();
-    const name = MECH_BY_EMAIL[email] || fallbackNameFromEmail(email);
-    return name || "";
-  }, [user?.email]);
+    return (displayName || "").trim();
+  }, [displayName]);
 
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;
 
@@ -92,7 +75,8 @@ export default function MeasurementsHome() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // keep URL mech param in sync so other pages keep working
+  // Keep URL mech param in sync so other pages continue working,
+  // but now it will be "Pete" (displayName), not "Info".
   useEffect(() => {
     if (!mechanic) return;
     if (params.get("mech") === mechanic) return;
@@ -113,7 +97,6 @@ export default function MeasurementsHome() {
       <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-6">
         <div className="text-sm text-white/60 uppercase tracking-widest">Mechanic</div>
         <div className="mt-1 text-2xl font-black">{mechanic || "—"}</div>
-        <div className="text-white/50 text-sm mt-1">{user?.email || ""}</div>
 
         {offline && (
           <div className="mt-3 text-xs text-white/60">

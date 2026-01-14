@@ -3,12 +3,18 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ensureSession, fetchLatestFull, insertFull } from "../api/measurementsApi";
 import { FULL_SPEC_DEFAULTS } from "../utils/fullSpecDefaults";
 import { ArrowLeft, Save, WifiOff, RefreshCcw } from "lucide-react";
+import { useAuth } from "../../auth/AuthProvider.jsx";
 
 export default function FullSpecPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const { displayName } = useAuth();
 
-  const mechanic = params.get("mech") || "";
+  // Prefer the authenticated displayName (e.g. "Pete") instead of the URL param.
+  // Fallback to URL param only if displayName is missing for some reason.
+  const mechanicFromUrl = params.get("mech") || "";
+  const mechanic = (displayName || mechanicFromUrl || "").trim();
+
   const rider = params.get("rider") || "";
 
   const [spec, setSpec] = useState(clone(FULL_SPEC_DEFAULTS));
@@ -98,6 +104,7 @@ export default function FullSpecPage() {
   }
 
   async function onSave() {
+    // mechanic now comes from displayName ("Pete") by default
     await doSave({ rider, mechanic, fullSpec: spec });
   }
 
@@ -118,7 +125,9 @@ export default function FullSpecPage() {
   return (
     <div className="space-y-4 pb-28">
       <button
-        onClick={() => navigate(`/measurements?mech=${encodeURIComponent(mechanic)}&rider=${encodeURIComponent(rider)}`)}
+        onClick={() =>
+          navigate(`/measurements?mech=${encodeURIComponent(mechanic)}&rider=${encodeURIComponent(rider)}`)
+        }
         className="inline-flex items-center gap-2 text-white/70 hover:text-white"
       >
         <ArrowLeft size={18} /> Back
@@ -152,57 +161,117 @@ export default function FullSpecPage() {
 
             <Section title="Cockpit">
               <Row>
-                <Input label="Stem model" value={spec.cockpit.stemModel} onChange={(v) => setField("cockpit", "stemModel", v)} />
-                <Input label="Spacer under stem" value={spec.cockpit.spacerUnderStem} onChange={(v) => setField("cockpit", "spacerUnderStem", v)} />
+                <Input
+                  label="Stem model"
+                  value={spec.cockpit.stemModel}
+                  onChange={(v) => setField("cockpit", "stemModel", v)}
+                />
+                <Input
+                  label="Spacer under stem"
+                  value={spec.cockpit.spacerUnderStem}
+                  onChange={(v) => setField("cockpit", "spacerUnderStem", v)}
+                />
                 <Input label="Grips" value={spec.cockpit.grips} onChange={(v) => setField("cockpit", "grips", v)} />
               </Row>
               <Row>
-                <Input label="Handlebar model" value={spec.cockpit.handlebarModel} onChange={(v) => setField("cockpit", "handlebarModel", v)} />
+                <Input
+                  label="Handlebar model"
+                  value={spec.cockpit.handlebarModel}
+                  onChange={(v) => setField("cockpit", "handlebarModel", v)}
+                />
               </Row>
             </Section>
 
             <Section title="Drivetrain">
               <Row>
-                <Input label="Crank length" value={spec.drivetrain.crankLength} onChange={(v) => setField("drivetrain", "crankLength", v)} />
-                <Input label="Pedals axle" value={spec.drivetrain.pedalsAxle} onChange={(v) => setField("drivetrain", "pedalsAxle", v)} />
+                <Input
+                  label="Crank length"
+                  value={spec.drivetrain.crankLength}
+                  onChange={(v) => setField("drivetrain", "crankLength", v)}
+                />
+                <Input
+                  label="Pedals axle"
+                  value={spec.drivetrain.pedalsAxle}
+                  onChange={(v) => setField("drivetrain", "pedalsAxle", v)}
+                />
               </Row>
             </Section>
 
             <Section title="Seatpost">
               <Row>
                 <Input label="Model" value={spec.seatpost.model} onChange={(v) => setField("seatpost", "model", v)} />
-                <Input label="Lever option" value={spec.seatpost.leverOption} onChange={(v) => setField("seatpost", "leverOption", v)} />
+                <Input
+                  label="Lever option"
+                  value={spec.seatpost.leverOption}
+                  onChange={(v) => setField("seatpost", "leverOption", v)}
+                />
               </Row>
             </Section>
 
             <Section title="Brakes">
               <Row>
                 <Input label="Model" value={spec.brakes.model} onChange={(v) => setField("brakes", "model", v)} />
-                <Input label="Lever angle" value={spec.brakes.leverAngle} onChange={(v) => setField("brakes", "leverAngle", v)} />
-                <Input label="Clamp to end bar" value={spec.brakes.clampToEndBar} onChange={(v) => setField("brakes", "clampToEndBar", v)} />
+                <Input
+                  label="Lever angle"
+                  value={spec.brakes.leverAngle}
+                  onChange={(v) => setField("brakes", "leverAngle", v)}
+                />
+                <Input
+                  label="Clamp to end bar"
+                  value={spec.brakes.clampToEndBar}
+                  onChange={(v) => setField("brakes", "clampToEndBar", v)}
+                />
               </Row>
             </Section>
 
             <Section title="Suspension">
               <Row>
-                <Input label="Shock tune" value={spec.suspension.shockTune} onChange={(v) => setField("suspension", "shockTune", v)} />
-                <Input label="Fork tune" value={spec.suspension.forkTune} onChange={(v) => setField("suspension", "forkTune", v)} />
+                <Input
+                  label="Shock tune"
+                  value={spec.suspension.shockTune}
+                  onChange={(v) => setField("suspension", "shockTune", v)}
+                />
+                <Input
+                  label="Fork tune"
+                  value={spec.suspension.forkTune}
+                  onChange={(v) => setField("suspension", "forkTune", v)}
+                />
               </Row>
             </Section>
 
             <Section title="Wheels / Tyres">
               <Row>
                 <Input label="Tyres" value={spec.wheels.tyres} onChange={(v) => setField("wheels", "tyres", v)} />
-                <Input label="Pressure front" value={spec.wheels.pressureFront} onChange={(v) => setField("wheels", "pressureFront", v)} />
-                <Input label="Pressure rear" value={spec.wheels.pressureRear} onChange={(v) => setField("wheels", "pressureRear", v)} />
+                <Input
+                  label="Pressure front"
+                  value={spec.wheels.pressureFront}
+                  onChange={(v) => setField("wheels", "pressureFront", v)}
+                />
+                <Input
+                  label="Pressure rear"
+                  value={spec.wheels.pressureRear}
+                  onChange={(v) => setField("wheels", "pressureRear", v)}
+                />
               </Row>
             </Section>
 
             <Section title="Base settings">
               <Row>
-                <Input label="Fork PSI" value={spec.basesettings.forkPsi} onChange={(v) => setField("basesettings", "forkPsi", v)} />
-                <Input label="Shock PSI" value={spec.basesettings.shockPsi} onChange={(v) => setField("basesettings", "shockPsi", v)} />
-                <Input label="Bottle cage" value={spec.basesettings.bottleCage} onChange={(v) => setField("basesettings", "bottleCage", v)} />
+                <Input
+                  label="Fork PSI"
+                  value={spec.basesettings.forkPsi}
+                  onChange={(v) => setField("basesettings", "forkPsi", v)}
+                />
+                <Input
+                  label="Shock PSI"
+                  value={spec.basesettings.shockPsi}
+                  onChange={(v) => setField("basesettings", "shockPsi", v)}
+                />
+                <Input
+                  label="Bottle cage"
+                  value={spec.basesettings.bottleCage}
+                  onChange={(v) => setField("basesettings", "bottleCage", v)}
+                />
               </Row>
             </Section>
           </div>
@@ -227,9 +296,7 @@ export default function FullSpecPage() {
                 <div className="text-xs text-white/50">Ready</div>
               )}
 
-              {status.kind === "err" && (
-                <div className="mt-1 text-xs text-red-200/90 truncate">{status.msg}</div>
-              )}
+              {status.kind === "err" && <div className="mt-1 text-xs text-red-200/90 truncate">{status.msg}</div>}
             </div>
 
             <div className="flex items-center gap-2">

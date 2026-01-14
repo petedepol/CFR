@@ -2,14 +2,18 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ensureSession, fetchLatestQuick, insertQuick } from "../api/measurementsApi";
 import { ArrowLeft, Save, WifiOff, RefreshCcw, AlertTriangle, X } from "lucide-react";
+import { useAuth } from "../../auth/AuthProvider.jsx";
 
 const WARN_THRESHOLD_MM = 4; // deviation that triggers warning modal
 
 export default function QuickEntryPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const { displayName } = useAuth();
 
-  const mechanic = params.get("mech") || "";
+  const mechanicFromUrl = params.get("mech") || "";
+  const mechanic = (displayName || mechanicFromUrl || "").trim();
+
   const rider = params.get("rider") || "";
 
   const [form, setForm] = useState({
@@ -161,6 +165,7 @@ export default function QuickEntryPage() {
   }
 
   async function onSave() {
+    // mechanic now comes from displayName ("Pete") by default
     const payload = { rider, mechanic, ...form };
 
     const info = computeDeviationWarning(payload);

@@ -2,12 +2,16 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ensureSession, fetchHistory } from "../api/measurementsApi";
 import { ArrowLeft, RefreshCcw, Share2 } from "lucide-react";
+import { useAuth } from "../../auth/AuthProvider.jsx";
 
 export default function HistoryPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const { displayName } = useAuth();
 
-  const mechanic = params.get("mech") || "";
+  const mechanicFromUrl = params.get("mech") || "";
+  const mechanic = (displayName || mechanicFromUrl || "").trim();
+
   const rider = params.get("rider") || "";
 
   const [items, setItems] = useState([]);
@@ -172,9 +176,7 @@ export default function HistoryPage() {
                     <table className="w-full text-sm table-fixed">
                       <thead className="sticky top-0 bg-black/70 backdrop-blur border-b border-white/10">
                         <tr className="text-white/60">
-                          <th className="text-left font-black px-4 py-3 w-[150px] border-r border-white/10">
-                            Date
-                          </th>
+                          <th className="text-left font-black px-4 py-3 w-[150px] border-r border-white/10">Date</th>
 
                           <th className="text-right font-black px-3 py-3 w-[110px]">SB</th>
                           <th className="text-right font-black px-2 py-3 w-[70px] border-r border-white/10">Δ</th>
@@ -207,9 +209,7 @@ export default function HistoryPage() {
                               <td className="px-4 py-3 text-white/70 align-top border-r border-white/10">
                                 <div className="font-semibold text-white/80">{formatDateShort(row.timestamp)}</div>
                                 <div className="text-xs text-white/40 mt-0.5">{formatTime(row.timestamp)}</div>
-                                {row.location ? (
-                                  <div className="text-xs text-white/40 mt-1">{row.location}</div>
-                                ) : null}
+                                {row.location ? <div className="text-xs text-white/40 mt-1">{row.location}</div> : null}
                               </td>
 
                               <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">

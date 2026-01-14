@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ensureSession, fetchHistory } from "../api/measurementsApi";
-import { ArrowLeft, Share2 } from "lucide-react";
+import { ArrowLeft, Share2, ChevronDown, ChevronUp } from "lucide-react";
 import { useAuth } from "../../auth/AuthProvider.jsx";
 
 function isQuickType(t) {
@@ -16,13 +16,6 @@ function quickTypeForBikeType(bikeType) {
   return "quick";
 }
 
-function bikeLabelFromType(t) {
-  const x = String(t || "").toLowerCase();
-  if (x === "quick_road") return "Road";
-  if (x === "quick_cx") return "CX";
-  return "MTB";
-}
-
 export default function HistoryPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -33,7 +26,11 @@ export default function HistoryPage() {
 
   const [items, setItems] = useState([]);
   const [status, setStatus] = useState({ kind: "idle", msg: "" }); // idle|loading|err
-  const [filter, setFilter] = useState("quick"); // quick|all|full
+
+  // ✅ dropdown should be Jig or Bike Spec (and keep All as an extra option)
+  const [filter, setFilter] = useState("quick"); // quick|full|all
+
+  const [openFullKey, setOpenFullKey] = useState(null); // id|timestamp of expanded full-spec row
 
   // Default is MTB so Road/CX are minimal visibility
   const [jigBikeType, setJigBikeType] = useState("mtb"); // mtb|road|cx|all
@@ -113,9 +110,9 @@ export default function HistoryPage() {
 
     const text =
       `${rider} — Jig Update (${bikeLabelFromType(latest.type)})\n` +
-      `SB: ${fmtNum(sb)}mm${dSB !== null ? ` (${fmtSigned(dSB)}mm)` : ""}\n` +
-      `4cm: ${fmtNum(h4)}mm${d4 !== null ? ` (${fmtSigned(d4)}mm)` : ""}\n` +
-      `15cm: ${fmtNum(h15)}mm${d15 !== null ? ` (${fmtSigned(d15)}mm)` : ""}\n` +
+      `SB: ${fmtNum(sb)}${dSB !== null ? ` (${fmtSigned(dSB)})` : ""}\n` +
+      `4cm: ${fmtNum(h4)}${d4 !== null ? ` (${fmtSigned(d4)})` : ""}\n` +
+      `15cm: ${fmtNum(h15)}${d15 !== null ? ` (${fmtSigned(d15)})` : ""}\n` +
       (latest.location ? `Location: ${latest.location}\n` : "") +
       (latest.notes ? `Notes: ${latest.notes}\n` : "") +
       `When: ${formatDateTime(latest.timestamp)}`;
@@ -134,7 +131,10 @@ export default function HistoryPage() {
 
   return (
     <div className="space-y-4">
-      <button onClick={() => navigate("/measurements")} className="inline-flex items-center gap-2 text-white/70 hover:text-white">
+      <button
+        onClick={() => navigate("/measurements")}
+        className="inline-flex items-center gap-2 text-white/70 hover:text-white"
+      >
         <ArrowLeft size={18} /> Back
       </button>
 
@@ -146,12 +146,11 @@ export default function HistoryPage() {
             <div className="text-white/50 text-sm mt-1">Mechanic: {mechanic || "—"}</div>
           </div>
 
-          <div className="flex flex-wrap items-end gap-2">
-            {showJig && (
+          <div className="flex flex-wrap items-end gap-3">
+            {showJig && jigFilteredNewestFirst.length > 0 && (
               <button
                 onClick={shareLatestJig}
-                className="rounded-2xl px-4 py-3 font-bold bg-lime-300 text-black hover:bg-lime-200 inline-flex items-center gap-2"
-                title="Share latest jig update"
+                className="rounded-2xl px-4 py-3 font-black border border-white/10 bg-white/5 hover:bg-white/10 text-white/85 inline-flex items-center gap-2"
               >
                 <Share2 size={16} /> Share Jig
               </button>
@@ -164,9 +163,9 @@ export default function HistoryPage() {
                 onChange={(e) => setFilter(e.target.value)}
                 className="rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
               >
-                <option value="quick">Jig History</option>
-                <option value="all">All</option>
+                <option value="quick">Jig</option>
                 <option value="full">Bike Spec</option>
+                <option value="all">All</option>
               </select>
             </label>
 
@@ -189,86 +188,77 @@ export default function HistoryPage() {
         </div>
 
         {status.kind === "loading" ? (
-          <div className="mt-6 text-white/60">Loading…</div>
+          <div className="mt-6 text-white/60">Loading history…</div>
         ) : status.kind === "err" ? (
-          <div className="mt-6 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-red-200 text-sm">
-            {status.msg}
-            <div className="mt-2 text-xs text-red-100/70">Tip: switch tabs and come back to trigger auto-recover.</div>
-          </div>
+          <div className="mt-6 text-red-200/90">{status.msg}</div>
         ) : (
           <div className="mt-6 space-y-6">
             {showJig && (
               <div className="space-y-3">
-                <div className="text-xs text-white/60 uppercase tracking-widest">
-                  Jig History {jigBikeType !== "all" ? `(${jigBikeType.toUpperCase()})` : "(ALL)"}
-                </div>
+                <div className="text-xs text-white/60 uppercase tracking-widest">Jig / Quick</div>
 
                 {jigFilteredNewestFirst.length === 0 ? (
-                  <div className="text-white/60">No jig entries for this bike type.</div>
+                  <div className="text-white/60">No jig/quick entries yet.</div>
                 ) : (
-                  <div className="hidden md:block overflow-hidden rounded-2xl border border-white/10 bg-black/30">
-                    <div className="max-h-[70vh] overflow-auto">
-                      <table className="w-full text-sm table-fixed">
-                        <thead className="sticky top-0 bg-black/70 backdrop-blur border-b border-white/10">
-                          <tr className="text-white/60">
-                            <th className="text-left font-black px-4 py-3 w-[160px] border-r border-white/10">Date</th>
-                            <th className="text-left font-black px-3 py-3 w-[80px] border-r border-white/10">Bike</th>
-
-                            <th className="text-right font-black px-3 py-3 w-[110px]">SB</th>
-                            <th className="text-right font-black px-2 py-3 w-[70px] border-r border-white/10">Δ</th>
-
-                            <th className="text-right font-black px-3 py-3 w-[110px]">4cm</th>
-                            <th className="text-right font-black px-2 py-3 w-[70px] border-r border-white/10">Δ</th>
-
-                            <th className="text-right font-black px-3 py-3 w-[110px]">15cm</th>
-                            <th className="text-right font-black px-2 py-3 w-[70px] border-r border-white/10">Δ</th>
-
-                            <th className="text-left font-black px-4 py-3 w-auto min-w-[320px]">Notes</th>
+                  <div className="rounded-3xl border border-white/10 bg-black/20 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-[820px] w-full text-sm">
+                        <thead>
+                          <tr className="bg-black/35 text-white/70">
+                            <th className="px-4 py-3 text-left font-bold">When</th>
+                            <th className="px-4 py-3 text-left font-bold">Bike</th>
+                            <th className="px-4 py-3 text-left font-bold">SB</th>
+                            <th className="px-4 py-3 text-left font-bold">4cm</th>
+                            <th className="px-4 py-3 text-left font-bold">15cm</th>
+                            <th className="px-4 py-3 text-left font-bold">Location</th>
+                            <th className="px-4 py-3 text-left font-bold">Notes</th>
                           </tr>
                         </thead>
-
                         <tbody>
                           {jigFilteredNewestFirst.map((row, idx) => {
-                            const base = rollingBaselineForIndex(jigFilteredNewestFirst, idx);
                             const sb = toNum(row.saddle_setback);
                             const h4 = toNum(row.height_4cm);
                             const h15 = toNum(row.height_15cm);
 
+                            const base = rollingBaselineForIndex(jigFilteredNewestFirst, idx);
                             const dSB = base ? diff(sb, base.sb) : null;
                             const d4 = base ? diff(h4, base.h4) : null;
                             const d15 = base ? diff(h15, base.h15) : null;
 
-                            const zebra = idx % 2 === 0 ? "bg-black/15" : "bg-black/5";
-
                             return (
-                              <tr key={row.id || `${row.timestamp}-${idx}`} className={`border-b border-white/5 ${zebra}`}>
-                                <td className="px-4 py-3 text-white/70 align-top border-r border-white/10">
-                                  <div className="font-semibold text-white/80">{formatDateShort(row.timestamp)}</div>
-                                  <div className="text-xs text-white/40 mt-0.5">{formatTime(row.timestamp)}</div>
-                                  {row.location ? <div className="text-xs text-white/40 mt-1">{row.location}</div> : null}
+                              <tr key={row.id || row.timestamp} className="border-t border-white/10">
+                                <td className="px-4 py-3 text-white/80 whitespace-nowrap">
+                                  <div className="font-semibold">{formatDateTime(row.timestamp)}</div>
+                                  <div className="text-xs text-white/40">{formatTime(row.timestamp)}</div>
                                 </td>
-
-                                <td className="px-3 py-3 text-white/70 align-top border-r border-white/10">
-                                  <span className="inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-black text-white/70">
-                                    {bikeLabelFromType(row.type)}
-                                  </span>
+                                <td className="px-4 py-3 text-white/70 whitespace-nowrap">{bikeLabelFromType(row.type)}</td>
+                                <td className="px-4 py-3 text-white/70 whitespace-nowrap">
+                                  <div className="font-semibold">{fmtNum(sb)}</div>
+                                  {dSB !== null ? (
+                                    <div className="text-xs text-white/45">{fmtSigned(dSB)}</div>
+                                  ) : (
+                                    <div className="text-xs text-white/25">—</div>
+                                  )}
                                 </td>
-
-                                <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">{fmtNum(sb)}</td>
-                                <td className="px-2 py-3 text-right tabular-nums align-top border-r border-white/10">
-                                  {dSB !== null ? <span className="text-red-300">{fmtSigned(dSB)}</span> : <span className="text-white/25">—</span>}
+                                <td className="px-4 py-3 text-white/70 whitespace-nowrap">
+                                  <div className="font-semibold">{fmtNum(h4)}</div>
+                                  {d4 !== null ? (
+                                    <div className="text-xs text-white/45">{fmtSigned(d4)}</div>
+                                  ) : (
+                                    <div className="text-xs text-white/25">—</div>
+                                  )}
                                 </td>
-
-                                <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">{fmtNum(h4)}</td>
-                                <td className="px-2 py-3 text-right tabular-nums align-top border-r border-white/10">
-                                  {d4 !== null ? <span className="text-red-300">{fmtSigned(d4)}</span> : <span className="text-white/25">—</span>}
+                                <td className="px-4 py-3 text-white/70 whitespace-nowrap">
+                                  <div className="font-semibold">{fmtNum(h15)}</div>
+                                  {d15 !== null ? (
+                                    <div className="text-xs text-white/45">{fmtSigned(d15)}</div>
+                                  ) : (
+                                    <div className="text-xs text-white/25">—</div>
+                                  )}
                                 </td>
-
-                                <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">{fmtNum(h15)}</td>
-                                <td className="px-2 py-3 text-right tabular-nums align-top border-r border-white/10">
-                                  {d15 !== null ? <span className="text-red-300">{fmtSigned(d15)}</span> : <span className="text-white/25">—</span>}
+                                <td className="px-4 py-3 text-white/70 align-top break-words">
+                                  {row.location ? <span>{row.location}</span> : <span className="text-white/25">—</span>}
                                 </td>
-
                                 <td className="px-4 py-3 text-white/70 align-top break-words">
                                   {row.notes ? <span className="text-lime-200/80 italic">“{row.notes}”</span> : <span className="text-white/25">—</span>}
                                 </td>
@@ -285,25 +275,52 @@ export default function HistoryPage() {
 
             {showFull && (
               <div className="space-y-3">
-                <div className="text-xs text-white/60 uppercase tracking-widest">Bike Spec History</div>
+                <div className="text-xs text-white/60 uppercase tracking-widest">Bike Spec</div>
                 {fullRowsNewestFirst.length === 0 ? (
                   <div className="text-white/60">No bike spec entries yet.</div>
                 ) : (
                   <div className="space-y-2">
-                    {fullRowsNewestFirst.map((row) => (
-                      <div key={row.id || row.timestamp} className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="text-white/80 font-semibold">{formatDateTime(row.timestamp)}</div>
-                          <div className="text-xs text-white/50">{row.full_spec ? "Saved ✓" : "—"}</div>
-                        </div>
-                        {(row.notes || row.location) && (
-                          <div className="mt-2 text-sm text-white/70">
-                            {row.notes && <div className="text-lime-200/80 italic">“{row.notes}”</div>}
-                            {row.location && <div className="text-xs text-white/40 mt-1">{row.location}</div>}
+                    {fullRowsNewestFirst.map((row) => {
+                      const key = row.id || row.timestamp;
+                      const isOpen = openFullKey === key;
+                      return (
+                        <button
+                          type="button"
+                          key={key}
+                          onClick={() => setOpenFullKey((prev) => (prev === key ? null : key))}
+                          className="w-full text-left rounded-2xl border border-white/10 bg-black/30 p-4 hover:bg-black/25 transition"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="text-white/80 font-semibold">{formatDateTime(row.timestamp)}</div>
+                            <div className="flex items-center gap-2">
+                              <div className="text-xs text-white/50">{row.full_spec ? "Saved ✓" : "—"}</div>
+                              {isOpen ? (
+                                <ChevronUp size={16} className="text-white/50" />
+                              ) : (
+                                <ChevronDown size={16} className="text-white/50" />
+                              )}
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    ))}
+
+                          {(row.notes || row.location) && (
+                            <div className="mt-2 text-sm text-white/70">
+                              {row.notes && <div className="text-lime-200/80 italic">“{row.notes}”</div>}
+                              {row.location && <div className="text-xs text-white/40 mt-1">{row.location}</div>}
+                            </div>
+                          )}
+
+                          {isOpen && (
+                            <div className="mt-4">
+                              {row.full_spec ? (
+                                <FullSpecViewer spec={row.full_spec} />
+                              ) : (
+                                <div className="text-sm text-white/55">No bike spec data stored in this entry.</div>
+                              )}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -315,7 +332,80 @@ export default function HistoryPage() {
   );
 }
 
-// Baseline from 3 older entries (same filtered list)
+function FullSpecViewer({ spec }) {
+  const normalized = normalizeFullSpec(spec);
+
+  if (!normalized) {
+    return (
+      <pre className="text-xs text-white/70 bg-black/40 border border-white/10 rounded-2xl p-4 overflow-auto">
+        {safeStringify(spec)}
+      </pre>
+    );
+  }
+
+  const sections = Object.keys(normalized);
+
+  return (
+    <div className="space-y-3">
+      {sections.map((section) => {
+        const sectionObj = normalized[section];
+        const entries = sectionObj && typeof sectionObj === "object" ? Object.entries(sectionObj) : [];
+
+        return (
+          <div key={section} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <div className="text-[11px] text-white/50 uppercase tracking-widest">{humanize(section)}</div>
+
+            {entries.length === 0 ? (
+              <div className="mt-2 text-sm text-white/55">—</div>
+            ) : (
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                {entries.map(([key, value]) => (
+                  <div key={key} className="flex items-start justify-between gap-3">
+                    <div className="text-xs text-white/45 uppercase tracking-widest">{humanize(key)}</div>
+                    <div className="text-sm text-white/80 text-right break-words">{formatSpecValue(value)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function normalizeFullSpec(spec) {
+  if (!spec || typeof spec !== "object") return null;
+  if (spec.mtb && typeof spec.mtb === "object") return spec.mtb;
+  return spec;
+}
+
+function formatSpecValue(v) {
+  if (v === null || v === undefined) return "—";
+  if (typeof v === "string") return v.trim() ? v : "—";
+  if (typeof v === "number") return String(v);
+  if (typeof v === "boolean") return v ? "Yes" : "No";
+  try {
+    return JSON.stringify(v);
+  } catch {
+    return String(v);
+  }
+}
+
+function safeStringify(v) {
+  try {
+    return JSON.stringify(v, null, 2);
+  } catch {
+    return String(v);
+  }
+}
+
+function humanize(str) {
+  return String(str || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function rollingBaselineForIndex(rowsNewestFirst, index) {
   const older = [];
   for (let i = index + 1; i < rowsNewestFirst.length && older.length < 3; i++) {
@@ -338,35 +428,33 @@ function rollingBaselineForIndex(rowsNewestFirst, index) {
   return { sb: avg("sb"), h4: avg("h4"), h15: avg("h15") };
 }
 
-function diff(v, b) {
-  if (v === null || b === null) return null;
-  return +(v - b).toFixed(1);
-}
-
 function toNum(v) {
   if (v === null || v === undefined || v === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
 
-function fmtNum(v) {
-  if (v === null || v === undefined) return "—";
-  return String(v);
+function diff(a, b) {
+  if (a === null || b === null) return null;
+  return +((a - b).toFixed(1));
 }
 
 function fmtSigned(n) {
   if (n === null || n === undefined) return "—";
-  const sign = n >= 0 ? "+" : "";
-  return `${sign}${n}`;
+  const s = n > 0 ? `+${n}` : String(n);
+  return `${s}mm`;
 }
 
-function formatDateShort(iso) {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "2-digit" });
-  } catch {
-    return iso;
-  }
+function fmtNum(n) {
+  if (n === null || n === undefined) return "—";
+  return `${n}mm`;
+}
+
+function bikeLabelFromType(t) {
+  const x = String(t || "").toLowerCase();
+  if (x === "quick_road") return "Road";
+  if (x === "quick_cx") return "CX";
+  return "MTB";
 }
 
 function formatTime(iso) {

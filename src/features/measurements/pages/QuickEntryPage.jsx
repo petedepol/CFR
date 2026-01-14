@@ -4,7 +4,13 @@ import { ensureSession, fetchLatestQuick, insertQuick } from "../api/measurement
 import { ArrowLeft, Save, WifiOff, AlertTriangle, X } from "lucide-react";
 import { useAuth } from "../../auth/AuthProvider.jsx";
 
-const WARN_THRESHOLD_MM = 4; // deviation that triggers warning modal
+const WARN_THRESHOLD_MM = 4;
+
+const BIKE_TYPES = [
+  { key: "mtb", label: "MTB" },
+  { key: "road", label: "Road" },
+  { key: "cx", label: "CX" },
+];
 
 export default function QuickEntryPage() {
   const navigate = useNavigate();
@@ -13,6 +19,9 @@ export default function QuickEntryPage() {
 
   const mechanic = (displayName || "").trim();
   const rider = params.get("rider") || "";
+
+  // Minimal visibility: MTB default
+  const [bikeType, setBikeType] = useState("mtb");
 
   const [form, setForm] = useState({
     saddleSetback: "",
@@ -26,12 +35,15 @@ export default function QuickEntryPage() {
   const [loading, setLoading] = useState(true);
   const [snapshot, setSnapshot] = useState(null);
 
+  // baseline per selected bikeType
   const lastLoadedQuickRef = useRef(null);
 
+  // warning modal state
   const [warnOpen, setWarnOpen] = useState(false);
   const [warnInfo, setWarnInfo] = useState(null);
   const pendingPayloadRef = useRef(null);
 
+  // prevent accidental double-saves
   const lastSaveRef = useRef({ at: 0, sig: "" });
 
   const canSave = useMemo(() => mechanic && rider, [mechanic, rider]);
@@ -43,7 +55,7 @@ export default function QuickEntryPage() {
 
     try {
       await ensureSession();
-      const latest = await fetchLatestQuick(rider);
+      const latest = await fetchLatestQuick(rider, bikeType);
 
       lastLoadedQuickRef.current = latest || null;
 
@@ -55,6 +67,9 @@ export default function QuickEntryPage() {
           notes: latest.notes ?? "",
           location: latest.location ?? "",
         });
+      } else {
+        // If there is no previous entry for this bikeType, keep current form values
+        // (so switching types doesn't wipe typed values unexpectedly).
       }
 
       if (!silent) setStatus({ kind: "idle", msg: "" });
@@ -84,11 +99,11 @@ export default function QuickEntryPage() {
       window.removeEventListener("online", onOnline);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rider]);
+  }, [rider, bikeType]);
 
   async function doSave(payload) {
     if (!canSave) {
-      setStatus({ kind: "err", msg: "Select mechanic and rider first." });
+      setStatus({ kind: "err", msg: "No mechanic/rider found." });
       return;
     }
     if (offline) {
@@ -111,6 +126,7 @@ export default function QuickEntryPage() {
       lastSaveRef.current = { sig, at: Date.now() };
 
       setSnapshot({
+        bikeType: payload.bikeType,
         saddleSetback: payload.saddleSetback,
         height4cm: payload.height4cm,
         height15cm: payload.height15cm,
@@ -155,7 +171,7 @@ export default function QuickEntryPage() {
   }
 
   async function onSave() {
-    const payload = { rider, mechanic, ...form };
+    const payload = { rider, mechanic, bikeType, ...form };
 
     const info = computeDeviationWarning(payload);
     if (info) {
@@ -189,10 +205,28 @@ export default function QuickEntryPage() {
       </button>
 
       <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-6">
-        <div>
-          <div className="text-sm text-white/60 uppercase tracking-widest">Jig Update</div>
-          <div className="text-2xl font-black mt-1">{rider || "No rider selected"}</div>
-          <div className="text-white/50 text-sm mt-1">Mechanic: {mechanic || "—"}</div>
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div>
+            <div className="text-sm text-white/60 uppercase tracking-widest">Jig Update</div>
+            <div className="text-2xl font-black mt-1">{rider || "No rider selected"}</div>
+            <div className="text-white/50 text-sm mt-1">Mechanic: {mechanic || "—"}</div>
+          </div>
+
+          <label className="block">
+            <div className="text-[11px] text-white/50 uppercase tracking-widest mb-2">Bike type</div>
+            <select
+              value={bikeType}
+              onChange={(e) => setBikeType(e.target.value)}
+              className="rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
+            >
+              {BIKE_TYPES.map((t) => (
+                <option key={t.key} value={t.key}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+            <div className="mt-2 text-[11px] text-white/45">Road/CX are rare — default is MTB.</div>
+          </label>
         </div>
 
         {loading ? (
@@ -327,7 +361,7 @@ export default function QuickEntryPage() {
                 <div className="text-xs text-white/70">
                   <span className="text-white/85 font-black">Saved:</span>{" "}
                   <span className="font-black text-white/85 tabular-nums">
-                    SB {fmt(snapshot.saddleSetback)} • 4cm {fmt(snapshot.height4cm)} • 15cm {fmt(snapshot.height15cm)}
+                    {bikeTypeLabel(snapshot.bikeType)} • SB {fmt(snapshot.saddleSetback)} • 4cm {fmt(snapshot.height4cm)} • 15cm {fmt(snapshot.height15cm)}
                   </span>
                   <span className="text-white/40"> • {snapshot.at.toLocaleTimeString()}</span>
                 </div>
@@ -356,6 +390,10 @@ export default function QuickEntryPage() {
       </div>
     </div>
   );
+}
+
+function bikeTypeLabel(k) {
+  return k === "road" ? "Road" : k === "cx" ? "CX" : "MTB";
 }
 
 function Field({ label, children }) {

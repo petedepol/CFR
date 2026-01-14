@@ -58,6 +58,13 @@ export async function ensureSession() {
   }
 }
 
+function quickTypeForBikeType(bikeType) {
+  const k = String(bikeType || "mtb").toLowerCase();
+  if (k === "road") return "quick_road";
+  if (k === "cx") return "quick_cx";
+  return "quick"; // MTB + legacy default
+}
+
 // ---------- API ----------
 export async function fetchRiders() {
   return withRetry(async () => {
@@ -74,13 +81,15 @@ export async function fetchRiders() {
   });
 }
 
-export async function fetchLatestQuick(rider) {
+export async function fetchLatestQuick(rider, bikeType = "mtb") {
+  const t = quickTypeForBikeType(bikeType);
+
   return withRetry(async () => {
     const { data, error } = await supabase
       .from("bike_measurements")
       .select("*")
       .eq("rider", rider)
-      .eq("type", "quick")
+      .eq("type", t)
       .order("timestamp", { ascending: false })
       .limit(1);
 
@@ -118,6 +127,7 @@ export async function fetchHistory(rider, limit = 50) {
   });
 }
 
+// Used by the riders grid: keep MTB baseline (type="quick") to avoid mixing in rare Road/CX
 export async function fetchLatestQuickMap(riderNames) {
   if (!Array.isArray(riderNames) || riderNames.length === 0) return {};
 
@@ -141,7 +151,18 @@ export async function fetchLatestQuickMap(riderNames) {
   });
 }
 
-export async function insertQuick({ rider, mechanic, saddleSetback, height4cm, height15cm, notes, location }) {
+export async function insertQuick({
+  rider,
+  mechanic,
+  saddleSetback,
+  height4cm,
+  height15cm,
+  notes,
+  location,
+  bikeType = "mtb",
+}) {
+  const type = quickTypeForBikeType(bikeType);
+
   return withRetry(async () => {
     const payload = {
       rider,
@@ -152,7 +173,7 @@ export async function insertQuick({ rider, mechanic, saddleSetback, height4cm, h
       notes,
       location,
       timestamp: new Date().toISOString(),
-      type: "quick",
+      type,
     };
 
     const { error } = await supabase.from("bike_measurements").insert([payload]);

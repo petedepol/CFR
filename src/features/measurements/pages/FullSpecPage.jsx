@@ -1,9 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ensureSession, fetchLatestFull, insertFull } from "../api/measurementsApi";
-import { FULL_SPEC_DEFAULTS } from "../utils/fullSpecDefaults";
+import { FULL_SPEC_DEFAULTS, FULL_SPEC_TEMPLATE_EXPORT } from "../utils/fullSpecDefaults";
 import { ArrowLeft, Save, WifiOff } from "lucide-react";
 import { useAuth } from "../../auth/AuthProvider.jsx";
+
+const BIKE_TYPES = [
+  { key: "mtb", label: "MTB" },
+  { key: "road", label: "Road" },
+  { key: "cx", label: "CX" },
+];
 
 export default function FullSpecPage() {
   const navigate = useNavigate();
@@ -13,7 +19,8 @@ export default function FullSpecPage() {
   const mechanic = (displayName || "").trim();
   const rider = params.get("rider") || "";
 
-  const [spec, setSpec] = useState(clone(FULL_SPEC_DEFAULTS));
+  const [bikeType, setBikeType] = useState("mtb"); // default, minimal visibility for road/cx
+  const [spec, setSpec] = useState(clone(FULL_SPEC_DEFAULTS)); // { mtb, road, cx }
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState({ kind: "idle", msg: "" }); // idle|saving|ok|err
   const [snapshot, setSnapshot] = useState(null);
@@ -23,6 +30,12 @@ export default function FullSpecPage() {
   const canSave = useMemo(() => mechanic && rider, [mechanic, rider]);
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;
 
+  const activeSpec = useMemo(() => {
+    const k = bikeType || "mtb";
+    const base = spec?.[k];
+    return base && typeof base === "object" ? base : clone(FULL_SPEC_DEFAULTS.mtb);
+  }, [spec, bikeType]);
+
   async function load({ silent = false } = {}) {
     if (!rider) return;
     if (!silent) setLoading(true);
@@ -31,8 +44,11 @@ export default function FullSpecPage() {
       await ensureSession();
       const latest = await fetchLatestFull(rider);
 
-      if (latest?.full_spec) setSpec(mergeDefaults(FULL_SPEC_DEFAULTS, latest.full_spec));
-      else setSpec(clone(FULL_SPEC_DEFAULTS));
+      if (latest?.full_spec) {
+        setSpec(normalizeFullSpec(latest.full_spec));
+      } else {
+        setSpec(clone(FULL_SPEC_DEFAULTS));
+      }
 
       if (!silent) setStatus({ kind: "idle", msg: "" });
     } catch (e) {
@@ -86,7 +102,7 @@ export default function FullSpecPage() {
     try {
       await insertFull(payload);
       lastSaveRef.current = { sig, at: Date.now() };
-      setSnapshot({ at: new Date() });
+      setSnapshot({ at: new Date(), bikeType });
       setStatus({ kind: "ok", msg: "✓ Saved" });
       await load({ silent: true });
     } catch (e) {
@@ -95,11 +111,26 @@ export default function FullSpecPage() {
   }
 
   async function onSave() {
+    // Store all 3 types together: mtb/road/cx
     await doSave({ rider, mechanic, fullSpec: spec });
   }
 
   function setField(section, key, value) {
-    setSpec((prev) => ({ ...prev, [section]: { ...prev[section], [key]: value } }));
+    setSpec((prev) => {
+      const prevType = prev?.[bikeType] && typeof prev[bikeType] === "object" ? prev[bikeType] : {};
+      const nextType = {
+        ...prevType,
+        [section]: {
+          ...(prevType?.[section] || {}),
+          [key]: value,
+        },
+      };
+
+      return {
+        ...(prev || {}),
+        [bikeType]: nextType,
+      };
+    });
   }
 
   return (
@@ -109,44 +140,67 @@ export default function FullSpecPage() {
       </button>
 
       <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-6">
-        <div>
-          <div className="text-sm text-white/60 uppercase tracking-widest">Bike Spec</div>
-          <div className="text-2xl font-black mt-1">{rider || "No rider selected"}</div>
-          <div className="text-white/50 text-sm mt-1">Mechanic: {mechanic || "—"}</div>
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div>
+            <div className="text-sm text-white/60 uppercase tracking-widest">Bike Spec</div>
+            <div className="text-2xl font-black mt-1">{rider || "No rider selected"}</div>
+            <div className="text-white/50 text-sm mt-1">Mechanic: {mechanic || "—"}</div>
+          </div>
+
+          {/* Minimal visibility selector: defaults to MTB */}
+          <div className="flex items-end gap-3">
+            <label className="block">
+              <div className="text-[11px] text-white/50 uppercase tracking-widest mb-2">Bike type</div>
+              <select
+                value={bikeType}
+                onChange={(e) => setBikeType(e.target.value)}
+                className="rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
+              >
+                {BIKE_TYPES.map((t) => (
+                  <option key={t.key} value={t.key}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+              <div className="mt-2 text-[11px] text-white/45">
+                Road/CX are rare — default is MTB.
+              </div>
+            </label>
+          </div>
         </div>
 
         {loading ? (
           <div className="mt-6 text-white/60">Loading latest…</div>
         ) : (
           <div className="mt-6 space-y-5">
-            <Section title="Frame">
+            <Section title={`Frame (${labelForBikeType(bikeType)})`}>
               <Row>
-                <Input label="Size" value={spec.frame.size} onChange={(v) => setField("frame", "size", v)} />
-                <Input label="Notes" value={spec.frame.notes} onChange={(v) => setField("frame", "notes", v)} />
+                <Input label="Size" value={activeSpec.frame.size} onChange={(v) => setField("frame", "size", v)} />
+                <Input label="Notes" value={activeSpec.frame.notes} onChange={(v) => setField("frame", "notes", v)} />
               </Row>
             </Section>
 
             <Section title="Saddle">
               <Row>
-                <Input label="Model" value={spec.saddle.model} onChange={(v) => setField("saddle", "model", v)} />
-                <Input label="Angle" value={spec.saddle.angle} onChange={(v) => setField("saddle", "angle", v)} />
+                <Input label="Model" value={activeSpec.saddle.model} onChange={(v) => setField("saddle", "model", v)} />
+                <Input label="Angle" value={activeSpec.saddle.angle} onChange={(v) => setField("saddle", "angle", v)} />
               </Row>
             </Section>
 
             <Section title="Cockpit">
               <Row>
-                <Input label="Stem model" value={spec.cockpit.stemModel} onChange={(v) => setField("cockpit", "stemModel", v)} />
+                <Input label="Stem model" value={activeSpec.cockpit.stemModel} onChange={(v) => setField("cockpit", "stemModel", v)} />
                 <Input
                   label="Spacer under stem"
-                  value={spec.cockpit.spacerUnderStem}
+                  value={activeSpec.cockpit.spacerUnderStem}
                   onChange={(v) => setField("cockpit", "spacerUnderStem", v)}
                 />
-                <Input label="Grips" value={spec.cockpit.grips} onChange={(v) => setField("cockpit", "grips", v)} />
+                <Input label="Grips" value={activeSpec.cockpit.grips} onChange={(v) => setField("cockpit", "grips", v)} />
               </Row>
               <Row>
                 <Input
                   label="Handlebar model"
-                  value={spec.cockpit.handlebarModel}
+                  value={activeSpec.cockpit.handlebarModel}
                   onChange={(v) => setField("cockpit", "handlebarModel", v)}
                 />
               </Row>
@@ -154,25 +208,41 @@ export default function FullSpecPage() {
 
             <Section title="Drivetrain">
               <Row>
-                <Input label="Crank length" value={spec.drivetrain.crankLength} onChange={(v) => setField("drivetrain", "crankLength", v)} />
-                <Input label="Pedals axle" value={spec.drivetrain.pedalsAxle} onChange={(v) => setField("drivetrain", "pedalsAxle", v)} />
+                <Input
+                  label="Crank length"
+                  value={activeSpec.drivetrain.crankLength}
+                  onChange={(v) => setField("drivetrain", "crankLength", v)}
+                />
+                <Input
+                  label="Pedals axle"
+                  value={activeSpec.drivetrain.pedalsAxle}
+                  onChange={(v) => setField("drivetrain", "pedalsAxle", v)}
+                />
               </Row>
             </Section>
 
             <Section title="Seatpost">
               <Row>
-                <Input label="Model" value={spec.seatpost.model} onChange={(v) => setField("seatpost", "model", v)} />
-                <Input label="Lever option" value={spec.seatpost.leverOption} onChange={(v) => setField("seatpost", "leverOption", v)} />
+                <Input label="Model" value={activeSpec.seatpost.model} onChange={(v) => setField("seatpost", "model", v)} />
+                <Input
+                  label="Lever option"
+                  value={activeSpec.seatpost.leverOption}
+                  onChange={(v) => setField("seatpost", "leverOption", v)}
+                />
               </Row>
             </Section>
 
             <Section title="Brakes">
               <Row>
-                <Input label="Model" value={spec.brakes.model} onChange={(v) => setField("brakes", "model", v)} />
-                <Input label="Lever angle" value={spec.brakes.leverAngle} onChange={(v) => setField("brakes", "leverAngle", v)} />
+                <Input label="Model" value={activeSpec.brakes.model} onChange={(v) => setField("brakes", "model", v)} />
+                <Input
+                  label="Lever angle"
+                  value={activeSpec.brakes.leverAngle}
+                  onChange={(v) => setField("brakes", "leverAngle", v)}
+                />
                 <Input
                   label="Clamp to end bar"
-                  value={spec.brakes.clampToEndBar}
+                  value={activeSpec.brakes.clampToEndBar}
                   onChange={(v) => setField("brakes", "clampToEndBar", v)}
                 />
               </Row>
@@ -180,24 +250,52 @@ export default function FullSpecPage() {
 
             <Section title="Suspension">
               <Row>
-                <Input label="Shock tune" value={spec.suspension.shockTune} onChange={(v) => setField("suspension", "shockTune", v)} />
-                <Input label="Fork tune" value={spec.suspension.forkTune} onChange={(v) => setField("suspension", "forkTune", v)} />
+                <Input
+                  label="Shock tune"
+                  value={activeSpec.suspension.shockTune}
+                  onChange={(v) => setField("suspension", "shockTune", v)}
+                />
+                <Input
+                  label="Fork tune"
+                  value={activeSpec.suspension.forkTune}
+                  onChange={(v) => setField("suspension", "forkTune", v)}
+                />
               </Row>
             </Section>
 
             <Section title="Wheels / Tyres">
               <Row>
-                <Input label="Tyres" value={spec.wheels.tyres} onChange={(v) => setField("wheels", "tyres", v)} />
-                <Input label="Pressure front" value={spec.wheels.pressureFront} onChange={(v) => setField("wheels", "pressureFront", v)} />
-                <Input label="Pressure rear" value={spec.wheels.pressureRear} onChange={(v) => setField("wheels", "pressureRear", v)} />
+                <Input label="Tyres" value={activeSpec.wheels.tyres} onChange={(v) => setField("wheels", "tyres", v)} />
+                <Input
+                  label="Pressure front"
+                  value={activeSpec.wheels.pressureFront}
+                  onChange={(v) => setField("wheels", "pressureFront", v)}
+                />
+                <Input
+                  label="Pressure rear"
+                  value={activeSpec.wheels.pressureRear}
+                  onChange={(v) => setField("wheels", "pressureRear", v)}
+                />
               </Row>
             </Section>
 
             <Section title="Base settings">
               <Row>
-                <Input label="Fork PSI" value={spec.basesettings.forkPsi} onChange={(v) => setField("basesettings", "forkPsi", v)} />
-                <Input label="Shock PSI" value={spec.basesettings.shockPsi} onChange={(v) => setField("basesettings", "shockPsi", v)} />
-                <Input label="Bottle cage" value={spec.basesettings.bottleCage} onChange={(v) => setField("basesettings", "bottleCage", v)} />
+                <Input
+                  label="Fork PSI"
+                  value={activeSpec.basesettings.forkPsi}
+                  onChange={(v) => setField("basesettings", "forkPsi", v)}
+                />
+                <Input
+                  label="Shock PSI"
+                  value={activeSpec.basesettings.shockPsi}
+                  onChange={(v) => setField("basesettings", "shockPsi", v)}
+                />
+                <Input
+                  label="Bottle cage"
+                  value={activeSpec.basesettings.bottleCage}
+                  onChange={(v) => setField("basesettings", "bottleCage", v)}
+                />
               </Row>
             </Section>
           </div>
@@ -215,7 +313,7 @@ export default function FullSpecPage() {
               ) : snapshot ? (
                 <div className="text-xs text-white/70">
                   <span className="text-white/85 font-black">Saved:</span>{" "}
-                  <span className="font-black text-white/85">Bike Spec</span>
+                  <span className="font-black text-white/85">{`Bike Spec (${labelForBikeType(snapshot.bikeType || "mtb")})`}</span>
                   <span className="text-white/40"> • {snapshot.at.toLocaleTimeString()}</span>
                 </div>
               ) : (
@@ -242,6 +340,43 @@ export default function FullSpecPage() {
       </div>
     </div>
   );
+}
+
+function labelForBikeType(k) {
+  return k === "road" ? "Road" : k === "cx" ? "CX" : "MTB";
+}
+
+function normalizeFullSpec(incoming) {
+  // If it's already in { mtb, road, cx } form, merge each.
+  if (incoming && typeof incoming === "object" && (incoming.mtb || incoming.road || incoming.cx)) {
+    return {
+      mtb: mergeTemplate(FULL_SPEC_TEMPLATE_EXPORT, incoming.mtb),
+      road: mergeTemplate(FULL_SPEC_TEMPLATE_EXPORT, incoming.road),
+      cx: mergeTemplate(FULL_SPEC_TEMPLATE_EXPORT, incoming.cx),
+    };
+  }
+
+  // Legacy: incoming was a single spec object (frame/saddle/...)
+  // Treat it as MTB and keep Road/CX blank.
+  return {
+    mtb: mergeTemplate(FULL_SPEC_TEMPLATE_EXPORT, incoming),
+    road: mergeTemplate(FULL_SPEC_TEMPLATE_EXPORT, null),
+    cx: mergeTemplate(FULL_SPEC_TEMPLATE_EXPORT, null),
+  };
+}
+
+function mergeTemplate(template, incoming) {
+  const out = clone(template);
+
+  if (!incoming || typeof incoming !== "object") return out;
+
+  for (const section of Object.keys(out)) {
+    const incSec = incoming?.[section];
+    if (incSec && typeof incSec === "object") {
+      out[section] = { ...out[section], ...incSec };
+    }
+  }
+  return out;
 }
 
 function Section({ title, children }) {
@@ -276,14 +411,4 @@ function clone(obj) {
   } catch {
     return JSON.parse(JSON.stringify(obj));
   }
-}
-
-function mergeDefaults(defaults, incoming) {
-  const out = clone(defaults);
-  for (const section of Object.keys(out)) {
-    if (incoming?.[section] && typeof incoming[section] === "object") {
-      out[section] = { ...out[section], ...incoming[section] };
-    }
-  }
-  return out;
 }

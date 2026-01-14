@@ -4,6 +4,25 @@ import { ensureSession, fetchHistory } from "../api/measurementsApi";
 import { ArrowLeft, Share2 } from "lucide-react";
 import { useAuth } from "../../auth/AuthProvider.jsx";
 
+function isQuickType(t) {
+  const x = String(t || "").toLowerCase();
+  return x === "quick" || x === "quick_road" || x === "quick_cx";
+}
+
+function quickTypeForBikeType(bikeType) {
+  const k = String(bikeType || "mtb").toLowerCase();
+  if (k === "road") return "quick_road";
+  if (k === "cx") return "quick_cx";
+  return "quick";
+}
+
+function bikeLabelFromType(t) {
+  const x = String(t || "").toLowerCase();
+  if (x === "quick_road") return "Road";
+  if (x === "quick_cx") return "CX";
+  return "MTB";
+}
+
 export default function HistoryPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -16,13 +35,16 @@ export default function HistoryPage() {
   const [status, setStatus] = useState({ kind: "idle", msg: "" }); // idle|loading|err
   const [filter, setFilter] = useState("quick"); // quick|all|full
 
+  // Default is MTB so Road/CX are minimal visibility
+  const [jigBikeType, setJigBikeType] = useState("mtb"); // mtb|road|cx|all
+
   async function load({ silent = false } = {}) {
     if (!rider) return;
     if (!silent) setStatus({ kind: "loading", msg: "" });
 
     try {
       await ensureSession();
-      const data = await fetchHistory(rider, 160);
+      const data = await fetchHistory(rider, 180);
       setItems(data);
       if (!silent) setStatus({ kind: "idle", msg: "" });
     } catch (e) {
@@ -51,49 +73,46 @@ export default function HistoryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rider]);
 
-  const jigRowsNewestFirst = useMemo(
+  const jigAllNewestFirst = useMemo(
     () =>
       (items || [])
-        .filter((x) => (x.type || "").toLowerCase() === "quick")
+        .filter((x) => isQuickType(x.type))
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
     [items]
   );
+
+  const jigFilteredNewestFirst = useMemo(() => {
+    if (jigBikeType === "all") return jigAllNewestFirst;
+    const t = quickTypeForBikeType(jigBikeType);
+    return jigAllNewestFirst.filter((x) => String(x.type || "").toLowerCase() === t);
+  }, [jigAllNewestFirst, jigBikeType]);
 
   const fullRowsNewestFirst = useMemo(
     () =>
       (items || [])
-        .filter((x) => (x.type || "").toLowerCase() === "full")
+        .filter((x) => String(x.type || "").toLowerCase() === "full")
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
     [items]
   );
 
-  const filteredJig = useMemo(() => {
-    if (filter === "full") return [];
-    if (filter === "all") return jigRowsNewestFirst;
-    return filter === "quick" ? jigRowsNewestFirst : [];
-  }, [filter, jigRowsNewestFirst]);
-
-  const filteredFull = useMemo(() => {
-    if (filter === "quick") return [];
-    if (filter === "all") return fullRowsNewestFirst;
-    return filter === "full" ? fullRowsNewestFirst : [];
-  }, [filter, fullRowsNewestFirst]);
+  const showJig = filter === "quick" || filter === "all";
+  const showFull = filter === "full" || filter === "all";
 
   async function shareLatestJig() {
-    const latest = jigRowsNewestFirst[0];
+    const latest = jigFilteredNewestFirst[0];
     if (!latest) return;
 
     const sb = toNum(latest.saddle_setback);
     const h4 = toNum(latest.height_4cm);
     const h15 = toNum(latest.height_15cm);
 
-    const base = rollingBaselineForIndex(jigRowsNewestFirst, 0);
+    const base = rollingBaselineForIndex(jigFilteredNewestFirst, 0);
     const dSB = base ? diff(sb, base.sb) : null;
     const d4 = base ? diff(h4, base.h4) : null;
     const d15 = base ? diff(h15, base.h15) : null;
 
     const text =
-      `${rider} — Jig Update\n` +
+      `${rider} — Jig Update (${bikeLabelFromType(latest.type)})\n` +
       `SB: ${fmtNum(sb)}mm${dSB !== null ? ` (${fmtSigned(dSB)}mm)` : ""}\n` +
       `4cm: ${fmtNum(h4)}mm${d4 !== null ? ` (${fmtSigned(d4)}mm)` : ""}\n` +
       `15cm: ${fmtNum(h15)}mm${d15 !== null ? ` (${fmtSigned(d15)}mm)` : ""}\n` +
@@ -127,24 +146,45 @@ export default function HistoryPage() {
             <div className="text-white/50 text-sm mt-1">Mechanic: {mechanic || "—"}</div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={shareLatestJig}
-              className="rounded-2xl px-4 py-3 font-bold bg-lime-300 text-black hover:bg-lime-200 inline-flex items-center gap-2"
-              title="Share latest jig update"
-            >
-              <Share2 size={16} /> Share Jig
-            </button>
+          <div className="flex flex-wrap items-end gap-2">
+            {showJig && (
+              <button
+                onClick={shareLatestJig}
+                className="rounded-2xl px-4 py-3 font-bold bg-lime-300 text-black hover:bg-lime-200 inline-flex items-center gap-2"
+                title="Share latest jig update"
+              >
+                <Share2 size={16} /> Share Jig
+              </button>
+            )}
 
-            <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
-            >
-              <option value="quick">Jig History</option>
-              <option value="all">All</option>
-              <option value="full">Bike Spec</option>
-            </select>
+            <label className="block">
+              <div className="text-[11px] text-white/50 uppercase tracking-widest mb-2">View</div>
+              <select
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
+              >
+                <option value="quick">Jig History</option>
+                <option value="all">All</option>
+                <option value="full">Bike Spec</option>
+              </select>
+            </label>
+
+            {showJig && (
+              <label className="block">
+                <div className="text-[11px] text-white/50 uppercase tracking-widest mb-2">Bike</div>
+                <select
+                  value={jigBikeType}
+                  onChange={(e) => setJigBikeType(e.target.value)}
+                  className="rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
+                >
+                  <option value="mtb">MTB</option>
+                  <option value="road">Road</option>
+                  <option value="cx">CX</option>
+                  <option value="all">All</option>
+                </select>
+              </label>
+            )}
           </div>
         </div>
 
@@ -153,112 +193,119 @@ export default function HistoryPage() {
         ) : status.kind === "err" ? (
           <div className="mt-6 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-red-200 text-sm">
             {status.msg}
-            <div className="mt-2 text-xs text-red-100/70">
-              Tip: switch tabs and come back (or go back and open History again) to re-trigger auto-recover.
-            </div>
+            <div className="mt-2 text-xs text-red-100/70">Tip: switch tabs and come back to trigger auto-recover.</div>
           </div>
-        ) : filteredJig.length === 0 && filteredFull.length === 0 ? (
-          <div className="mt-6 text-white/60">No entries yet.</div>
         ) : (
           <div className="mt-6 space-y-6">
-            {filteredJig.length > 0 && (
+            {showJig && (
               <div className="space-y-3">
-                <div className="text-xs text-white/60 uppercase tracking-widest">Jig History</div>
+                <div className="text-xs text-white/60 uppercase tracking-widest">
+                  Jig History {jigBikeType !== "all" ? `(${jigBikeType.toUpperCase()})` : "(ALL)"}
+                </div>
 
-                <div className="hidden md:block overflow-hidden rounded-2xl border border-white/10 bg-black/30">
-                  <div className="max-h-[70vh] overflow-auto">
-                    <table className="w-full text-sm table-fixed">
-                      <thead className="sticky top-0 bg-black/70 backdrop-blur border-b border-white/10">
-                        <tr className="text-white/60">
-                          <th className="text-left font-black px-4 py-3 w-[150px] border-r border-white/10">Date</th>
+                {jigFilteredNewestFirst.length === 0 ? (
+                  <div className="text-white/60">No jig entries for this bike type.</div>
+                ) : (
+                  <div className="hidden md:block overflow-hidden rounded-2xl border border-white/10 bg-black/30">
+                    <div className="max-h-[70vh] overflow-auto">
+                      <table className="w-full text-sm table-fixed">
+                        <thead className="sticky top-0 bg-black/70 backdrop-blur border-b border-white/10">
+                          <tr className="text-white/60">
+                            <th className="text-left font-black px-4 py-3 w-[160px] border-r border-white/10">Date</th>
+                            <th className="text-left font-black px-3 py-3 w-[80px] border-r border-white/10">Bike</th>
 
-                          <th className="text-right font-black px-3 py-3 w-[110px]">SB</th>
-                          <th className="text-right font-black px-2 py-3 w-[70px] border-r border-white/10">Δ</th>
+                            <th className="text-right font-black px-3 py-3 w-[110px]">SB</th>
+                            <th className="text-right font-black px-2 py-3 w-[70px] border-r border-white/10">Δ</th>
 
-                          <th className="text-right font-black px-3 py-3 w-[110px]">4cm</th>
-                          <th className="text-right font-black px-2 py-3 w-[70px] border-r border-white/10">Δ</th>
+                            <th className="text-right font-black px-3 py-3 w-[110px]">4cm</th>
+                            <th className="text-right font-black px-2 py-3 w-[70px] border-r border-white/10">Δ</th>
 
-                          <th className="text-right font-black px-3 py-3 w-[110px]">15cm</th>
-                          <th className="text-right font-black px-2 py-3 w-[70px] border-r border-white/10">Δ</th>
+                            <th className="text-right font-black px-3 py-3 w-[110px]">15cm</th>
+                            <th className="text-right font-black px-2 py-3 w-[70px] border-r border-white/10">Δ</th>
 
-                          <th className="text-left font-black px-4 py-3 w-auto min-w-[320px]">Notes</th>
-                        </tr>
-                      </thead>
+                            <th className="text-left font-black px-4 py-3 w-auto min-w-[320px]">Notes</th>
+                          </tr>
+                        </thead>
 
-                      <tbody>
-                        {filteredJig.map((row, idx) => {
-                          const base = rollingBaselineForIndex(filteredJig, idx);
-                          const sb = toNum(row.saddle_setback);
-                          const h4 = toNum(row.height_4cm);
-                          const h15 = toNum(row.height_15cm);
+                        <tbody>
+                          {jigFilteredNewestFirst.map((row, idx) => {
+                            const base = rollingBaselineForIndex(jigFilteredNewestFirst, idx);
+                            const sb = toNum(row.saddle_setback);
+                            const h4 = toNum(row.height_4cm);
+                            const h15 = toNum(row.height_15cm);
 
-                          const dSB = base ? diff(sb, base.sb) : null;
-                          const d4 = base ? diff(h4, base.h4) : null;
-                          const d15 = base ? diff(h15, base.h15) : null;
+                            const dSB = base ? diff(sb, base.sb) : null;
+                            const d4 = base ? diff(h4, base.h4) : null;
+                            const d15 = base ? diff(h15, base.h15) : null;
 
-                          const zebra = idx % 2 === 0 ? "bg-black/15" : "bg-black/5";
+                            const zebra = idx % 2 === 0 ? "bg-black/15" : "bg-black/5";
 
-                          return (
-                            <tr key={row.id || `${row.timestamp}-${idx}`} className={`border-b border-white/5 ${zebra}`}>
-                              <td className="px-4 py-3 text-white/70 align-top border-r border-white/10">
-                                <div className="font-semibold text-white/80">{formatDateShort(row.timestamp)}</div>
-                                <div className="text-xs text-white/40 mt-0.5">{formatTime(row.timestamp)}</div>
-                                {row.location ? <div className="text-xs text-white/40 mt-1">{row.location}</div> : null}
-                              </td>
+                            return (
+                              <tr key={row.id || `${row.timestamp}-${idx}`} className={`border-b border-white/5 ${zebra}`}>
+                                <td className="px-4 py-3 text-white/70 align-top border-r border-white/10">
+                                  <div className="font-semibold text-white/80">{formatDateShort(row.timestamp)}</div>
+                                  <div className="text-xs text-white/40 mt-0.5">{formatTime(row.timestamp)}</div>
+                                  {row.location ? <div className="text-xs text-white/40 mt-1">{row.location}</div> : null}
+                                </td>
 
-                              <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">{fmtNum(sb)}</td>
-                              <td className="px-2 py-3 text-right tabular-nums align-top border-r border-white/10">
-                                {dSB !== null ? <span className="text-red-300">{fmtSigned(dSB)}</span> : <span className="text-white/25">—</span>}
-                              </td>
+                                <td className="px-3 py-3 text-white/70 align-top border-r border-white/10">
+                                  <span className="inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-black text-white/70">
+                                    {bikeLabelFromType(row.type)}
+                                  </span>
+                                </td>
 
-                              <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">{fmtNum(h4)}</td>
-                              <td className="px-2 py-3 text-right tabular-nums align-top border-r border-white/10">
-                                {d4 !== null ? <span className="text-red-300">{fmtSigned(d4)}</span> : <span className="text-white/25">—</span>}
-                              </td>
+                                <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">{fmtNum(sb)}</td>
+                                <td className="px-2 py-3 text-right tabular-nums align-top border-r border-white/10">
+                                  {dSB !== null ? <span className="text-red-300">{fmtSigned(dSB)}</span> : <span className="text-white/25">—</span>}
+                                </td>
 
-                              <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">{fmtNum(h15)}</td>
-                              <td className="px-2 py-3 text-right tabular-nums align-top border-r border-white/10">
-                                {d15 !== null ? <span className="text-red-300">{fmtSigned(d15)}</span> : <span className="text-white/25">—</span>}
-                              </td>
+                                <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">{fmtNum(h4)}</td>
+                                <td className="px-2 py-3 text-right tabular-nums align-top border-r border-white/10">
+                                  {d4 !== null ? <span className="text-red-300">{fmtSigned(d4)}</span> : <span className="text-white/25">—</span>}
+                                </td>
 
-                              <td className="px-4 py-3 text-white/70 align-top break-words">
-                                {row.notes ? <span className="text-lime-200/80 italic">“{row.notes}”</span> : <span className="text-white/25">—</span>}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                                <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">{fmtNum(h15)}</td>
+                                <td className="px-2 py-3 text-right tabular-nums align-top border-r border-white/10">
+                                  {d15 !== null ? <span className="text-red-300">{fmtSigned(d15)}</span> : <span className="text-white/25">—</span>}
+                                </td>
+
+                                <td className="px-4 py-3 text-white/70 align-top break-words">
+                                  {row.notes ? <span className="text-lime-200/80 italic">“{row.notes}”</span> : <span className="text-white/25">—</span>}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
-
-                <div className="md:hidden space-y-3">
-                  {filteredJig.map((row) => (
-                    <JigCard key={row.id || row.timestamp} row={row} jigRows={filteredJig} />
-                  ))}
-                </div>
+                )}
               </div>
             )}
 
-            {filteredFull.length > 0 && (
+            {showFull && (
               <div className="space-y-3">
                 <div className="text-xs text-white/60 uppercase tracking-widest">Bike Spec History</div>
-                <div className="space-y-2">
-                  {filteredFull.map((row) => (
-                    <div key={row.id || row.timestamp} className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="text-white/80 font-semibold">{formatDateTime(row.timestamp)}</div>
-                        <div className="text-xs text-white/50">{row.full_spec ? "Saved ✓" : "—"}</div>
-                      </div>
-                      {(row.notes || row.location) && (
-                        <div className="mt-2 text-sm text-white/70">
-                          {row.notes && <div className="text-lime-200/80 italic">“{row.notes}”</div>}
-                          {row.location && <div className="text-xs text-white/40 mt-1">{row.location}</div>}
+                {fullRowsNewestFirst.length === 0 ? (
+                  <div className="text-white/60">No bike spec entries yet.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {fullRowsNewestFirst.map((row) => (
+                      <div key={row.id || row.timestamp} className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-white/80 font-semibold">{formatDateTime(row.timestamp)}</div>
+                          <div className="text-xs text-white/50">{row.full_spec ? "Saved ✓" : "—"}</div>
                         </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                        {(row.notes || row.location) && (
+                          <div className="mt-2 text-sm text-white/70">
+                            {row.notes && <div className="text-lime-200/80 italic">“{row.notes}”</div>}
+                            {row.location && <div className="text-xs text-white/40 mt-1">{row.location}</div>}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -268,53 +315,7 @@ export default function HistoryPage() {
   );
 }
 
-function JigCard({ row, jigRows }) {
-  const idx = jigRows.findIndex((q) => q.id === row.id);
-  const base = idx >= 0 ? rollingBaselineForIndex(jigRows, idx) : null;
-
-  const sb = toNum(row.saddle_setback);
-  const h4 = toNum(row.height_4cm);
-  const h15 = toNum(row.height_15cm);
-
-  const dSB = base ? diff(sb, base.sb) : null;
-  const d4 = base ? diff(h4, base.h4) : null;
-  const d15 = base ? diff(h15, base.h15) : null;
-
-  return (
-    <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-      <div className="flex items-center justify-between">
-        <div className="text-xs text-white/50">{formatTime(row.timestamp)}</div>
-        <div className="text-[11px] font-black text-lime-200/80">JIG</div>
-      </div>
-
-      <div className="mt-3 space-y-2 text-sm">
-        <Line label="SB" value={sb} delta={dSB} />
-        <Line label="4cm" value={h4} delta={d4} />
-        <Line label="15cm" value={h15} delta={d15} />
-      </div>
-
-      {(row.notes || row.location) && (
-        <div className="mt-3 text-sm text-white/70">
-          {row.notes && <div className="text-lime-200/80 italic">“{row.notes}”</div>}
-          {row.location && <div className="text-xs text-white/40 mt-1">{row.location}</div>}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Line({ label, value, delta }) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="text-white/70">{label}</div>
-      <div className="text-right">
-        <span className="font-black text-lime-200 tabular-nums">{fmtNum(value)}</span>
-        {delta !== null && <span className="ml-2 text-red-300 tabular-nums">({fmtSigned(delta)})</span>}
-      </div>
-    </div>
-  );
-}
-
+// Baseline from 3 older entries (same filtered list)
 function rollingBaselineForIndex(rowsNewestFirst, index) {
   const older = [];
   for (let i = index + 1; i < rowsNewestFirst.length && older.length < 3; i++) {

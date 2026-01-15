@@ -56,7 +56,16 @@ export default function SettingsHome() {
       ) : null}
 
       {loading ? (
-        <div className="text-white/60 py-10">Loading riders…</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonTile key={i} />
+          ))}
+        </div>
+      ) : riders.length === 0 ? (
+        <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-8 text-white/70">
+          No riders loaded.
+          <div className="text-white/45 text-sm mt-2">Try refreshing, or check Supabase connection.</div>
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-4">
           {riders.map((r) => (
@@ -72,6 +81,18 @@ export default function SettingsHome() {
   );
 }
 
+function SkeletonTile() {
+  return (
+    <div className="rounded-3xl border border-white/10 bg-black/30 overflow-hidden shadow-lg">
+      <div className="relative aspect-[4/3] bg-white/5 animate-pulse" />
+      <div className="p-4">
+        <div className="h-5 w-2/3 rounded-xl bg-white/5 animate-pulse" />
+        <div className="h-4 w-1/3 rounded-xl bg-white/5 animate-pulse mt-2" />
+      </div>
+    </div>
+  );
+}
+
 function RiderTile({ rider, onClick }) {
   const bgStyle = rider.photo
     ? { backgroundImage: `url(${rider.photo})` }
@@ -83,7 +104,6 @@ function RiderTile({ rider, onClick }) {
       className="group relative overflow-hidden rounded-3xl border border-lime-300/20 bg-black/30 hover:border-lime-300/30 transition text-left shadow-lg"
       aria-label={`Open settings for ${rider.fullName || rider.name}`}
     >
-      {/* Match Measurements tile: fixed aspect photo block */}
       <div className="relative aspect-[4/3] bg-cover bg-center" style={bgStyle}>
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/85" />
 

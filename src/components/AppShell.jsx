@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../features/auth/AuthProvider.jsx";
 import { Settings, Ruler, WifiOff } from "lucide-react";
 import OfflineSyncManager from "./OfflineSyncManager.jsx";
+import PwaUpdateManager from "./PwaUpdateManager.jsx";
 import { QUEUE_EVENT, getBikeMeasurementsQueueCount } from "../lib/offlineBikeMeasurementsQueue.js";
 
 function cx(...a) {
@@ -74,14 +75,17 @@ export default function AppShell() {
         {/* Background auto-sync */}
         <OfflineSyncManager />
 
+        {/* PWA update prompt */}
+        <PwaUpdateManager />
+
         {/* Top Bar */}
         <div className="sticky top-0 z-40">
           <div className="bg-black/55 backdrop-blur-xl border-b border-white/10">
             <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-              {/* LEFT: keep empty spacer (removes CFR/Tools text, keeps layout balanced) */}
+              {/* LEFT: spacer */}
               <div className="min-w-[72px]" />
 
-              {/* CENTER: title only (removes "Current") */}
+              {/* CENTER: title */}
               <div className="min-w-0 flex-1 text-center">
                 <div className="text-white font-black truncate">{title}</div>
               </div>

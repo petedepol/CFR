@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Save, ChevronRight, ChevronDown, History, WifiOff } from "lucide-react";
+import { ArrowLeft, Save, ChevronRight, ChevronDown, History, WifiOff, Flag } from "lucide-react";
 
 import { useAuth } from "../../auth/AuthProvider.jsx";
 import { fetchRiders } from "../../measurements/api/measurementsApi";
-import { fetchMtbSettingsHistory, fetchLatestMtbSettings, insertMtbSettings } from "../api/settingsApi";
+import { fetchMtbSettingsHistory, fetchLatestMtbSettings, insertMtbSettings, setMtbSettingsRaceMark } from "../api/settingsApi";
 import { useToast } from "../../../components/ToastProvider.jsx";
 
 const LS_EVENT_CONTEXT = "cfr_settings_event_context_last";
@@ -76,6 +76,10 @@ function formatTimestamp(iso) {
 
 function normalizeSetup(incoming) {
   return { ...DEFAULT_SETUP, ...(incoming && typeof incoming === "object" ? incoming : {}) };
+}
+
+function safeFullSpec(obj) {
+  return obj && typeof obj === "object" ? obj : {};
 }
 
 function readEventContextFallback() {
@@ -195,6 +199,29 @@ function buildCollapsedSummary(cur, prev, isLatest, changes) {
   ];
 }
 
+// Start of week = Monday 00:00 (local time)
+function startOfWeekLocal(d = new Date()) {
+  const x = new Date(d);
+  const day = x.getDay(); // 0 Sun ... 6 Sat
+  const diff = (day + 6) % 7; // days since Monday
+  x.setDate(x.getDate() - diff);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function daysAgoLocal(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d;
+}
+
+function chipClass(active) {
+  return [
+    "px-3 py-2 rounded-2xl text-xs font-black border transition inline-flex items-center gap-2",
+    active ? "bg-lime-300 text-black border-lime-200" : "bg-white/5 text-white/70 border-white/10 hover:bg-white/10",
+  ].join(" ");
+}
+
 export default function MtbSettingsPage() {
   const nav = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -210,11 +237,15 @@ export default function MtbSettingsPage() {
   const [setup, setSetup] = useState(DEFAULT_SETUP);
 
   const [showExpanded, setShowExpanded] = useState(false);
-  const [history, setHistory] = useState([]);
+  const [historyRaw, setHistoryRaw] = useState([]);
   const [expandedHistoryIds, setExpandedHistoryIds] = useState(() => new Set());
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // NEW: history filters
+  const [range, setRange] = useState("week"); // week | 30d | all
+  const [raceOnly, setRaceOnly] = useState(false);
 
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;
 
@@ -243,7 +274,7 @@ export default function MtbSettingsPage() {
   }, [eventContext]);
 
   const hydrateFromRow = useCallback((row) => {
-    const blob = row?.full_spec || {};
+    const blob = safeFullSpec(row?.full_spec);
     const nextCtx = String(blob?.event_context ?? "");
     const nextSetup = normalizeSetup(blob?.setup);
 
@@ -257,10 +288,10 @@ export default function MtbSettingsPage() {
     try {
       const [latest, hist] = await Promise.all([
         fetchLatestMtbSettings(selectedRider),
-        fetchMtbSettingsHistory(selectedRider, 60),
+        fetchMtbSettingsHistory(selectedRider, 250),
       ]);
 
-      setHistory(hist || []);
+      setHistoryRaw(hist || []);
 
       if (latest) {
         hydrateFromRow(latest);
@@ -290,6 +321,30 @@ export default function MtbSettingsPage() {
     if (!selectedRider) return;
     writeDraft(selectedRider, eventContext, setup);
   }, [selectedRider, eventContext, setup]);
+
+  const history = useMemo(() => {
+    const now = new Date();
+    const cutoff =
+      range === "week"
+        ? startOfWeekLocal(now)
+        : range === "30d"
+        ? daysAgoLocal(30)
+        : null;
+
+    let rows = historyRaw || [];
+    if (cutoff) {
+      rows = rows.filter((r) => {
+        const t = r?.timestamp ? new Date(r.timestamp) : null;
+        return t && t >= cutoff;
+      });
+    }
+
+    if (raceOnly) {
+      rows = rows.filter((r) => !!safeFullSpec(r?.full_spec)?.is_race);
+    }
+
+    return rows;
+  }, [historyRaw, range, raceOnly]);
 
   const toggleHistoryExpand = (id) => {
     setExpandedHistoryIds((prev) => {
@@ -337,6 +392,35 @@ export default function MtbSettingsPage() {
       setSaving(false);
     }
   };
+
+  async function toggleRace(row, nextValue) {
+    if (offline) {
+      toast.warning("Offline — can’t mark Race right now");
+      return;
+    }
+    if (!row?.id) {
+      toast.error("This entry has no id (can’t update)");
+      return;
+    }
+
+    // optimistic UI
+    setHistoryRaw((prev) =>
+      (prev || []).map((r) => {
+        if (r.id !== row.id) return r;
+        const fs = safeFullSpec(r.full_spec);
+        return { ...r, full_spec: { ...fs, is_race: !!nextValue, race_marked_at: new Date().toISOString() } };
+      })
+    );
+
+    try {
+      await setMtbSettingsRaceMark({ id: row.id, isRace: nextValue });
+      toast.success(nextValue ? "Marked as Race" : "Unmarked Race");
+    } catch (e) {
+      toast.error(`Failed: ${e?.message || "unknown error"}`);
+      // revert (reload from server to be safe)
+      await loadAll();
+    }
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
@@ -398,12 +482,12 @@ export default function MtbSettingsPage() {
 
           <div>
             <label className="block text-xs font-bold text-white/60 uppercase mb-2">
-              Event / Context <span className="text-white/40 normal-case">(auto-fills)</span>
+              Event / Context <span className="text-white/40 normal-case">(free text)</span>
             </label>
             <input
               value={eventContext}
               onChange={(e) => setEventContext(e.target.value)}
-              placeholder="e.g., Lenzerheide XCO / Wet"
+              placeholder="e.g., Nove Mesto WC2 / Wet"
               className="w-full px-4 py-3 bg-black border border-white/10 text-white rounded-xl focus:ring-2 focus:ring-lime-400"
             />
           </div>
@@ -495,13 +579,31 @@ export default function MtbSettingsPage() {
       </div>
 
       {/* HISTORY */}
-      {selectedRider && history.length > 0 && (
+      {selectedRider && (historyRaw?.length || 0) > 0 && (
         <div className="bg-black/40 border border-white/10 rounded-2xl p-5">
           <div className="text-white font-black mb-3 flex items-center gap-2">
             <div className="w-1 h-6 bg-lime-400 rounded-full" />
             <span>HISTORY</span>
-            <span className="text-white/50 font-bold">({history.length})</span>
+            <span className="text-white/50 font-bold">({history.length}{history.length !== historyRaw.length ? ` / ${historyRaw.length}` : ""})</span>
             <History size={18} className="text-lime-300 ml-1" />
+          </div>
+
+          {/* NEW: filter chips */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button className={chipClass(range === "week")} onClick={() => setRange("week")}>
+              This week
+            </button>
+            <button className={chipClass(range === "30d")} onClick={() => setRange("30d")}>
+              30 days
+            </button>
+            <button className={chipClass(range === "all")} onClick={() => setRange("all")}>
+              All
+            </button>
+
+            <button className={chipClass(raceOnly)} onClick={() => setRaceOnly((v) => !v)}>
+              <Flag size={14} />
+              Race only
+            </button>
           </div>
 
           <div className="space-y-2">
@@ -510,8 +612,11 @@ export default function MtbSettingsPage() {
               const id = row.id || `${row.timestamp}-${idx}`;
               const isExpanded = expandedHistoryIds.has(id);
 
-              const cur = normalizeSetup(row?.full_spec?.setup || {});
-              const prev = normalizeSetup(history?.[idx + 1]?.full_spec?.setup || {});
+              const fs = safeFullSpec(row?.full_spec);
+              const isRace = !!fs?.is_race;
+
+              const cur = normalizeSetup(fs?.setup || {});
+              const prev = normalizeSetup(safeFullSpec(history?.[idx + 1]?.full_spec)?.setup || {});
               const changes = isLatest ? getChanges(cur, prev) : null;
 
               const hasExpandedOnlyChanges =
@@ -527,13 +632,15 @@ export default function MtbSettingsPage() {
                 <div
                   key={id}
                   className={`bg-black/40 rounded-xl border overflow-hidden cursor-pointer transition ${
-                    isLatest && (changes?.defaultChanged.length || hasExpandedOnlyChanges || changes?.notesChanged)
+                    isRace
+                      ? "border-yellow-400/35"
+                      : isLatest && (changes?.defaultChanged.length || hasExpandedOnlyChanges || changes?.notesChanged)
                       ? "border-lime-400/40"
                       : "border-white/10 hover:border-white/20"
                   }`}
                   onClick={() => toggleHistoryExpand(id)}
                 >
-                  <div className="p-4 flex items-center justify-between">
+                  <div className="p-4 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       {isExpanded ? (
                         <ChevronDown size={18} className="text-lime-300" />
@@ -545,9 +652,15 @@ export default function MtbSettingsPage() {
                           <span className="font-bold text-white truncate">{row.mechanic || "—"}</span>
                           <span className="text-xs text-white/50">{formatTimestamp(row.timestamp)}</span>
 
-                          {!!row?.full_spec?.event_context && (
+                          {!!fs?.event_context && (
                             <span className="text-xs text-lime-300/80 px-2 py-0.5 bg-lime-400/10 rounded border border-lime-400/20">
-                              {row.full_spec.event_context}
+                              {fs.event_context}
+                            </span>
+                          )}
+
+                          {isRace && (
+                            <span className="text-xs font-black text-yellow-200 px-2 py-0.5 bg-yellow-400/10 rounded border border-yellow-400/20 inline-flex items-center gap-1">
+                              <Flag size={12} /> Race
                             </span>
                           )}
 
@@ -565,8 +678,31 @@ export default function MtbSettingsPage() {
                         </div>
                       </div>
                     </div>
+
+                    {/* NEW: mark race toggle (doesn't expand row) */}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleRace(row, !isRace);
+                      }}
+                      disabled={offline || !row?.id}
+                      className={[
+                        "shrink-0 rounded-2xl px-3 py-2 text-xs font-black border transition inline-flex items-center gap-2",
+                        offline || !row?.id
+                          ? "bg-white/5 text-white/30 border-white/10 cursor-not-allowed"
+                          : isRace
+                          ? "bg-yellow-400/15 text-yellow-100 border-yellow-400/25 hover:bg-yellow-400/20"
+                          : "bg-white/5 text-white/70 border-white/10 hover:bg-white/10",
+                      ].join(" ")}
+                      title={offline ? "Offline" : isRace ? "Unmark race" : "Mark as race"}
+                    >
+                      <Flag size={14} />
+                      {isRace ? "Race" : "Mark race"}
+                    </button>
                   </div>
 
+                  {/* Collapsed summary with latest-change highlighting */}
                   <div className="px-4 pb-4 grid grid-cols-2 gap-3 text-sm">
                     {summaryItems.map((it) => (
                       <div key={it.label} className={changedCellClass(it.changed)}>
@@ -613,6 +749,12 @@ export default function MtbSettingsPage() {
                 </div>
               );
             })}
+
+            {history.length === 0 && (
+              <div className="text-white/60 py-6">
+                No entries for this filter. Try switching to <span className="font-black text-white">All</span>.
+              </div>
+            )}
           </div>
         </div>
       )}

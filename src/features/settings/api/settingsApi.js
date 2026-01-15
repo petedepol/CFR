@@ -1,7 +1,7 @@
 import { supabase } from "../../../lib/supabaseClient";
 import { enqueueBikeMeasurement, flushBikeMeasurementsQueue } from "../../../lib/offlineBikeMeasurementsQueue.js";
 
-// ---------- small helpers (kept local so Settings is self-contained) ----------
+// ---------- helpers ----------
 function sleep(ms) {
   return new Promise((res) => setTimeout(res, ms));
 }
@@ -71,7 +71,7 @@ export async function fetchLatestMtbSettings(rider) {
   });
 }
 
-export async function fetchMtbSettingsHistory(rider, limit = 50) {
+export async function fetchMtbSettingsHistory(rider, limit = 200) {
   if (!rider) return [];
 
   return withRetry(async () => {
@@ -100,6 +100,7 @@ export async function insertMtbSettings({ rider, mechanic, eventContext, setup, 
       kind: SETTINGS_TYPE,
       event_context: eventContext || "",
       setup: setup || {},
+      // NOTE: race flag is set from history later (full_spec.is_race)
     },
     notes: setup?.notes || "",
     timestamp: new Date().toISOString(),
@@ -132,4 +133,45 @@ export async function insertMtbSettings({ rider, mechanic, eventContext, setup, 
 
     throw err;
   }
+}
+
+/**
+ * Mark/unmark a settings entry as a "Race" setup by updating its JSON full_spec.
+ * (No DB schema changes; relies on RLS allowing UPDATE.)
+ */
+export async function setMtbSettingsRaceMark({ id, isRace }) {
+  if (!id) throw new Error("Missing id");
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    const e = new Error("Offline");
+    e.code = "OFFLINE";
+    throw e;
+  }
+
+  return withRetry(async () => {
+    // 1) Read current full_spec so we don't accidentally wipe data
+    const { data: row, error: readErr } = await supabase
+      .from("bike_measurements")
+      .select("id, full_spec")
+      .eq("id", id)
+      .limit(1)
+      .maybeSingle();
+
+    if (readErr) throw readErr;
+
+    const cur = row?.full_spec && typeof row.full_spec === "object" ? row.full_spec : {};
+    const next = {
+      ...cur,
+      is_race: !!isRace,
+      race_marked_at: new Date().toISOString(),
+    };
+
+    const { error: updErr } = await supabase
+      .from("bike_measurements")
+      .update({ full_spec: next })
+      .eq("id", id);
+
+    if (updErr) throw updErr;
+
+    return { ok: true, full_spec: next };
+  });
 }

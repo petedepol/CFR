@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Save, ChevronRight, ChevronDown, History, WifiOff, Flag } from "lucide-react";
 
@@ -60,6 +60,19 @@ const EXPANDED_KEYS = [
   "chainring",
   "cassette",
   "wheelset",
+];
+
+// Tab/Next order (fast iPhone entry)
+const FAST_ORDER = [
+  "front_tyre",
+  "rear_tyre",
+  "front_pressure",
+  "rear_pressure",
+  "fork_pressure",
+  "shock_pressure",
+  "fork_rebound",
+  "shock_rebound",
+  "notes",
 ];
 
 function labelize(key) {
@@ -233,17 +246,24 @@ function isReboundKey(k) {
   return k === "fork_rebound" || k === "shock_rebound";
 }
 
-function InputField({ k, value, onChange }) {
+function InputField({ k, value, onChange, inputRef, onEnterNext, enterHint }) {
   const numericPressure = isPressureKey(k);
   const numericRebound = isReboundKey(k);
 
-  // keep values as strings for fast typing (supports "17.5")
   const common = {
+    ref: inputRef,
     value: value ?? "",
     onChange: (e) => onChange(e.target.value),
     className:
       "w-full px-3 py-2 bg-black border border-white/10 text-white rounded-lg focus:ring-2 focus:ring-lime-400",
     autoComplete: "off",
+    enterKeyHint: enterHint || "next",
+    onKeyDown: (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        onEnterNext?.();
+      }
+    },
   };
 
   if (numericPressure) {
@@ -299,6 +319,36 @@ export default function MtbSettingsPage() {
   const [raceOnly, setRaceOnly] = useState(false);
 
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+
+  // refs for fast "Next" focusing
+  const inputRefs = useRef({});
+  const lastAutoFocusRiderRef = useRef("");
+
+  const setRefFor = useCallback((key) => {
+    return (el) => {
+      inputRefs.current[key] = el;
+    };
+  }, []);
+
+  const focusKey = useCallback((key) => {
+    const el = inputRefs.current[key];
+    if (el && typeof el.focus === "function") el.focus();
+  }, []);
+
+  const focusNextFrom = useCallback(
+    (key) => {
+      const idx = FAST_ORDER.indexOf(key);
+      if (idx < 0) return;
+      const nextKey = FAST_ORDER[idx + 1];
+      if (nextKey) focusKey(nextKey);
+      else {
+        // no next -> blur
+        const el = inputRefs.current[key];
+        if (el && typeof el.blur === "function") el.blur();
+      }
+    },
+    [focusKey]
+  );
 
   useEffect(() => {
     if (selectedRider) setParams({ rider: selectedRider }, { replace: true });
@@ -372,6 +422,20 @@ export default function MtbSettingsPage() {
     if (!selectedRider) return;
     writeDraft(selectedRider, eventContext, setup);
   }, [selectedRider, eventContext, setup]);
+
+  // Auto-focus front tyre once after selecting a rider (and once data has loaded)
+  useEffect(() => {
+    if (!selectedRider) return;
+    if (loading) return;
+
+    if (lastAutoFocusRiderRef.current === selectedRider) return;
+    lastAutoFocusRiderRef.current = selectedRider;
+
+    // allow paint
+    setTimeout(() => {
+      focusKey("front_tyre");
+    }, 50);
+  }, [selectedRider, loading, focusKey]);
 
   const history = useMemo(() => {
     const now = new Date();
@@ -464,7 +528,7 @@ export default function MtbSettingsPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-4 pb-10">
-      {/* Minimal header (no big titles) */}
+      {/* Minimal header */}
       <div className="flex items-center justify-between gap-3 mb-3">
         <button
           onClick={() => nav("/settings")}
@@ -488,7 +552,7 @@ export default function MtbSettingsPage() {
         </div>
       </div>
 
-      {/* Quick entry area (no "CONTEXT" header) */}
+      {/* Quick entry area */}
       <div className="bg-black/40 border border-white/10 rounded-2xl p-4 mb-3">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
@@ -514,12 +578,13 @@ export default function MtbSettingsPage() {
               onChange={(e) => setEventContext(e.target.value)}
               placeholder="e.g., Nove Mesto WC2 / Wet"
               className="w-full px-4 py-3 bg-black border border-white/10 text-white rounded-xl focus:ring-2 focus:ring-lime-400"
+              autoComplete="off"
             />
           </div>
         </div>
       </div>
 
-      {/* CURRENT SETUP (no header text) */}
+      {/* CURRENT SETUP */}
       <div className="bg-black/40 border border-white/10 rounded-2xl p-4 mb-3">
         {!selectedRider ? (
           <div className="text-white/60 py-5">Select a rider to start.</div>
@@ -532,30 +597,40 @@ export default function MtbSettingsPage() {
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {DEFAULT_KEYS.map((k) => (
-                <div key={k}>
-                  <label className="block text-[11px] font-black text-white/55 uppercase mb-1">
-                    {labelize(k)}
-                    {k.includes("pressure") ? " (psi)" : ""}
-                    {k.includes("rebound") ? " (clicks)" : ""}
-                  </label>
+              {DEFAULT_KEYS.map((k) => {
+                const idx = FAST_ORDER.indexOf(k);
+                const enterHint = idx === FAST_ORDER.length - 1 ? "done" : "next";
+                return (
+                  <div key={k}>
+                    <label className="block text-[11px] font-black text-white/55 uppercase mb-1">
+                      {labelize(k)}
+                      {k.includes("pressure") ? " (psi)" : ""}
+                      {k.includes("rebound") ? " (clicks)" : ""}
+                    </label>
 
-                  <InputField
-                    k={k}
-                    value={setup[k]}
-                    onChange={(v) => setSetup((p) => ({ ...p, [k]: v }))}
-                  />
-                </div>
-              ))}
+                    <InputField
+                      k={k}
+                      value={setup[k]}
+                      inputRef={setRefFor(k)}
+                      enterHint={enterHint}
+                      onEnterNext={() => focusNextFrom(k)}
+                      onChange={(v) => setSetup((p) => ({ ...p, [k]: v }))}
+                    />
+                  </div>
+                );
+              })}
 
               <div className="md:col-span-2">
                 <label className="block text-[11px] font-black text-white/55 uppercase mb-1">Notes</label>
                 <textarea
+                  ref={setRefFor("notes")}
                   rows={2}
                   value={setup.notes}
                   onChange={(e) => setSetup((p) => ({ ...p, notes: e.target.value }))}
                   className="w-full px-3 py-2 bg-black border border-white/10 text-white rounded-lg focus:ring-2 focus:ring-lime-400"
                   placeholder="Any observations / changes…"
+                  autoComplete="off"
+                  enterKeyHint="done"
                 />
               </div>
             </div>

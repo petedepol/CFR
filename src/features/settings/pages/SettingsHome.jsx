@@ -56,8 +56,8 @@ export default function SettingsHome() {
       ) : null}
 
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">
+          {Array.from({ length: 12 }).map((_, i) => (
             <SkeletonTile key={i} />
           ))}
         </div>
@@ -67,7 +67,7 @@ export default function SettingsHome() {
           <div className="text-white/45 text-sm mt-2">Try refreshing, or check Supabase connection.</div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">
           {riders.map((r) => (
             <RiderTile
               key={r.name}
@@ -85,9 +85,9 @@ function SkeletonTile() {
   return (
     <div className="rounded-3xl border border-white/10 bg-black/30 overflow-hidden shadow-lg">
       <div className="relative aspect-[4/3] bg-white/5 animate-pulse" />
-      <div className="p-4">
-        <div className="h-5 w-2/3 rounded-xl bg-white/5 animate-pulse" />
-        <div className="h-4 w-1/3 rounded-xl bg-white/5 animate-pulse mt-2" />
+      <div className="p-3">
+        <div className="h-4 w-2/3 rounded-xl bg-white/5 animate-pulse" />
+        <div className="h-3 w-1/3 rounded-xl bg-white/5 animate-pulse mt-2" />
       </div>
     </div>
   );
@@ -108,16 +108,16 @@ function RiderTile({ rider, onClick }) {
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/85" />
 
         <div className="absolute top-3 right-3">
-          <div className="h-11 w-11 rounded-2xl border border-white/10 bg-black/55 backdrop-blur flex items-center justify-center text-xl">
+          <div className="h-10 w-10 rounded-2xl border border-white/10 bg-black/55 backdrop-blur flex items-center justify-center text-lg">
             {rider.flag || "🏁"}
           </div>
         </div>
 
-        <div className="absolute bottom-3 left-4 right-4">
-          <div className="text-xl font-black text-white leading-tight drop-shadow truncate">
+        <div className="absolute bottom-3 left-3 right-3">
+          <div className="text-white font-black text-sm leading-tight drop-shadow truncate">
             {rider.fullName || rider.name}
           </div>
-          <div className="mt-0.5 text-[11px] text-white/55 truncate">{rider.country || ""}</div>
+          <div className="mt-0.5 text-[10px] text-white/55 truncate">{rider.country || ""}</div>
         </div>
       </div>
 

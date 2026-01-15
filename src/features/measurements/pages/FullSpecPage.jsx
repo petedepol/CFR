@@ -4,20 +4,13 @@ import { ensureSession, fetchLatestFull, insertFull } from "../api/measurementsA
 import { FULL_SPEC_DEFAULTS } from "../utils/fullSpecDefaults";
 import { ArrowLeft, Save, WifiOff, RefreshCcw } from "lucide-react";
 import { useAuth } from "../../auth/AuthProvider.jsx";
+import { useToast } from "../../../components/ToastProvider.jsx";
 
-// FULL_SPEC_DEFAULTS may be either:
-// 1) legacy shape: { frame:{...}, saddle:{...}, ... }
-// 2) bucketed shape: { mtb:{...}, road:{...}, cx:{...} }
-// This page is MTB-only for now, so normalize to MTB.
 const BASE_DEFAULTS = FULL_SPEC_DEFAULTS?.mtb ? FULL_SPEC_DEFAULTS.mtb : FULL_SPEC_DEFAULTS;
 
 function normalizeSpec(maybeSpec) {
   if (!maybeSpec || typeof maybeSpec !== "object") return null;
-
-  // If a bucketed object got saved/restored by accident, take MTB.
   if (maybeSpec.mtb && typeof maybeSpec.mtb === "object") return maybeSpec.mtb;
-
-  // If it looks like a normal spec object (has at least one known section), keep it.
   if (
     Object.prototype.hasOwnProperty.call(maybeSpec, "frame") ||
     Object.prototype.hasOwnProperty.call(maybeSpec, "saddle") ||
@@ -25,7 +18,6 @@ function normalizeSpec(maybeSpec) {
   ) {
     return maybeSpec;
   }
-
   return null;
 }
 
@@ -47,12 +39,9 @@ function readSessionNumber(key) {
 function writeSessionNumber(key, n) {
   try {
     sessionStorage.setItem(key, String(n));
-  } catch {
-    // ignore
-  }
+  } catch {}
 }
 
-// Keeps scroll position stable across iOS tab-out/tab-in + keyboard hide/show.
 function useStickyScroll(scrollKey, enabled = true) {
   const lastGoodYRef = useRef(0);
 
@@ -62,7 +51,6 @@ function useStickyScroll(scrollKey, enabled = true) {
     const restore = () => {
       const y = readSessionNumber(scrollKey);
       if (y > 0) {
-        // iOS sometimes needs multiple passes as layout settles
         requestAnimationFrame(() => window.scrollTo(0, y));
         setTimeout(() => window.scrollTo(0, y), 50);
         setTimeout(() => window.scrollTo(0, y), 250);
@@ -83,7 +71,6 @@ function useStickyScroll(scrollKey, enabled = true) {
     const onPageHide = () => save();
     const onScroll = () => save();
 
-    // When keyboard closes, iOS sometimes snaps to top — put you back.
     let focusStartY = 0;
     const onFocusIn = () => {
       focusStartY = window.scrollY || 0;
@@ -93,14 +80,10 @@ function useStickyScroll(scrollKey, enabled = true) {
       setTimeout(() => {
         const after = window.scrollY || 0;
         const lastGood = lastGoodYRef.current || before;
-        // Only correct if it *clearly* jumped unexpectedly.
-        if (after < 10 && lastGood > 150) {
-          window.scrollTo(0, lastGood);
-        }
+        if (after < 10 && lastGood > 150) window.scrollTo(0, lastGood);
       }, 80);
     };
 
-    // initial restore
     restore();
 
     document.addEventListener("visibilitychange", onVis);
@@ -129,32 +112,25 @@ export default function FullSpecPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const { displayName } = useAuth();
+  const toast = useToast();
 
-  // Prefer authenticated displayName; fallback to URL param if missing.
   const mechanicFromUrl = params.get("mech") || "";
   const mechanic = (displayName || mechanicFromUrl || "").trim();
-
   const rider = params.get("rider") || "";
 
-  // ✅ iOS scroll stability across tab-out/tab-in
   const scrollKey = rider ? `cfr_scroll_fullspec__${encodeURIComponent(rider)}` : "";
   useStickyScroll(scrollKey, Boolean(rider));
 
   const [spec, setSpec] = useState(clone(BASE_DEFAULTS));
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState({ kind: "idle", msg: "" }); // idle|saving|ok|err
-  const [snapshot, setSnapshot] = useState(null);
 
-  // Keep unsaved edits safe
   const [dirty, setDirty] = useState(false);
   const dirtyRef = useRef(false);
-
   useEffect(() => {
     dirtyRef.current = dirty;
   }, [dirty]);
 
   const lastSaveRef = useRef({ at: 0, sig: "" });
-  const lastAttemptRef = useRef(null);
 
   const canSave = useMemo(() => mechanic && rider, [mechanic, rider]);
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;
@@ -164,24 +140,17 @@ export default function FullSpecPage() {
     if (!silent) setLoading(true);
 
     try {
-      // Keep auth/session alive on resume
       await ensureSession();
-
       const latest = await fetchLatestFull(rider);
       const latestAt = latest?.timestamp ? new Date(latest.timestamp).getTime() : 0;
 
-      // If the user is typing, never overwrite their inputs on background refresh.
-      if (keepEdits && dirtyRef.current) {
-        if (!silent) setStatus({ kind: "idle", msg: "" });
-        return;
-      }
+      if (keepEdits && dirtyRef.current) return;
 
       const draft = readDraft(rider);
       const draftAt = draft?.at ? Number(draft.at) : 0;
       const draftSpec = normalizeSpec(draft?.spec);
       const latestSpec = normalizeSpec(latest?.full_spec);
 
-      // Prefer draft if it's newer than the last saved server row.
       if (draftSpec && draftAt > latestAt) {
         setSpec(mergeDefaults(BASE_DEFAULTS, draftSpec));
         setDirty(true);
@@ -194,10 +163,8 @@ export default function FullSpecPage() {
         setDirty(false);
         clearDraft(rider);
       }
-
-      if (!silent) setStatus({ kind: "idle", msg: "" });
     } catch (e) {
-      if (!silent) setStatus({ kind: "err", msg: e.message || "Failed to load latest bike spec." });
+      toast.error(e.message || "Failed to load latest bike spec");
     } finally {
       if (!silent) setLoading(false);
     }
@@ -224,7 +191,6 @@ export default function FullSpecPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rider]);
 
-  // Persist unsaved edits locally so tab-out refresh doesn't wipe your work.
   useEffect(() => {
     if (!rider) return;
     if (!dirty) return;
@@ -236,58 +202,35 @@ export default function FullSpecPage() {
     return () => clearTimeout(t);
   }, [rider, spec, dirty]);
 
-  async function doSave(payload) {
+  async function handleSave() {
     if (!canSave) {
-      setStatus({ kind: "err", msg: "No mechanic/rider found." });
+      toast.error("Missing rider or mechanic");
       return;
     }
     if (offline) {
-      setStatus({ kind: "err", msg: "You’re offline. Reconnect and try again." });
+      toast.warning("Offline — reconnect to save");
       return;
     }
-    if (status.kind === "saving") return;
 
+    const payload = { rider, mechanic, fullSpec: spec };
     const sig = JSON.stringify(payload);
     const now = Date.now();
     if (lastSaveRef.current.sig === sig && now - lastSaveRef.current.at < 1500) {
-      setStatus({ kind: "ok", msg: "✓ Already saved (just now)" });
+      toast.success("Already saved (just now)");
       return;
     }
-
-    lastAttemptRef.current = payload;
-    setStatus({ kind: "saving", msg: "Saving…" });
 
     try {
       await insertFull(payload);
       lastSaveRef.current = { sig, at: Date.now() };
-      setSnapshot({ at: new Date() });
-      setStatus({ kind: "ok", msg: "✓ Saved" });
-
-      // Clear local draft after successful save
       setDirty(false);
       clearDraft(rider);
-
+      toast.success("Saved ✓");
       await load({ silent: true, keepEdits: true });
     } catch (e) {
-      setStatus({ kind: "err", msg: `Save failed: ${e.message || "unknown error"}` });
+      toast.error(`Save failed: ${e?.message || "unknown error"}`);
     }
   }
-
-  async function handleSave() {
-    const payload = {
-      rider,
-      mechanic,
-      fullSpec: spec,
-    };
-    await doSave(payload);
-  }
-
-  async function retrySave() {
-    if (!lastAttemptRef.current) return;
-    await doSave(lastAttemptRef.current);
-  }
-
-  const showRetrySave = status.kind === "err" && lastAttemptRef.current && !offline;
 
   function setField(section, key, value) {
     setDirty(true);
@@ -334,7 +277,11 @@ export default function FullSpecPage() {
         </div>
 
         {loading ? (
-          <div className="mt-6 text-white/60">Loading latest…</div>
+          <div className="mt-6 space-y-3">
+            <div className="h-10 bg-white/5 rounded-2xl animate-pulse" />
+            <div className="h-10 bg-white/5 rounded-2xl animate-pulse" />
+            <div className="h-10 bg-white/5 rounded-2xl animate-pulse" />
+          </div>
         ) : (
           <div className="mt-6 space-y-8">
             {Object.keys(spec).map((section) => (
@@ -357,48 +304,23 @@ export default function FullSpecPage() {
 
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-5xl px-4 z-30">
         <div className="rounded-3xl border border-white/10 bg-black/50 backdrop-blur-xl p-4 shadow-lg">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <div className="min-w-0">
-              {offline ? (
-                <div className="inline-flex items-center gap-2 text-xs text-white/70">
-                  <WifiOff size={14} /> Offline — saves disabled
-                </div>
-              ) : snapshot?.at ? (
-                <div className="text-xs text-white/70">
-                  <span className="text-white/85 font-black">Saved:</span>{" "}
-                  <span className="text-white/60">{snapshot.at.toLocaleTimeString()}</span>
-                </div>
-              ) : (
-                <div className="text-xs text-white/50">Ready</div>
-              )}
-
-              {status.kind === "err" && <div className="mt-1 text-xs text-red-200/90 truncate">{status.msg}</div>}
-              {status.kind === "ok" && <div className="mt-1 text-xs text-lime-200/90 truncate">{status.msg}</div>}
-              {status.kind === "saving" && <div className="mt-1 text-xs text-white/60 truncate">{status.msg}</div>}
+          <div className="flex items-center justify-between gap-3">
+            <div className="inline-flex items-center gap-2 text-xs text-white/70">
+              {offline ? <WifiOff size={14} /> : null}
+              {offline ? "Offline — saves disabled" : dirty ? "Unsaved changes" : "Ready"}
             </div>
 
-            <div className="flex items-center gap-2">
-              {showRetrySave ? (
-                <button
-                  onClick={retrySave}
-                  className="rounded-2xl px-4 py-3 font-black border border-white/10 bg-white/5 hover:bg-white/10 text-white"
-                >
-                  Retry Save
-                </button>
-              ) : null}
-
-              <button
-                disabled={status.kind === "saving" || !canSave || offline}
-                onClick={handleSave}
-                className={`rounded-2xl px-5 py-3 font-black flex items-center gap-2 ${
-                  status.kind === "saving" || !canSave || offline
-                    ? "bg-white/10 text-white/30 cursor-not-allowed"
-                    : "bg-lime-300 text-black hover:bg-lime-200"
-                }`}
-              >
-                <Save size={18} /> {status.kind === "saving" ? "Saving…" : "Save Bike Spec"}
-              </button>
-            </div>
+            <button
+              disabled={!canSave || offline}
+              onClick={handleSave}
+              className={`rounded-2xl px-5 py-3 font-black flex items-center gap-2 ${
+                !canSave || offline
+                  ? "bg-white/10 text-white/30 cursor-not-allowed"
+                  : "bg-lime-300 text-black hover:bg-lime-200"
+              }`}
+            >
+              <Save size={18} /> Save Bike Spec
+            </button>
           </div>
         </div>
       </div>
@@ -416,14 +338,12 @@ function Section({ title, children }) {
 }
 
 function Field({ label, value, onChange }) {
-  // Defensive: inputs must receive primitives. If something object-shaped leaks in,
-  // show an empty string rather than "[object Object]".
   const safeValue =
     value === null || value === undefined
       ? ""
       : typeof value === "string" || typeof value === "number"
-        ? value
-        : "";
+      ? value
+      : "";
 
   return (
     <label className="block">
@@ -462,11 +382,9 @@ function mergeDefaults(defaults, incoming) {
 }
 
 const FULLSPEC_DRAFT_PREFIX = "cfr_fullspec_draft__";
-
 function draftKey(rider) {
   return `${FULLSPEC_DRAFT_PREFIX}${encodeURIComponent(rider || "")}`;
 }
-
 function readDraft(rider) {
   if (!rider) return null;
   try {
@@ -480,27 +398,15 @@ function readDraft(rider) {
     return null;
   }
 }
-
 function writeDraft(rider, spec) {
   if (!rider) return;
   try {
-    localStorage.setItem(
-      draftKey(rider),
-      JSON.stringify({
-        at: Date.now(),
-        spec,
-      })
-    );
-  } catch {
-    // ignore
-  }
+    localStorage.setItem(draftKey(rider), JSON.stringify({ at: Date.now(), spec }));
+  } catch {}
 }
-
 function clearDraft(rider) {
   if (!rider) return;
   try {
     localStorage.removeItem(draftKey(rider));
-  } catch {
-    // ignore
-  }
+  } catch {}
 }

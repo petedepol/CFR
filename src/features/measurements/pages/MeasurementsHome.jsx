@@ -64,28 +64,18 @@ export default function MeasurementsHome() {
   return (
     <div className="space-y-4">
       <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-6">
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-          <div>
-            <div className="text-sm text-white/60 uppercase tracking-widest">Measurements</div>
-            <div className="text-2xl font-black mt-1">Select Rider</div>
-            <div className="text-white/50 text-sm mt-1">Mechanic: {mechanic || "—"}</div>
-          </div>
-
-          {offline ? (
-            <div className="text-xs text-white/50">Offline</div>
-          ) : (
-            <div className="text-xs text-white/50">Online</div>
-          )}
-        </div>
-
-        {err ? <div className="mt-4 text-sm text-red-200/90">{err}</div> : null}
+        {err ? <div className="text-sm text-red-200/90">{err}</div> : null}
 
         {loading ? (
-          <div className="py-10 text-white/60">Loading riders…</div>
+          <div className="mt-2 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonRiderCard key={i} />
+            ))}
+          </div>
         ) : riders.length === 0 ? (
           <div className="py-10 text-white/60">No riders loaded.</div>
         ) : (
-          <div className="mt-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="mt-2 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {riders.map((r) => (
               <RiderCard
                 key={r.name}
@@ -99,6 +89,19 @@ export default function MeasurementsHome() {
             ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function SkeletonRiderCard() {
+  return (
+    <div className="rounded-3xl border border-white/10 bg-black/30 overflow-hidden">
+      <div className="h-[280px] md:h-[320px] bg-white/5 animate-pulse" />
+      <div className="p-4 space-y-2">
+        <div className="h-10 rounded-2xl bg-white/5 animate-pulse" />
+        <div className="h-10 rounded-2xl bg-white/5 animate-pulse" />
+        <div className="h-10 rounded-2xl bg-white/5 animate-pulse" />
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ensureSession, fetchLatestQuick, insertQuick } from "../api/measurementsApi";
 import { ArrowLeft, Save, WifiOff, AlertTriangle, X } from "lucide-react";
 import { useAuth } from "../../auth/AuthProvider.jsx";
+import { useToast } from "../../../components/ToastProvider.jsx";
 
 const WARN_THRESHOLD_MM = 4;
 
@@ -16,13 +17,12 @@ export default function QuickEntryPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const { displayName } = useAuth();
+  const toast = useToast();
 
   const mechanic = (displayName || "").trim();
   const rider = params.get("rider") || "";
 
-  // Minimal visibility: MTB default
   const [bikeType, setBikeType] = useState("mtb");
-
   const [form, setForm] = useState({
     saddleSetback: "",
     height4cm: "",
@@ -35,15 +35,12 @@ export default function QuickEntryPage() {
   const [loading, setLoading] = useState(true);
   const [snapshot, setSnapshot] = useState(null);
 
-  // baseline per selected bikeType
   const lastLoadedQuickRef = useRef(null);
 
-  // warning modal state
   const [warnOpen, setWarnOpen] = useState(false);
   const [warnInfo, setWarnInfo] = useState(null);
   const pendingPayloadRef = useRef(null);
 
-  // prevent accidental double-saves
   const lastSaveRef = useRef({ at: 0, sig: "" });
 
   const canSave = useMemo(() => mechanic && rider, [mechanic, rider]);
@@ -67,9 +64,6 @@ export default function QuickEntryPage() {
           notes: latest.notes ?? "",
           location: latest.location ?? "",
         });
-      } else {
-        // If there is no previous entry for this bikeType, keep current form values
-        // (so switching types doesn't wipe typed values unexpectedly).
       }
 
       if (!silent) setStatus({ kind: "idle", msg: "" });
@@ -104,26 +98,36 @@ export default function QuickEntryPage() {
   async function doSave(payload) {
     if (!canSave) {
       setStatus({ kind: "err", msg: "No mechanic/rider found." });
-      return;
-    }
-    if (offline) {
-      setStatus({ kind: "err", msg: "You’re offline. Reconnect and try again." });
+      toast.error("Missing mechanic or rider");
       return;
     }
     if (status.kind === "saving") return;
 
-    const sig = JSON.stringify(payload);
+    // Dedupe signature WITHOUT timestamp
+    const dedupeSig = JSON.stringify({
+      rider: payload.rider,
+      mechanic: payload.mechanic,
+      bikeType: payload.bikeType,
+      saddleSetback: payload.saddleSetback,
+      height4cm: payload.height4cm,
+      height15cm: payload.height15cm,
+      notes: payload.notes,
+      location: payload.location,
+    });
+
     const now = Date.now();
-    if (lastSaveRef.current.sig === sig && now - lastSaveRef.current.at < 1500) {
+    if (lastSaveRef.current.sig === dedupeSig && now - lastSaveRef.current.at < 1500) {
       setStatus({ kind: "ok", msg: "✓ Already saved (just now)" });
+      toast.success("Already saved (just now)");
       return;
     }
 
     setStatus({ kind: "saving", msg: "Saving…" });
 
     try {
-      await insertQuick(payload);
-      lastSaveRef.current = { sig, at: Date.now() };
+      const res = await insertQuick({ ...payload, dedupeSig });
+
+      lastSaveRef.current = { sig: dedupeSig, at: Date.now() };
 
       setSnapshot({
         bikeType: payload.bikeType,
@@ -131,12 +135,21 @@ export default function QuickEntryPage() {
         height4cm: payload.height4cm,
         height15cm: payload.height15cm,
         at: new Date(),
+        queued: !!res?.queued,
       });
 
-      setStatus({ kind: "ok", msg: "✓ Saved" });
-      await load({ silent: true });
+      if (res?.queued) {
+        setStatus({ kind: "ok", msg: "✓ Saved offline (queued)" });
+        toast.success("Saved offline — queued to sync");
+        // don’t reload; it would just re-pull old DB state and confuse
+      } else {
+        setStatus({ kind: "ok", msg: "✓ Saved" });
+        toast.success("Saved ✓");
+        await load({ silent: true });
+      }
     } catch (e) {
       setStatus({ kind: "err", msg: `Save failed: ${e.message || "unknown error"}` });
+      toast.error(`Save failed: ${e.message || "unknown error"}`);
     }
   }
 
@@ -210,6 +223,7 @@ export default function QuickEntryPage() {
             <div className="text-sm text-white/60 uppercase tracking-widest">Jig Update</div>
             <div className="text-2xl font-black mt-1">{rider || "No rider selected"}</div>
             <div className="text-white/50 text-sm mt-1">Mechanic: {mechanic || "—"}</div>
+            {offline ? <div className="mt-2 text-xs text-yellow-200/80">Offline — saves will queue and sync later</div> : null}
           </div>
 
           <label className="block">
@@ -355,7 +369,7 @@ export default function QuickEntryPage() {
             <div className="min-w-0">
               {offline ? (
                 <div className="inline-flex items-center gap-2 text-xs text-white/70">
-                  <WifiOff size={14} /> Offline — saves disabled
+                  <WifiOff size={14} /> Offline — saves will queue
                 </div>
               ) : snapshot ? (
                 <div className="text-xs text-white/70">
@@ -364,6 +378,7 @@ export default function QuickEntryPage() {
                     {bikeTypeLabel(snapshot.bikeType)} • SB {fmt(snapshot.saddleSetback)} • 4cm {fmt(snapshot.height4cm)} • 15cm {fmt(snapshot.height15cm)}
                   </span>
                   <span className="text-white/40"> • {snapshot.at.toLocaleTimeString()}</span>
+                  {snapshot.queued ? <span className="ml-2 text-yellow-200/80">• queued</span> : null}
                 </div>
               ) : (
                 <div className="text-xs text-white/50">Ready</div>
@@ -374,15 +389,15 @@ export default function QuickEntryPage() {
 
             <div className="flex items-center gap-2">
               <button
-                disabled={status.kind === "saving" || !canSave || offline}
+                disabled={status.kind === "saving" || !canSave}
                 onClick={onSave}
                 className={`rounded-2xl px-5 py-3 font-black flex items-center gap-2 ${
-                  status.kind === "saving" || !canSave || offline
+                  status.kind === "saving" || !canSave
                     ? "bg-white/10 text-white/30 cursor-not-allowed"
                     : "bg-lime-300 text-black hover:bg-lime-200"
                 }`}
               >
-                <Save size={18} /> {status.kind === "saving" ? "Saving…" : "Save Jig Update"}
+                <Save size={18} /> {status.kind === "saving" ? "Saving…" : offline ? "Save (Queue)" : "Save Jig Update"}
               </button>
             </div>
           </div>

@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Save, ChevronRight, ChevronDown, History } from "lucide-react";
+import { ArrowLeft, Save, ChevronRight, ChevronDown, History, WifiOff } from "lucide-react";
 
 import { useAuth } from "../../auth/AuthProvider.jsx";
 import { fetchRiders } from "../../measurements/api/measurementsApi";
 import { fetchMtbSettingsHistory, fetchLatestMtbSettings, insertMtbSettings } from "../api/settingsApi";
+import { useToast } from "../../../components/ToastProvider.jsx";
 
 const LS_EVENT_CONTEXT = "cfr_settings_event_context_last";
 const LS_DRAFT_PREFIX = "cfr_settings_mtb_setup_draft__"; // + riderName
@@ -199,6 +200,7 @@ export default function MtbSettingsPage() {
   const [params, setParams] = useSearchParams();
   const riderParam = params.get("rider") || "";
 
+  const toast = useToast();
   const { displayName } = useAuth();
 
   const [riders, setRiders] = useState([]);
@@ -213,7 +215,8 @@ export default function MtbSettingsPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [status, setStatus] = useState("");
+
+  const offline = typeof navigator !== "undefined" && navigator.onLine === false;
 
   // Keep URL in sync
   useEffect(() => {
@@ -247,7 +250,6 @@ export default function MtbSettingsPage() {
     const nextCtx = String(blob?.event_context ?? "");
     const nextSetup = normalizeSetup(blob?.setup);
 
-    // If saved row has no context, fallback to last typed.
     setEventContext(nextCtx || readEventContextFallback());
     setSetup(nextSetup);
   }, []);
@@ -265,9 +267,8 @@ export default function MtbSettingsPage() {
 
       if (latest) {
         hydrateFromRow(latest);
-        clearDraft(selectedRider); // saved beats draft
+        clearDraft(selectedRider);
       } else {
-        // No saved baseline yet: restore draft (if any) so you don't retype
         const d = readDraft(selectedRider);
         if (d) {
           setEventContext(d.eventContext || readEventContextFallback());
@@ -278,28 +279,21 @@ export default function MtbSettingsPage() {
         }
       }
     } catch (e) {
-      setStatus(`❌ Failed to load: ${e?.message || "unknown error"}`);
-      setTimeout(() => setStatus(""), 4000);
+      toast.error(`Failed to load settings: ${e?.message || "unknown error"}`);
     } finally {
       setLoading(false);
     }
-  }, [selectedRider, hydrateFromRow]);
+  }, [selectedRider, hydrateFromRow, toast]);
 
   useEffect(() => {
     loadAll();
   }, [loadAll]);
 
-  // Draft-save while editing (only for rider currently open)
+  // Draft-save while editing
   useEffect(() => {
     if (!selectedRider) return;
     writeDraft(selectedRider, eventContext, setup);
   }, [selectedRider, eventContext, setup]);
-
-  const latestSetup = useMemo(() => {
-    const cur = history?.[0]?.full_spec?.setup || {};
-    const prev = history?.[1]?.full_spec?.setup || {};
-    return { cur, prev, changes: getChanges(cur, prev) };
-  }, [history]);
 
   const toggleHistoryExpand = (id) => {
     setExpandedHistoryIds((prev) => {
@@ -312,18 +306,19 @@ export default function MtbSettingsPage() {
 
   const handleSave = async () => {
     if (!selectedRider) {
-      setStatus("⚠️ Select rider");
-      setTimeout(() => setStatus(""), 2500);
+      toast.warning("Select a rider first");
       return;
     }
     if (!displayName) {
-      setStatus("⚠️ No mechanic name (auth not ready)");
-      setTimeout(() => setStatus(""), 3000);
+      toast.error("No mechanic name (auth not ready)");
+      return;
+    }
+    if (offline) {
+      toast.warning("Offline — reconnect to save");
       return;
     }
 
     setSaving(true);
-    setStatus("Saving…");
     try {
       await insertMtbSettings({
         rider: selectedRider,
@@ -333,12 +328,10 @@ export default function MtbSettingsPage() {
       });
 
       clearDraft(selectedRider);
-      setStatus("✓ Saved");
+      toast.success("Saved ✓");
       await loadAll();
-      setTimeout(() => setStatus(""), 2500);
     } catch (e) {
-      setStatus(`❌ Save failed: ${e?.message || "unknown error"}`);
-      setTimeout(() => setStatus(""), 4500);
+      toast.error(`Save failed: ${e?.message || "unknown error"}`);
     } finally {
       setSaving(false);
     }
@@ -356,9 +349,17 @@ export default function MtbSettingsPage() {
           Back
         </button>
 
-        <div className="text-right">
-          <div className="text-white/60 text-sm">Mechanic</div>
-          <div className="text-white font-bold">{displayName || "—"}</div>
+        <div className="flex items-center gap-2">
+          {offline ? (
+            <div className="inline-flex items-center gap-2 text-xs text-yellow-200/90 bg-yellow-400/10 border border-yellow-400/20 px-3 py-2 rounded-2xl">
+              <WifiOff size={14} />
+              Offline
+            </div>
+          ) : null}
+
+          <div className="text-xs text-white/70 bg-white/5 border border-white/10 px-3 py-2 rounded-2xl max-w-[160px] truncate">
+            {displayName || "—"}
+          </div>
         </div>
       </div>
 
@@ -418,7 +419,11 @@ export default function MtbSettingsPage() {
         {!selectedRider ? (
           <div className="text-white/60 py-6">Select a rider to start.</div>
         ) : loading ? (
-          <div className="text-white/60 py-6">Loading…</div>
+          <div className="py-6 space-y-3">
+            <div className="h-10 bg-white/5 rounded-xl animate-pulse" />
+            <div className="h-10 bg-white/5 rounded-xl animate-pulse" />
+            <div className="h-10 bg-white/5 rounded-xl animate-pulse" />
+          </div>
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -474,26 +479,16 @@ export default function MtbSettingsPage() {
 
             <button
               onClick={handleSave}
-              disabled={saving}
-              className="w-full mt-5 bg-gradient-to-r from-lime-400 to-green-500 text-black py-4 rounded-xl font-black text-lg hover:from-lime-500 hover:to-green-600 flex items-center justify-center gap-2 shadow-2xl transition disabled:opacity-60"
+              disabled={saving || offline}
+              className={`w-full mt-5 py-4 rounded-xl font-black text-lg flex items-center justify-center gap-2 shadow-2xl transition ${
+                saving || offline
+                  ? "bg-white/10 text-white/30 cursor-not-allowed border border-white/10"
+                  : "bg-gradient-to-r from-lime-400 to-green-500 text-black hover:from-lime-500 hover:to-green-600"
+              }`}
             >
               <Save size={22} />
-              SAVE SETUP
+              {offline ? "OFFLINE" : saving ? "SAVING…" : "SAVE SETUP"}
             </button>
-
-            {status && (
-              <div
-                className={`mt-3 text-center py-3 rounded-xl font-bold border ${
-                  status.includes("✓")
-                    ? "bg-lime-400/10 text-lime-300 border-lime-400/25"
-                    : status.includes("⚠️")
-                    ? "bg-yellow-400/10 text-yellow-300 border-yellow-400/25"
-                    : "bg-red-500/10 text-red-300 border-red-400/25"
-                }`}
-              >
-                {status}
-              </div>
-            )}
           </>
         )}
       </div>
@@ -571,7 +566,7 @@ export default function MtbSettingsPage() {
                     </div>
                   </div>
 
-                  {/* ✅ Collapsed summary with latest-change highlighting */}
+                  {/* Collapsed summary with latest-change highlighting */}
                   <div className="px-4 pb-4 grid grid-cols-2 gap-3 text-sm">
                     {summaryItems.map((it) => (
                       <div key={it.label} className={changedCellClass(it.changed)}>

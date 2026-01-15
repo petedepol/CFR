@@ -1,4 +1,5 @@
 import { supabase } from "../../../lib/supabaseClient";
+import { enqueueBikeMeasurement, flushBikeMeasurementsQueue } from "../../../lib/offlineBikeMeasurementsQueue.js";
 
 // ---------- small helpers (kept local so Settings is self-contained) ----------
 function sleep(ms) {
@@ -27,11 +28,19 @@ async function kickAuth() {
   }
 }
 
-async function withRetry(fn, { tries = 2 } = {}) {
+async function withRetry(fn, { tries = 2, allowOffline = false } = {}) {
   let lastErr = null;
   for (let i = 0; i <= tries; i++) {
     try {
       await kickAuth();
+
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        const e = new Error("Offline");
+        e.code = "OFFLINE";
+        if (allowOffline) throw e;
+        throw new Error("You’re offline. Reconnect and try again.");
+      }
+
       return await fn();
     } catch (err) {
       lastErr = err;
@@ -79,7 +88,7 @@ export async function fetchMtbSettingsHistory(rider, limit = 50) {
   });
 }
 
-export async function insertMtbSettings({ rider, mechanic, eventContext, setup }) {
+export async function insertMtbSettings({ rider, mechanic, eventContext, setup, dedupeSig = "" }) {
   if (!rider) throw new Error("Missing rider");
   if (!mechanic) throw new Error("Missing mechanic");
 
@@ -87,19 +96,40 @@ export async function insertMtbSettings({ rider, mechanic, eventContext, setup }
     rider,
     mechanic,
     type: SETTINGS_TYPE,
-    // Store everything in JSON so we don't need schema changes:
     full_spec: {
       kind: SETTINGS_TYPE,
       event_context: eventContext || "",
       setup: setup || {},
     },
-    // Optional mirror for quick scanning/searching:
     notes: setup?.notes || "",
     timestamp: new Date().toISOString(),
   };
 
-  return withRetry(async () => {
-    const { error } = await supabase.from("bike_measurements").insert([payload]);
-    if (error) throw error;
-  });
+  try {
+    await withRetry(
+      async () => {
+        const { error } = await supabase.from("bike_measurements").insert([payload]);
+        if (error) throw error;
+      },
+      { tries: 1, allowOffline: true }
+    );
+
+    try {
+      await flushBikeMeasurementsQueue({ max: 10 });
+    } catch {
+      // ignore
+    }
+
+    return { queued: false };
+  } catch (err) {
+    const offline = err?.code === "OFFLINE" || (typeof navigator !== "undefined" && navigator.onLine === false);
+    const queueable = offline || isRetryableError(err);
+
+    if (queueable) {
+      enqueueBikeMeasurement(payload, dedupeSig);
+      return { queued: true, reason: offline ? "offline" : "retryable" };
+    }
+
+    throw err;
+  }
 }

@@ -1,4 +1,5 @@
 import { supabase } from "../../../lib/supabaseClient";
+import { enqueueBikeMeasurement, flushBikeMeasurementsQueue } from "../../../lib/offlineBikeMeasurementsQueue.js";
 
 // ---------- small helpers ----------
 function sleep(ms) {
@@ -31,14 +32,15 @@ async function withTimeout(promise, ms = 15000) {
   }
 }
 
-async function withRetry(fn, { retries = 1, baseDelayMs = 250, timeoutMs = 15000 } = {}) {
+async function withRetry(fn, { retries = 1, baseDelayMs = 250, timeoutMs = 15000, allowOffline = false } = {}) {
   let lastErr;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       if (typeof navigator !== "undefined" && navigator.onLine === false) {
-        const e = new Error("You appear to be offline. Reconnect and try again.");
+        const e = new Error("Offline");
         e.code = "OFFLINE";
-        throw e;
+        if (allowOffline) throw e;
+        throw new Error("You appear to be offline. Reconnect and try again.");
       }
       return await withTimeout(fn(), timeoutMs);
     } catch (err) {
@@ -151,6 +153,37 @@ export async function fetchLatestQuickMap(riderNames) {
   });
 }
 
+async function insertBikeMeasurementWithQueue(payload, dedupeSig) {
+  try {
+    await withRetry(
+      async () => {
+        const { error } = await supabase.from("bike_measurements").insert([payload]);
+        if (error) throw error;
+      },
+      { retries: 1, allowOffline: true }
+    );
+
+    // Opportunistic flush: if you were offline earlier, this clears backlog fast
+    try {
+      await flushBikeMeasurementsQueue({ max: 10 });
+    } catch {
+      // ignore
+    }
+
+    return { queued: false };
+  } catch (err) {
+    const offline = err?.code === "OFFLINE" || (typeof navigator !== "undefined" && navigator.onLine === false);
+    const queueable = offline || isRetryableError(err);
+
+    if (queueable) {
+      enqueueBikeMeasurement(payload, dedupeSig);
+      return { queued: true, reason: offline ? "offline" : "retryable" };
+    }
+
+    throw err;
+  }
+}
+
 export async function insertQuick({
   rider,
   mechanic,
@@ -160,38 +193,33 @@ export async function insertQuick({
   notes,
   location,
   bikeType = "mtb",
+  dedupeSig = "",
 }) {
   const type = quickTypeForBikeType(bikeType);
 
-  return withRetry(async () => {
-    const payload = {
-      rider,
-      mechanic,
-      saddle_setback: saddleSetback,
-      height_4cm: height4cm,
-      height_15cm: height15cm,
-      notes,
-      location,
-      timestamp: new Date().toISOString(),
-      type,
-    };
+  const payload = {
+    rider,
+    mechanic,
+    saddle_setback: saddleSetback,
+    height_4cm: height4cm,
+    height_15cm: height15cm,
+    notes,
+    location,
+    timestamp: new Date().toISOString(),
+    type,
+  };
 
-    const { error } = await supabase.from("bike_measurements").insert([payload]);
-    if (error) throw error;
-  });
+  return insertBikeMeasurementWithQueue(payload, dedupeSig);
 }
 
-export async function insertFull({ rider, mechanic, fullSpec }) {
-  return withRetry(async () => {
-    const payload = {
-      rider,
-      mechanic,
-      type: "full",
-      full_spec: fullSpec,
-      timestamp: new Date().toISOString(),
-    };
+export async function insertFull({ rider, mechanic, fullSpec, dedupeSig = "" }) {
+  const payload = {
+    rider,
+    mechanic,
+    type: "full",
+    full_spec: fullSpec,
+    timestamp: new Date().toISOString(),
+  };
 
-    const { error } = await supabase.from("bike_measurements").insert([payload]);
-    if (error) throw error;
-  });
+  return insertBikeMeasurementWithQueue(payload, dedupeSig);
 }

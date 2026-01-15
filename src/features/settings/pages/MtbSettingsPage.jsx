@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Save, ChevronRight, ChevronDown, History, WifiOff } from "lucide-react";
 
@@ -74,17 +74,6 @@ function formatTimestamp(iso) {
   })}`;
 }
 
-function getChanges(currentSetup = {}, previousSetup = {}) {
-  const defaultChanged = DEFAULT_KEYS.filter(
-    (k) => String(currentSetup?.[k] ?? "") !== String(previousSetup?.[k] ?? "")
-  );
-  const expandedChanged = EXPANDED_KEYS.filter(
-    (k) => String(currentSetup?.[k] ?? "") !== String(previousSetup?.[k] ?? "")
-  );
-  const notesChanged = String(currentSetup?.notes ?? "") !== String(previousSetup?.notes ?? "");
-  return { defaultChanged, expandedChanged, notesChanged };
-}
-
 function normalizeSetup(incoming) {
   return { ...DEFAULT_SETUP, ...(incoming && typeof incoming === "object" ? incoming : {}) };
 }
@@ -149,6 +138,17 @@ function clearDraft(rider) {
   } catch {
     // ignore
   }
+}
+
+function getChanges(currentSetup = {}, previousSetup = {}) {
+  const defaultChanged = DEFAULT_KEYS.filter(
+    (k) => String(currentSetup?.[k] ?? "") !== String(previousSetup?.[k] ?? "")
+  );
+  const expandedChanged = EXPANDED_KEYS.filter(
+    (k) => String(currentSetup?.[k] ?? "") !== String(previousSetup?.[k] ?? "")
+  );
+  const notesChanged = String(currentSetup?.notes ?? "") !== String(previousSetup?.notes ?? "");
+  return { defaultChanged, expandedChanged, notesChanged };
 }
 
 function changedCellClass(changed) {
@@ -218,12 +218,10 @@ export default function MtbSettingsPage() {
 
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;
 
-  // Keep URL in sync
   useEffect(() => {
     if (selectedRider) setParams({ rider: selectedRider }, { replace: true });
   }, [selectedRider, setParams]);
 
-  // Load riders list (for dropdown)
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -240,7 +238,6 @@ export default function MtbSettingsPage() {
     };
   }, []);
 
-  // Persist event context (global)
   useEffect(() => {
     writeEventContext(eventContext);
   }, [eventContext]);
@@ -289,7 +286,6 @@ export default function MtbSettingsPage() {
     loadAll();
   }, [loadAll]);
 
-  // Draft-save while editing
   useEffect(() => {
     if (!selectedRider) return;
     writeDraft(selectedRider, eventContext, setup);
@@ -313,23 +309,28 @@ export default function MtbSettingsPage() {
       toast.error("No mechanic name (auth not ready)");
       return;
     }
-    if (offline) {
-      toast.warning("Offline — reconnect to save");
-      return;
-    }
+    if (saving) return;
+
+    const dedupeSig = JSON.stringify({ rider: selectedRider, mechanic: displayName, eventContext, setup });
 
     setSaving(true);
     try {
-      await insertMtbSettings({
+      const res = await insertMtbSettings({
         rider: selectedRider,
         mechanic: displayName,
         eventContext,
         setup,
+        dedupeSig,
       });
 
       clearDraft(selectedRider);
-      toast.success("Saved ✓");
-      await loadAll();
+
+      if (res?.queued) {
+        toast.success("Saved offline — queued to sync");
+      } else {
+        toast.success("Saved ✓");
+        await loadAll();
+      }
     } catch (e) {
       toast.error(`Save failed: ${e?.message || "unknown error"}`);
     } finally {
@@ -479,15 +480,15 @@ export default function MtbSettingsPage() {
 
             <button
               onClick={handleSave}
-              disabled={saving || offline}
+              disabled={saving}
               className={`w-full mt-5 py-4 rounded-xl font-black text-lg flex items-center justify-center gap-2 shadow-2xl transition ${
-                saving || offline
+                saving
                   ? "bg-white/10 text-white/30 cursor-not-allowed border border-white/10"
                   : "bg-gradient-to-r from-lime-400 to-green-500 text-black hover:from-lime-500 hover:to-green-600"
               }`}
             >
               <Save size={22} />
-              {offline ? "OFFLINE" : saving ? "SAVING…" : "SAVE SETUP"}
+              {saving ? "SAVING…" : offline ? "SAVE (QUEUE)" : "SAVE SETUP"}
             </button>
           </>
         )}
@@ -566,7 +567,6 @@ export default function MtbSettingsPage() {
                     </div>
                   </div>
 
-                  {/* Collapsed summary with latest-change highlighting */}
                   <div className="px-4 pb-4 grid grid-cols-2 gap-3 text-sm">
                     {summaryItems.map((it) => (
                       <div key={it.label} className={changedCellClass(it.changed)}>

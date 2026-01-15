@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ensureSession, fetchLatestFull, insertFull } from "../api/measurementsApi";
-import { FULL_SPEC_DEFAULTS } from "../utils/fullSpecDefaults";
 import { ArrowLeft, Save, WifiOff, RefreshCcw } from "lucide-react";
 import { useAuth } from "../../auth/AuthProvider.jsx";
 import { useToast } from "../../../components/ToastProvider.jsx";
+
+import { ensureSession, fetchLatestFull, insertFull } from "../api/measurementsApi";
+import { FULL_SPEC_DEFAULTS } from "../utils/fullSpecDefaults";
 
 const BASE_DEFAULTS = FULL_SPEC_DEFAULTS?.mtb ? FULL_SPEC_DEFAULTS.mtb : FULL_SPEC_DEFAULTS;
 
@@ -19,6 +20,30 @@ function normalizeSpec(maybeSpec) {
     return maybeSpec;
   }
   return null;
+}
+
+function clone(obj) {
+  try {
+    return structuredClone(obj);
+  } catch {
+    return JSON.parse(JSON.stringify(obj));
+  }
+}
+
+function mergeDefaults(defaults, incoming) {
+  const out = clone(defaults);
+  for (const section of Object.keys(out)) {
+    if (incoming?.[section] && typeof incoming[section] === "object") {
+      out[section] = { ...out[section], ...incoming[section] };
+    }
+  }
+  return out;
+}
+
+function humanize(str) {
+  return String(str || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function isIOS() {
@@ -42,6 +67,7 @@ function writeSessionNumber(key, n) {
   } catch {}
 }
 
+// Keeps scroll position stable across iOS tab-out/tab-in + keyboard hide/show.
 function useStickyScroll(scrollKey, enabled = true) {
   const lastGoodYRef = useRef(0);
 
@@ -108,6 +134,36 @@ function useStickyScroll(scrollKey, enabled = true) {
   }, [scrollKey, enabled]);
 }
 
+const FULLSPEC_DRAFT_PREFIX = "cfr_fullspec_draft__";
+function draftKey(rider) {
+  return `${FULLSPEC_DRAFT_PREFIX}${encodeURIComponent(rider || "")}`;
+}
+function readDraft(rider) {
+  if (!rider) return null;
+  try {
+    const raw = localStorage.getItem(draftKey(rider));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    if (!parsed.spec || typeof parsed.spec !== "object") return null;
+    return { at: Number(parsed.at || 0), spec: parsed.spec };
+  } catch {
+    return null;
+  }
+}
+function writeDraft(rider, spec) {
+  if (!rider) return;
+  try {
+    localStorage.setItem(draftKey(rider), JSON.stringify({ at: Date.now(), spec }));
+  } catch {}
+}
+function clearDraft(rider) {
+  if (!rider) return;
+  try {
+    localStorage.removeItem(draftKey(rider));
+  } catch {}
+}
+
 export default function FullSpecPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -117,6 +173,8 @@ export default function FullSpecPage() {
   const mechanicFromUrl = params.get("mech") || "";
   const mechanic = (displayName || mechanicFromUrl || "").trim();
   const rider = params.get("rider") || "";
+
+  const offline = typeof navigator !== "undefined" && navigator.onLine === false;
 
   const scrollKey = rider ? `cfr_scroll_fullspec__${encodeURIComponent(rider)}` : "";
   useStickyScroll(scrollKey, Boolean(rider));
@@ -131,9 +189,7 @@ export default function FullSpecPage() {
   }, [dirty]);
 
   const lastSaveRef = useRef({ at: 0, sig: "" });
-
   const canSave = useMemo(() => mechanic && rider, [mechanic, rider]);
-  const offline = typeof navigator !== "undefined" && navigator.onLine === false;
 
   async function load({ silent = false, keepEdits = false } = {}) {
     if (!rider) return;
@@ -195,42 +251,9 @@ export default function FullSpecPage() {
     if (!rider) return;
     if (!dirty) return;
 
-    const t = setTimeout(() => {
-      writeDraft(rider, spec);
-    }, 250);
-
+    const t = setTimeout(() => writeDraft(rider, spec), 250);
     return () => clearTimeout(t);
   }, [rider, spec, dirty]);
-
-  async function handleSave() {
-    if (!canSave) {
-      toast.error("Missing rider or mechanic");
-      return;
-    }
-    if (offline) {
-      toast.warning("Offline — reconnect to save");
-      return;
-    }
-
-    const payload = { rider, mechanic, fullSpec: spec };
-    const sig = JSON.stringify(payload);
-    const now = Date.now();
-    if (lastSaveRef.current.sig === sig && now - lastSaveRef.current.at < 1500) {
-      toast.success("Already saved (just now)");
-      return;
-    }
-
-    try {
-      await insertFull(payload);
-      lastSaveRef.current = { sig, at: Date.now() };
-      setDirty(false);
-      clearDraft(rider);
-      toast.success("Saved ✓");
-      await load({ silent: true, keepEdits: true });
-    } catch (e) {
-      toast.error(`Save failed: ${e?.message || "unknown error"}`);
-    }
-  }
 
   function setField(section, key, value) {
     setDirty(true);
@@ -240,12 +263,45 @@ export default function FullSpecPage() {
     }));
   }
 
+  async function handleSave() {
+    if (!canSave) {
+      toast.error("Missing rider or mechanic");
+      return;
+    }
+
+    // dedupe signature WITHOUT timestamp
+    const dedupeSig = JSON.stringify({ rider, mechanic, fullSpec: spec });
+
+    const now = Date.now();
+    if (lastSaveRef.current.sig === dedupeSig && now - lastSaveRef.current.at < 1500) {
+      toast.success("Already saved (just now)");
+      return;
+    }
+
+    try {
+      const res = await insertFull({ rider, mechanic, fullSpec: spec, dedupeSig });
+      lastSaveRef.current = { sig: dedupeSig, at: Date.now() };
+
+      // Treat queued as saved locally (it WILL sync later)
+      setDirty(false);
+      clearDraft(rider);
+
+      if (res?.queued) {
+        toast.success("Saved offline — queued to sync");
+        // Don't reload from DB (would show older data)
+      } else {
+        toast.success("Saved ✓");
+        await load({ silent: true, keepEdits: true });
+      }
+    } catch (e) {
+      toast.error(`Save failed: ${e?.message || "unknown error"}`);
+    }
+  }
+
   return (
     <div className="space-y-4 pb-28">
       <button
-        onClick={() =>
-          navigate(`/measurements?mech=${encodeURIComponent(mechanic)}&rider=${encodeURIComponent(rider)}`)
-        }
+        onClick={() => navigate(`/measurements?mech=${encodeURIComponent(mechanic)}&rider=${encodeURIComponent(rider)}`)}
         className="inline-flex items-center gap-2 text-white/70 hover:text-white"
       >
         <ArrowLeft size={18} /> Back
@@ -257,23 +313,25 @@ export default function FullSpecPage() {
             <div className="text-sm text-white/60 uppercase tracking-widest">Bike Spec</div>
             <div className="text-2xl font-black mt-1">{rider || "No rider selected"}</div>
             <div className="text-white/50 text-sm mt-1">Mechanic: {mechanic || "—"}</div>
-
+            {offline ? (
+              <div className="mt-2 text-xs text-yellow-200/80 inline-flex items-center gap-2">
+                <WifiOff size={14} /> Offline — saves will queue and sync later
+              </div>
+            ) : null}
             {dirty ? (
               <div className="mt-2 text-xs text-yellow-200/80">
-                Unsaved changes (kept locally until you press Save)
+                Unsaved changes (kept locally until saved)
               </div>
             ) : null}
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => load({ silent: false, keepEdits: true })}
-              className="rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-3 font-bold text-white/85 inline-flex items-center gap-2"
-              title="Reload latest (won’t overwrite if you have unsaved edits)"
-            >
-              <RefreshCcw size={14} /> Reload
-            </button>
-          </div>
+          <button
+            onClick={() => load({ silent: false, keepEdits: true })}
+            className="rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-3 font-bold text-white/85 inline-flex items-center gap-2"
+            title="Reload latest (won’t overwrite if you have unsaved edits)"
+          >
+            <RefreshCcw size={14} /> Reload
+          </button>
         </div>
 
         {loading ? (
@@ -307,19 +365,17 @@ export default function FullSpecPage() {
           <div className="flex items-center justify-between gap-3">
             <div className="inline-flex items-center gap-2 text-xs text-white/70">
               {offline ? <WifiOff size={14} /> : null}
-              {offline ? "Offline — saves disabled" : dirty ? "Unsaved changes" : "Ready"}
+              {offline ? "Offline — save will queue" : dirty ? "Unsaved changes" : "Ready"}
             </div>
 
             <button
-              disabled={!canSave || offline}
+              disabled={!canSave}
               onClick={handleSave}
               className={`rounded-2xl px-5 py-3 font-black flex items-center gap-2 ${
-                !canSave || offline
-                  ? "bg-white/10 text-white/30 cursor-not-allowed"
-                  : "bg-lime-300 text-black hover:bg-lime-200"
+                !canSave ? "bg-white/10 text-white/30 cursor-not-allowed" : "bg-lime-300 text-black hover:bg-lime-200"
               }`}
             >
-              <Save size={18} /> Save Bike Spec
+              <Save size={18} /> {offline ? "Save (Queue)" : "Save Bike Spec"}
             </button>
           </div>
         </div>
@@ -355,58 +411,4 @@ function Field({ label, value, onChange }) {
       />
     </label>
   );
-}
-
-function humanize(str) {
-  return String(str || "")
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function clone(obj) {
-  try {
-    return structuredClone(obj);
-  } catch {
-    return JSON.parse(JSON.stringify(obj));
-  }
-}
-
-function mergeDefaults(defaults, incoming) {
-  const out = clone(defaults);
-  for (const section of Object.keys(out)) {
-    if (incoming?.[section] && typeof incoming[section] === "object") {
-      out[section] = { ...out[section], ...incoming[section] };
-    }
-  }
-  return out;
-}
-
-const FULLSPEC_DRAFT_PREFIX = "cfr_fullspec_draft__";
-function draftKey(rider) {
-  return `${FULLSPEC_DRAFT_PREFIX}${encodeURIComponent(rider || "")}`;
-}
-function readDraft(rider) {
-  if (!rider) return null;
-  try {
-    const raw = localStorage.getItem(draftKey(rider));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return null;
-    if (!parsed.spec || typeof parsed.spec !== "object") return null;
-    return { at: Number(parsed.at || 0), spec: parsed.spec };
-  } catch {
-    return null;
-  }
-}
-function writeDraft(rider, spec) {
-  if (!rider) return;
-  try {
-    localStorage.setItem(draftKey(rider), JSON.stringify({ at: Date.now(), spec }));
-  } catch {}
-}
-function clearDraft(rider) {
-  if (!rider) return;
-  try {
-    localStorage.removeItem(draftKey(rider));
-  } catch {}
 }

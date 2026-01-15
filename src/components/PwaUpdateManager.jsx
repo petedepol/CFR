@@ -5,37 +5,81 @@ import { useToast } from "./ToastProvider.jsx";
 export default function PwaUpdateManager() {
   const toast = useToast();
   const [updateAvailable, setUpdateAvailable] = useState(false);
+
   const updateFnRef = useRef(null);
   const shownOfflineReadyRef = useRef(false);
+  const lastCheckRef = useRef(0);
 
   useEffect(() => {
-    // registerSW returns an update() function
     const update = registerSW({
       immediate: true,
+
+      // This should fire when the new SW is installed and waiting to activate
       onNeedRefresh() {
         updateFnRef.current = update;
         setUpdateAvailable(true);
-        toast.warning("Update available");
       },
+
       onOfflineReady() {
         if (shownOfflineReadyRef.current) return;
         shownOfflineReadyRef.current = true;
+        // optional: comment this out if you don’t want the toast
         toast.success("Ready for offline use");
       },
+
       onRegisterError(e) {
-        // not fatal; just helpful for debugging
         console.warn("PWA SW register error:", e);
       },
     });
 
     updateFnRef.current = update;
+
+    const checkNow = async () => {
+      const now = Date.now();
+
+      // throttle: don’t hammer checks if user tabs quickly
+      if (now - lastCheckRef.current < 10_000) return;
+      lastCheckRef.current = now;
+
+      try {
+        // Calling update() triggers a check for a newer SW.
+        // If one is found, onNeedRefresh() will fire.
+        await update();
+      } catch {
+        // ignore
+      }
+    };
+
+    // Check when app becomes visible again (common on iPhone)
+    const onVis = () => {
+      if (document.visibilityState === "visible") checkNow();
+    };
+
+    // Check on focus too (desktop/laptop)
+    const onFocus = () => checkNow();
+
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", onFocus);
+
+    // Periodic checks while app is kept open (30 minutes)
+    const interval = setInterval(checkNow, 30 * 60 * 1000);
+
+    // Initial check after a short delay (lets the app finish booting)
+    const t = setTimeout(checkNow, 2000);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", onFocus);
+      clearInterval(interval);
+      clearTimeout(t);
+    };
   }, [toast]);
 
   const doRefresh = async () => {
     try {
       const fn = updateFnRef.current;
       if (typeof fn === "function") {
-        // true = reload the page after the new SW takes control
+        // true = activate new SW + reload
         await fn(true);
       } else {
         window.location.reload();

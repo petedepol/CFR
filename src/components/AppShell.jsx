@@ -78,16 +78,15 @@ export default function AppShell() {
         <div className="sticky top-0 z-40">
           <div className="bg-black/55 backdrop-blur-xl border-b border-white/10">
             <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-              <div className="min-w-[72px]">
-                <div className="text-[11px] text-white/45 uppercase tracking-widest">CFR</div>
-                <div className="text-white font-black tracking-wide">Tools</div>
-              </div>
+              {/* LEFT: keep empty spacer (removes CFR/Tools text, keeps layout balanced) */}
+              <div className="min-w-[72px]" />
 
+              {/* CENTER: title only (removes "Current") */}
               <div className="min-w-0 flex-1 text-center">
-                <div className="text-[11px] text-white/45 uppercase tracking-widest">Current</div>
                 <div className="text-white font-black truncate">{title}</div>
               </div>
 
+              {/* RIGHT: status + user */}
               <div className="flex items-center gap-2 min-w-[190px] justify-end">
                 {offline ? (
                   <div className="inline-flex items-center gap-2 text-xs text-yellow-200/90 bg-yellow-400/10 border border-yellow-400/20 px-3 py-2 rounded-2xl">

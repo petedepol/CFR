@@ -58,7 +58,7 @@ export default function SettingsHome() {
       {loading ? (
         <div className="text-white/60 py-10">Loading riders…</div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-4">
           {riders.map((r) => (
             <RiderTile
               key={r.name}
@@ -80,27 +80,28 @@ function RiderTile({ rider, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/30 hover:border-lime-300/30 transition text-left"
+      className="group relative overflow-hidden rounded-3xl border border-lime-300/20 bg-black/30 hover:border-lime-300/30 transition text-left shadow-lg"
       aria-label={`Open settings for ${rider.fullName || rider.name}`}
     >
-      <div className="h-[140px] sm:h-[150px] md:h-[160px] bg-cover bg-center" style={bgStyle}>
-        <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/20 to-black/85" />
-      </div>
+      {/* Match Measurements tile: fixed aspect photo block */}
+      <div className="relative aspect-[4/3] bg-cover bg-center" style={bgStyle}>
+        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/85" />
 
-      <div className="absolute top-2 left-2">
-        <div className="h-9 w-9 rounded-xl border border-white/10 bg-black/55 backdrop-blur flex items-center justify-center text-lg">
-          {rider.flag || "🏁"}
+        <div className="absolute top-3 right-3">
+          <div className="h-11 w-11 rounded-2xl border border-white/10 bg-black/55 backdrop-blur flex items-center justify-center text-xl">
+            {rider.flag || "🏁"}
+          </div>
+        </div>
+
+        <div className="absolute bottom-3 left-4 right-4">
+          <div className="text-xl font-black text-white leading-tight drop-shadow truncate">
+            {rider.fullName || rider.name}
+          </div>
+          <div className="mt-0.5 text-[11px] text-white/55 truncate">{rider.country || ""}</div>
         </div>
       </div>
 
-      <div className="absolute bottom-2 left-3 right-3">
-        <div className="text-white font-black text-sm leading-tight truncate drop-shadow">
-          {rider.fullName || rider.name}
-        </div>
-        <div className="text-[10px] text-white/60 truncate">{rider.country || ""}</div>
-      </div>
-
-      <div className="absolute inset-0 ring-0 group-hover:ring-2 group-hover:ring-lime-300/20 rounded-2xl transition" />
+      <div className="absolute inset-0 ring-0 group-hover:ring-2 group-hover:ring-lime-300/20 rounded-3xl transition" />
     </button>
   );
 }

@@ -97,11 +97,13 @@ export default function MeasurementsHome() {
 function SkeletonRiderCard() {
   return (
     <div className="rounded-3xl border border-white/10 bg-black/30 overflow-hidden">
-      <div className="h-[280px] md:h-[320px] bg-white/5 animate-pulse" />
+      {/* Photo block (fixed aspect like Settings tiles) */}
+      <div className="aspect-[4/3] bg-white/5 animate-pulse" />
+      {/* Button strip (fixed height) */}
       <div className="p-4 space-y-2">
-        <div className="h-10 rounded-2xl bg-white/5 animate-pulse" />
-        <div className="h-10 rounded-2xl bg-white/5 animate-pulse" />
-        <div className="h-10 rounded-2xl bg-white/5 animate-pulse" />
+        <div className="h-12 rounded-2xl bg-white/5 animate-pulse" />
+        <div className="h-12 rounded-2xl bg-white/5 animate-pulse" />
+        <div className="h-12 rounded-2xl bg-white/5 animate-pulse" />
       </div>
     </div>
   );
@@ -112,62 +114,71 @@ function RiderCard({ rider, mechanic, offline, onJigUpdate, onBikeSpec, onHistor
     ? { backgroundImage: `url(${rider.photo})` }
     : { backgroundImage: "linear-gradient(135deg, rgba(255,255,255,0.10), rgba(0,0,0,0.35))" };
 
+  const disabledAll = !mechanic;
+  const disabledSaves = !mechanic || offline;
+
   return (
     <div className="rounded-3xl border border-lime-300/20 bg-black/30 overflow-hidden shadow-lg">
-      <div className="relative h-[280px] md:h-[320px] bg-cover bg-center" style={bgStyle}>
+      {/* Photo block: consistent size like Settings */}
+      <div className="relative aspect-[4/3] bg-cover bg-center" style={bgStyle}>
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/85" />
-        <div className="absolute top-4 right-4">
-          <div className="h-12 w-12 rounded-2xl border border-white/10 bg-black/55 backdrop-blur flex items-center justify-center text-xl">
+
+        <div className="absolute top-3 right-3">
+          <div className="h-11 w-11 rounded-2xl border border-white/10 bg-black/55 backdrop-blur flex items-center justify-center text-xl">
             {rider.flag || "🏁"}
           </div>
         </div>
-        <div className="absolute bottom-4 left-5 right-5">
-          <div className="text-2xl font-black text-white leading-tight drop-shadow">
+
+        <div className="absolute bottom-3 left-4 right-4">
+          <div className="text-xl font-black text-white leading-tight drop-shadow">
             {rider.fullName || rider.name}
           </div>
-          <div className="mt-1 text-xs text-white/55">
+          <div className="mt-0.5 text-[11px] text-white/55">
             {offline ? "Offline" : mechanic ? `Mechanic: ${mechanic}` : "No mechanic"}
           </div>
         </div>
       </div>
 
+      {/* Button strip: big tap targets for iPhone */}
       <div className="p-4 space-y-2">
-        <button
-          disabled={!mechanic || offline}
+        <ActionButton
+          disabled={disabledSaves}
+          primary
+          label="Jig Update"
           onClick={onJigUpdate}
-          className={`w-full rounded-2xl px-4 py-3 font-black inline-flex items-center justify-between transition ${
-            mechanic && !offline
-              ? "bg-lime-300 text-black hover:bg-lime-200"
-              : "bg-white/5 text-white/20 cursor-not-allowed border border-white/10"
-          }`}
-        >
-          Jig Update <ChevronRight size={18} />
-        </button>
-
-        <button
-          disabled={!mechanic || offline}
+        />
+        <ActionButton
+          disabled={disabledSaves}
+          label="Bike Spec"
           onClick={onBikeSpec}
-          className={`w-full rounded-2xl px-4 py-3 font-black inline-flex items-center justify-between transition ${
-            mechanic && !offline
-              ? "bg-white/5 text-white/80 border border-white/15 hover:bg-white/10"
-              : "bg-white/5 text-white/20 cursor-not-allowed border border-white/10"
-          }`}
-        >
-          Bike Spec <ChevronRight size={18} />
-        </button>
-
-        <button
-          disabled={!mechanic}
+        />
+        <ActionButton
+          disabled={disabledAll}
+          label="History"
           onClick={onHistory}
-          className={`w-full rounded-2xl px-4 py-3 font-black inline-flex items-center justify-between transition ${
-            mechanic
-              ? "bg-white/5 text-white/80 border border-white/15 hover:bg-white/10"
-              : "bg-white/5 text-white/20 cursor-not-allowed border border-white/10"
-          }`}
-        >
-          History <ChevronRight size={18} />
-        </button>
+        />
       </div>
     </div>
+  );
+}
+
+function ActionButton({ label, onClick, disabled, primary }) {
+  return (
+    <button
+      disabled={disabled}
+      onClick={onClick}
+      className={[
+        "w-full rounded-2xl px-4 h-12 font-black inline-flex items-center justify-between transition select-none",
+        primary
+          ? disabled
+            ? "bg-white/5 text-white/20 cursor-not-allowed border border-white/10"
+            : "bg-lime-300 text-black hover:bg-lime-200"
+          : disabled
+          ? "bg-white/5 text-white/20 cursor-not-allowed border border-white/10"
+          : "bg-white/5 text-white/80 border border-white/15 hover:bg-white/10",
+      ].join(" ")}
+    >
+      {label} <ChevronRight size={18} />
+    </button>
   );
 }

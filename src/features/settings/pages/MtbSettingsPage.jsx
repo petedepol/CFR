@@ -4,7 +4,12 @@ import { ArrowLeft, Save, ChevronRight, ChevronDown, History, WifiOff, Flag } fr
 
 import { useAuth } from "../../auth/AuthProvider.jsx";
 import { fetchRiders } from "../../measurements/api/measurementsApi";
-import { fetchMtbSettingsHistory, fetchLatestMtbSettings, insertMtbSettings, setMtbSettingsRaceMark } from "../api/settingsApi";
+import {
+  fetchMtbSettingsHistory,
+  fetchLatestMtbSettings,
+  insertMtbSettings,
+  setMtbSettingsRaceMark,
+} from "../api/settingsApi";
 import { useToast } from "../../../components/ToastProvider.jsx";
 
 const LS_EVENT_CONTEXT = "cfr_settings_event_context_last";
@@ -173,7 +178,6 @@ function fmtClicks(v) {
 
 function buildCollapsedSummary(cur, prev, isLatest, changes) {
   const changedKeys = new Set((isLatest && changes?.defaultChanged) || []);
-
   const mk = (label, keys, value, prevValue) => {
     const changed = isLatest && keys.some((k) => changedKeys.has(k));
     return { label, value: value || "—", prevValue: prevValue || "—", changed };
@@ -222,6 +226,53 @@ function chipClass(active) {
   ].join(" ");
 }
 
+function isPressureKey(k) {
+  return k === "front_pressure" || k === "rear_pressure" || k === "fork_pressure" || k === "shock_pressure";
+}
+function isReboundKey(k) {
+  return k === "fork_rebound" || k === "shock_rebound";
+}
+
+function InputField({ k, value, onChange }) {
+  const numericPressure = isPressureKey(k);
+  const numericRebound = isReboundKey(k);
+
+  // keep values as strings for fast typing (supports "17.5")
+  const common = {
+    value: value ?? "",
+    onChange: (e) => onChange(e.target.value),
+    className:
+      "w-full px-3 py-2 bg-black border border-white/10 text-white rounded-lg focus:ring-2 focus:ring-lime-400",
+    autoComplete: "off",
+  };
+
+  if (numericPressure) {
+    return (
+      <input
+        {...common}
+        inputMode="decimal"
+        pattern="[0-9]*"
+        placeholder="e.g. 18"
+        aria-label={labelize(k)}
+      />
+    );
+  }
+
+  if (numericRebound) {
+    return (
+      <input
+        {...common}
+        inputMode="numeric"
+        pattern="[0-9]*"
+        placeholder="e.g. 10"
+        aria-label={labelize(k)}
+      />
+    );
+  }
+
+  return <input {...common} aria-label={labelize(k)} />;
+}
+
 export default function MtbSettingsPage() {
   const nav = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -243,7 +294,7 @@ export default function MtbSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // NEW: history filters
+  // history filters
   const [range, setRange] = useState("week"); // week | 30d | all
   const [raceOnly, setRaceOnly] = useState(false);
 
@@ -324,12 +375,7 @@ export default function MtbSettingsPage() {
 
   const history = useMemo(() => {
     const now = new Date();
-    const cutoff =
-      range === "week"
-        ? startOfWeekLocal(now)
-        : range === "30d"
-        ? daysAgoLocal(30)
-        : null;
+    const cutoff = range === "week" ? startOfWeekLocal(now) : range === "30d" ? daysAgoLocal(30) : null;
 
     let rows = historyRaw || [];
     if (cutoff) {
@@ -338,11 +384,7 @@ export default function MtbSettingsPage() {
         return t && t >= cutoff;
       });
     }
-
-    if (raceOnly) {
-      rows = rows.filter((r) => !!safeFullSpec(r?.full_spec)?.is_race);
-    }
-
+    if (raceOnly) rows = rows.filter((r) => !!safeFullSpec(r?.full_spec)?.is_race);
     return rows;
   }, [historyRaw, range, raceOnly]);
 
@@ -403,7 +445,6 @@ export default function MtbSettingsPage() {
       return;
     }
 
-    // optimistic UI
     setHistoryRaw((prev) =>
       (prev || []).map((r) => {
         if (r.id !== row.id) return r;
@@ -417,15 +458,14 @@ export default function MtbSettingsPage() {
       toast.success(nextValue ? "Marked as Race" : "Unmarked Race");
     } catch (e) {
       toast.error(`Failed: ${e?.message || "unknown error"}`);
-      // revert (reload from server to be safe)
       await loadAll();
     }
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 mb-4">
+    <div className="max-w-6xl mx-auto px-4 py-4 pb-10">
+      {/* Minimal header (no big titles) */}
+      <div className="flex items-center justify-between gap-3 mb-3">
         <button
           onClick={() => nav("/settings")}
           className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-black/40 hover:bg-black/55 border border-white/10 hover:border-white/20 text-white/80 transition"
@@ -448,24 +488,11 @@ export default function MtbSettingsPage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-1.5 h-10 bg-lime-400 rounded-full" />
-        <div>
-          <div className="text-sm text-white/60 uppercase tracking-widest">MTB</div>
-          <h1 className="text-2xl md:text-3xl font-black text-white">Setup Settings</h1>
-        </div>
-      </div>
-
-      {/* CONTEXT */}
-      <div className="bg-black/40 border border-white/10 rounded-2xl p-5 mb-4">
-        <div className="text-white font-black mb-3 flex items-center gap-2">
-          <div className="w-1 h-6 bg-lime-400 rounded-full" />
-          CONTEXT
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Quick entry area (no "CONTEXT" header) */}
+      <div className="bg-black/40 border border-white/10 rounded-2xl p-4 mb-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-bold text-white/60 uppercase mb-2">Rider</label>
+            <label className="block text-[11px] font-black text-white/55 uppercase mb-1">Rider</label>
             <select
               value={selectedRider}
               onChange={(e) => setSelectedRider(e.target.value)}
@@ -481,9 +508,7 @@ export default function MtbSettingsPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-white/60 uppercase mb-2">
-              Event / Context <span className="text-white/40 normal-case">(free text)</span>
-            </label>
+            <label className="block text-[11px] font-black text-white/55 uppercase mb-1">Event / Context</label>
             <input
               value={eventContext}
               onChange={(e) => setEventContext(e.target.value)}
@@ -494,41 +519,37 @@ export default function MtbSettingsPage() {
         </div>
       </div>
 
-      {/* CURRENT SETUP */}
-      <div className="bg-black/40 border border-white/10 rounded-2xl p-5 mb-4">
-        <div className="text-white font-black mb-3 flex items-center gap-2">
-          <div className="w-1 h-6 bg-lime-400 rounded-full" />
-          CURRENT SETUP
-        </div>
-
+      {/* CURRENT SETUP (no header text) */}
+      <div className="bg-black/40 border border-white/10 rounded-2xl p-4 mb-3">
         {!selectedRider ? (
-          <div className="text-white/60 py-6">Select a rider to start.</div>
+          <div className="text-white/60 py-5">Select a rider to start.</div>
         ) : loading ? (
-          <div className="py-6 space-y-3">
+          <div className="py-5 space-y-3">
             <div className="h-10 bg-white/5 rounded-xl animate-pulse" />
             <div className="h-10 bg-white/5 rounded-xl animate-pulse" />
             <div className="h-10 bg-white/5 rounded-xl animate-pulse" />
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {DEFAULT_KEYS.map((k) => (
                 <div key={k}>
-                  <label className="block text-xs font-bold text-white/60 uppercase mb-1">
+                  <label className="block text-[11px] font-black text-white/55 uppercase mb-1">
                     {labelize(k)}
                     {k.includes("pressure") ? " (psi)" : ""}
                     {k.includes("rebound") ? " (clicks)" : ""}
                   </label>
-                  <input
+
+                  <InputField
+                    k={k}
                     value={setup[k]}
-                    onChange={(e) => setSetup((p) => ({ ...p, [k]: e.target.value }))}
-                    className="w-full px-3 py-2 bg-black border border-white/10 text-white rounded-lg focus:ring-2 focus:ring-lime-400"
+                    onChange={(v) => setSetup((p) => ({ ...p, [k]: v }))}
                   />
                 </div>
               ))}
 
               <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-white/60 uppercase mb-1">Notes</label>
+                <label className="block text-[11px] font-black text-white/55 uppercase mb-1">Notes</label>
                 <textarea
                   rows={2}
                   value={setup.notes}
@@ -541,21 +562,22 @@ export default function MtbSettingsPage() {
 
             <button
               onClick={() => setShowExpanded((s) => !s)}
-              className="w-full mt-4 flex items-center justify-center gap-2 py-2 rounded-xl bg-lime-400/10 text-lime-300 border border-lime-400/20 hover:bg-lime-400/15 transition"
+              className="w-full mt-3 flex items-center justify-center gap-2 py-2 rounded-xl bg-lime-400/10 text-lime-300 border border-lime-400/20 hover:bg-lime-400/15 transition"
             >
               {showExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-              {showExpanded ? "Hide" : "Show"} more settings
+              {showExpanded ? "Hide" : "More"}
             </button>
 
             {showExpanded && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-white/10">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 pt-3 border-t border-white/10">
                 {EXPANDED_KEYS.map((k) => (
                   <div key={k} className={k === "wheelset" ? "md:col-span-2" : ""}>
-                    <label className="block text-xs font-bold text-white/60 uppercase mb-1">{labelize(k)}</label>
+                    <label className="block text-[11px] font-black text-white/55 uppercase mb-1">{labelize(k)}</label>
                     <input
                       value={setup[k]}
                       onChange={(e) => setSetup((p) => ({ ...p, [k]: e.target.value }))}
                       className="w-full px-3 py-2 bg-black border border-white/10 text-white rounded-lg focus:ring-2 focus:ring-lime-400"
+                      autoComplete="off"
                     />
                   </div>
                 ))}
@@ -565,14 +587,14 @@ export default function MtbSettingsPage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className={`w-full mt-5 py-4 rounded-xl font-black text-lg flex items-center justify-center gap-2 shadow-2xl transition ${
+              className={`w-full mt-4 py-4 rounded-xl font-black text-lg flex items-center justify-center gap-2 shadow-2xl transition ${
                 saving
                   ? "bg-white/10 text-white/30 cursor-not-allowed border border-white/10"
                   : "bg-gradient-to-r from-lime-400 to-green-500 text-black hover:from-lime-500 hover:to-green-600"
               }`}
             >
               <Save size={22} />
-              {saving ? "SAVING…" : offline ? "SAVE (QUEUE)" : "SAVE SETUP"}
+              {saving ? "SAVING…" : offline ? "SAVE (QUEUE)" : "SAVE"}
             </button>
           </>
         )}
@@ -580,15 +602,16 @@ export default function MtbSettingsPage() {
 
       {/* HISTORY */}
       {selectedRider && (historyRaw?.length || 0) > 0 && (
-        <div className="bg-black/40 border border-white/10 rounded-2xl p-5">
+        <div className="bg-black/40 border border-white/10 rounded-2xl p-4">
           <div className="text-white font-black mb-3 flex items-center gap-2">
-            <div className="w-1 h-6 bg-lime-400 rounded-full" />
-            <span>HISTORY</span>
-            <span className="text-white/50 font-bold">({history.length}{history.length !== historyRaw.length ? ` / ${historyRaw.length}` : ""})</span>
+            <span>History</span>
+            <span className="text-white/50 font-bold">
+              ({history.length}
+              {history.length !== historyRaw.length ? ` / ${historyRaw.length}` : ""})
+            </span>
             <History size={18} className="text-lime-300 ml-1" />
           </div>
 
-          {/* NEW: filter chips */}
           <div className="flex flex-wrap gap-2 mb-4">
             <button className={chipClass(range === "week")} onClick={() => setRange("week")}>
               This week
@@ -679,7 +702,6 @@ export default function MtbSettingsPage() {
                       </div>
                     </div>
 
-                    {/* NEW: mark race toggle (doesn't expand row) */}
                     <button
                       onClick={(e) => {
                         e.preventDefault();
@@ -702,7 +724,6 @@ export default function MtbSettingsPage() {
                     </button>
                   </div>
 
-                  {/* Collapsed summary with latest-change highlighting */}
                   <div className="px-4 pb-4 grid grid-cols-2 gap-3 text-sm">
                     {summaryItems.map((it) => (
                       <div key={it.label} className={changedCellClass(it.changed)}>

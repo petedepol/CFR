@@ -3,6 +3,14 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ensureSession, fetchHistory, updateMeasurement, deleteMeasurement } from "../api/measurementsApi";
 import { ArrowLeft, Share2, Pencil, Trash2, X } from "lucide-react";
 import { useAuth } from "../../auth/AuthProvider.jsx";
+import { UI } from "../../../ui/styles.js";
+
+function cx(...a) {
+  return a.filter(Boolean).join(" ");
+}
+
+const INPUT =
+  "w-full rounded-2xl bg-white/[0.07] border border-white/15 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-lime-300/40 focus:border-white/25 transition";
 
 function isQuickType(t) {
   const x = String(t || "").toLowerCase();
@@ -21,6 +29,20 @@ function bikeLabelFromType(t) {
   if (x === "quick_road") return "Road";
   if (x === "quick_cx") return "CX";
   return "MTB";
+}
+
+function Chip({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cx(
+        "px-3 py-2 rounded-2xl text-xs font-black border transition inline-flex items-center gap-2 active:scale-[0.99]",
+        active ? UI.tabActive : "bg-white/5 text-white/70 border-white/10 hover:bg-white/10"
+      )}
+    >
+      {children}
+    </button>
+  );
 }
 
 export default function HistoryPage() {
@@ -203,74 +225,87 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <button onClick={() => navigate("/measurements")} className="inline-flex items-center gap-2 text-white/70 hover:text-white">
+    <div className="space-y-4 pb-24">
+      <button
+        onClick={() => navigate("/measurements")}
+        className="inline-flex items-center gap-2 text-white/75 hover:text-white transition"
+      >
         <ArrowLeft size={18} /> Back
       </button>
 
-      <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-6">
+      <div className={cx(UI.card, "p-5")}>
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-          <div>
-            <div className="text-sm text-white/60 uppercase tracking-widest">History</div>
-            <div className="text-2xl font-black mt-1">{rider || "No rider selected"}</div>
-            <div className="text-white/50 text-sm mt-1">Mechanic: {mechanic || "—"}</div>
+          <div className="min-w-0">
+            <div className="text-sm text-white/65 font-bold tracking-wide">History</div>
+            <div className="text-2xl font-black mt-1 text-white">{rider || "No rider selected"}</div>
+            <div className={cx(UI.helper, "mt-1")}>Mechanic: {mechanic || "—"}</div>
           </div>
 
           <div className="flex flex-wrap items-end gap-2">
-            {showJig && (
+            {showJig ? (
               <button
                 onClick={shareLatestJig}
-                className="rounded-2xl px-4 py-3 font-bold bg-lime-300 text-black hover:bg-lime-200 inline-flex items-center gap-2"
+                className={cx(UI.btnPrimary, "px-4 py-3")}
                 title="Share latest jig update"
               >
                 <Share2 size={16} /> Share Jig
               </button>
-            )}
+            ) : null}
 
-            <label className="block">
-              <div className="text-[11px] text-white/50 uppercase tracking-widest mb-2">View</div>
-              <select
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                className="rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
-              >
+            <div className="flex flex-col">
+              <div className={cx(UI.helper, "mb-2")}>View</div>
+              <select value={filter} onChange={(e) => setFilter(e.target.value)} className={INPUT}>
                 <option value="quick">Jig History</option>
                 <option value="all">All</option>
                 <option value="full">Bike Spec</option>
               </select>
-            </label>
+            </div>
 
-            {showJig && (
-              <label className="block">
-                <div className="text-[11px] text-white/50 uppercase tracking-widest mb-2">Bike</div>
-                <select
-                  value={jigBikeType}
-                  onChange={(e) => setJigBikeType(e.target.value)}
-                  className="rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
-                >
+            {showJig ? (
+              <div className="flex flex-col">
+                <div className={cx(UI.helper, "mb-2")}>Bike</div>
+                <select value={jigBikeType} onChange={(e) => setJigBikeType(e.target.value)} className={INPUT}>
                   <option value="mtb">MTB</option>
                   <option value="road">Road</option>
                   <option value="cx">CX</option>
                   <option value="all">All</option>
                 </select>
-              </label>
-            )}
+              </div>
+            ) : null}
           </div>
         </div>
 
         {status.kind === "loading" ? (
-          <div className="mt-6 text-white/60">Loading…</div>
+          <div className="mt-6 space-y-3">
+            <div className="h-10 bg-white/5 rounded-2xl animate-pulse" />
+            <div className="h-10 bg-white/5 rounded-2xl animate-pulse" />
+            <div className="h-10 bg-white/5 rounded-2xl animate-pulse" />
+          </div>
         ) : status.kind === "err" ? (
-          <div className="mt-6 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-red-200 text-sm">
+          <div className="mt-6 rounded-3xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-red-200 text-sm">
             {status.msg}
             <div className="mt-2 text-xs text-red-100/70">Tip: switch tabs and come back to trigger auto-recover.</div>
           </div>
         ) : (
           <div className="mt-6 space-y-6">
-            {showJig && (
+            {showJig ? (
               <div className="space-y-3">
-                <div className="text-xs text-white/60 uppercase tracking-widest">
-                  Jig History {jigBikeType !== "all" ? `(${jigBikeType.toUpperCase()})` : "(ALL)"}
+                <div className="flex items-center justify-between gap-3">
+                  <div className={cx(UI.helper)}>
+                    Jig History {jigBikeType !== "all" ? `(${String(jigBikeType).toUpperCase()})` : "(ALL)"}
+                  </div>
+
+                  <div className="hidden md:flex items-center gap-2">
+                    <Chip active={filter === "quick"} onClick={() => setFilter("quick")}>
+                      Jig
+                    </Chip>
+                    <Chip active={filter === "all"} onClick={() => setFilter("all")}>
+                      All
+                    </Chip>
+                    <Chip active={filter === "full"} onClick={() => setFilter("full")}>
+                      Spec
+                    </Chip>
+                  </div>
                 </div>
 
                 {jigFilteredNewestFirst.length === 0 ? (
@@ -278,13 +313,13 @@ export default function HistoryPage() {
                 ) : (
                   <>
                     {/* Desktop table */}
-                    <div className="hidden md:block overflow-hidden rounded-2xl border border-white/10 bg-black/30">
+                    <div className="hidden md:block overflow-hidden rounded-3xl border border-white/10 bg-black/30">
                       <div className="max-h-[70vh] overflow-auto">
                         <table className="w-full text-sm table-fixed">
                           <thead className="sticky top-0 bg-black/70 backdrop-blur border-b border-white/10">
                             <tr className="text-white/60">
-                              <th className="text-left font-black px-4 py-3 w-[160px] border-r border-white/10">Date</th>
-                              <th className="text-left font-black px-3 py-3 w-[80px] border-r border-white/10">Bike</th>
+                              <th className="text-left font-black px-4 py-3 w-[170px] border-r border-white/10">Date</th>
+                              <th className="text-left font-black px-3 py-3 w-[90px] border-r border-white/10">Bike</th>
 
                               <th className="text-right font-black px-3 py-3 w-[110px]">SB</th>
                               <th className="text-right font-black px-2 py-3 w-[70px] border-r border-white/10">Δ</th>
@@ -297,9 +332,7 @@ export default function HistoryPage() {
 
                               <th className="text-left font-black px-4 py-3 w-auto min-w-[320px]">Notes</th>
 
-                              {isAdmin ? (
-                                <th className="text-right font-black px-4 py-3 w-[120px]"> </th>
-                              ) : null}
+                              {isAdmin ? <th className="text-right font-black px-4 py-3 w-[130px]"> </th> : null}
                             </tr>
                           </thead>
 
@@ -319,34 +352,56 @@ export default function HistoryPage() {
                               return (
                                 <tr key={row.id || `${row.timestamp}-${idx}`} className={`border-b border-white/5 ${zebra}`}>
                                   <td className="px-4 py-3 text-white/70 align-top border-r border-white/10">
-                                    <div className="font-semibold text-white/80">{formatDateShort(row.timestamp)}</div>
-                                    <div className="text-xs text-white/40 mt-0.5">{formatTime(row.timestamp)}</div>
-                                    {row.location ? <div className="text-xs text-white/40 mt-1">{row.location}</div> : null}
+                                    <div className="font-bold text-white/85">{formatDateShort(row.timestamp)}</div>
+                                    <div className="text-xs text-white/45 mt-0.5">{formatTime(row.timestamp)}</div>
+                                    {row.location ? <div className="text-xs text-white/45 mt-1">{row.location}</div> : null}
                                   </td>
 
                                   <td className="px-3 py-3 text-white/70 align-top border-r border-white/10">
-                                    <span className="inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-black text-white/70">
+                                    <span className="inline-flex items-center rounded-2xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-black text-white/70">
                                       {bikeLabelFromType(row.type)}
                                     </span>
                                   </td>
 
-                                  <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">{fmtNum(sb)}</td>
+                                  <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">
+                                    {fmtNum(sb)}
+                                  </td>
                                   <td className="px-2 py-3 text-right tabular-nums align-top border-r border-white/10">
-                                    {dSB !== null ? <span className="text-red-300">{fmtSigned(dSB)}</span> : <span className="text-white/25">—</span>}
+                                    {dSB !== null ? (
+                                      <span className="text-red-300">{fmtSigned(dSB)}</span>
+                                    ) : (
+                                      <span className="text-white/25">—</span>
+                                    )}
                                   </td>
 
-                                  <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">{fmtNum(h4)}</td>
+                                  <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">
+                                    {fmtNum(h4)}
+                                  </td>
                                   <td className="px-2 py-3 text-right tabular-nums align-top border-r border-white/10">
-                                    {d4 !== null ? <span className="text-red-300">{fmtSigned(d4)}</span> : <span className="text-white/25">—</span>}
+                                    {d4 !== null ? (
+                                      <span className="text-red-300">{fmtSigned(d4)}</span>
+                                    ) : (
+                                      <span className="text-white/25">—</span>
+                                    )}
                                   </td>
 
-                                  <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">{fmtNum(h15)}</td>
+                                  <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">
+                                    {fmtNum(h15)}
+                                  </td>
                                   <td className="px-2 py-3 text-right tabular-nums align-top border-r border-white/10">
-                                    {d15 !== null ? <span className="text-red-300">{fmtSigned(d15)}</span> : <span className="text-white/25">—</span>}
+                                    {d15 !== null ? (
+                                      <span className="text-red-300">{fmtSigned(d15)}</span>
+                                    ) : (
+                                      <span className="text-white/25">—</span>
+                                    )}
                                   </td>
 
                                   <td className="px-4 py-3 text-white/70 align-top break-words">
-                                    {row.notes ? <span className="text-lime-200/80 italic">“{row.notes}”</span> : <span className="text-white/25">—</span>}
+                                    {row.notes ? (
+                                      <span className="text-lime-200/80 italic">“{row.notes}”</span>
+                                    ) : (
+                                      <span className="text-white/25">—</span>
+                                    )}
                                   </td>
 
                                   {isAdmin ? (
@@ -354,14 +409,14 @@ export default function HistoryPage() {
                                       <div className="flex justify-end gap-2">
                                         <button
                                           onClick={() => openEdit(row)}
-                                          className="h-10 w-10 rounded-2xl border border-lime-300/25 bg-black/40 hover:bg-black/60 inline-flex items-center justify-center"
+                                          className={UI.btnIcon}
                                           title="Edit"
                                         >
-                                          <Pencil size={16} className="text-lime-200" />
+                                          <Pencil size={16} className="text-white/75" />
                                         </button>
                                         <button
                                           onClick={() => doDelete(row)}
-                                          className="h-10 w-10 rounded-2xl border border-red-300/20 bg-black/40 hover:bg-black/60 inline-flex items-center justify-center"
+                                          className={cx(UI.btnIcon, "border-red-500/25")}
                                           title="Delete"
                                         >
                                           <Trash2 size={16} className="text-red-300" />
@@ -390,27 +445,23 @@ export default function HistoryPage() {
                         const d15 = base ? diff(h15, base.h15) : null;
 
                         return (
-                          <div key={row.id || `${row.timestamp}-${idx}`} className="rounded-3xl border border-white/10 bg-black/30 p-4">
+                          <div key={row.id || `${row.timestamp}-${idx}`} className={cx(UI.card, "p-4 bg-black/30")}>
                             <div className="flex items-start justify-between gap-3">
-                              <div>
+                              <div className="min-w-0">
                                 <div className="text-white/85 font-black">
                                   {bikeLabelFromType(row.type)} • {formatDateTime(row.timestamp)}
                                 </div>
-                                {row.location ? <div className="text-xs text-white/45 mt-1">{row.location}</div> : null}
+                                {row.location ? <div className={cx(UI.helper, "mt-1")}>{row.location}</div> : null}
                               </div>
 
                               {isAdmin ? (
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={() => openEdit(row)}
-                                    className="h-10 w-10 rounded-2xl border border-lime-300/25 bg-black/40 inline-flex items-center justify-center"
-                                    title="Edit"
-                                  >
-                                    <Pencil size={16} className="text-lime-200" />
+                                <div className="flex gap-2 shrink-0">
+                                  <button onClick={() => openEdit(row)} className={UI.btnIcon} title="Edit">
+                                    <Pencil size={16} className="text-white/75" />
                                   </button>
                                   <button
                                     onClick={() => doDelete(row)}
-                                    className="h-10 w-10 rounded-2xl border border-red-300/20 bg-black/40 inline-flex items-center justify-center"
+                                    className={cx(UI.btnIcon, "border-red-500/25")}
                                     title="Delete"
                                   >
                                     <Trash2 size={16} className="text-red-300" />
@@ -433,26 +484,27 @@ export default function HistoryPage() {
                   </>
                 )}
               </div>
-            )}
+            ) : null}
 
-            {showFull && (
+            {showFull ? (
               <div className="space-y-3">
-                <div className="text-xs text-white/60 uppercase tracking-widest">Bike Spec History</div>
+                <div className={cx(UI.helper)}>Bike Spec History</div>
+
                 {fullRowsNewestFirst.length === 0 ? (
                   <div className="text-white/60">No bike spec entries yet.</div>
                 ) : (
                   <div className="space-y-2">
                     {fullRowsNewestFirst.map((row) => (
-                      <div key={row.id || row.timestamp} className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                      <div key={row.id || row.timestamp} className={cx(UI.card, "p-4 bg-black/30")}>
                         <div className="flex items-center justify-between gap-3">
-                          <div className="text-white/80 font-semibold">{formatDateTime(row.timestamp)}</div>
+                          <div className="text-white/85 font-bold">{formatDateTime(row.timestamp)}</div>
 
                           <div className="flex items-center gap-2">
-                            <div className="text-xs text-white/50">{row.full_spec ? "Saved ✓" : "—"}</div>
+                            <div className={cx(UI.helper)}>{row.full_spec ? "Saved ✓" : "—"}</div>
                             {isAdmin && row.id ? (
                               <button
                                 onClick={() => doDelete(row)}
-                                className="h-10 w-10 rounded-2xl border border-red-300/20 bg-black/40 hover:bg-black/60 inline-flex items-center justify-center"
+                                className={cx(UI.btnIcon, "border-red-500/25")}
                                 title="Delete"
                               >
                                 <Trash2 size={16} className="text-red-300" />
@@ -461,37 +513,39 @@ export default function HistoryPage() {
                           </div>
                         </div>
 
-                        {(row.notes || row.location) && (
+                        {(row.notes || row.location) ? (
                           <div className="mt-2 text-sm text-white/70">
-                            {row.notes && <div className="text-lime-200/80 italic">“{row.notes}”</div>}
-                            {row.location && <div className="text-xs text-white/40 mt-1">{row.location}</div>}
+                            {row.notes ? <div className="text-lime-200/80 italic">“{row.notes}”</div> : null}
+                            {row.location ? <div className={cx(UI.helper, "mt-1")}>{row.location}</div> : null}
                           </div>
-                        )}
+                        ) : null}
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-            )}
+            ) : null}
           </div>
         )}
 
         {/* Edit Modal */}
         {isAdmin && editing ? (
-          <div className="fixed inset-0 z-50">
+          <div className="fixed inset-0 z-[80]">
             <div className="absolute inset-0 bg-black/70" onClick={() => (savingEdit ? null : setEditing(null))} />
-            <div className="absolute left-1/2 top-1/2 w-[92vw] max-w-xl -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-white/10 bg-black/85 backdrop-blur p-5">
+            <div
+              className={cx(
+                "absolute left-1/2 top-1/2 w-[92vw] max-w-xl -translate-x-1/2 -translate-y-1/2 p-5",
+                UI.card,
+                "bg-black/80"
+              )}
+            >
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-white font-black text-lg">Edit Entry</div>
-                  <div className="text-xs text-white/50 mt-1">{formatDateTime(editing.timestamp)}</div>
+                  <div className={cx(UI.helper, "mt-1")}>{formatDateTime(editing.timestamp)}</div>
                 </div>
 
-                <button
-                  onClick={() => (savingEdit ? null : setEditing(null))}
-                  className="h-10 w-10 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 inline-flex items-center justify-center"
-                  title="Close"
-                >
+                <button onClick={() => (savingEdit ? null : setEditing(null))} className={UI.btnIcon} title="Close">
                   <X size={18} className="text-white/80" />
                 </button>
               </div>
@@ -518,36 +572,24 @@ export default function HistoryPage() {
               </div>
 
               <div className="mt-3 grid grid-cols-1 gap-3">
-                <Field
-                  label="Location"
-                  value={editVals.location}
-                  onChange={(v) => setEditVals((s) => ({ ...s, location: v }))}
-                />
-                <Field
-                  label="Notes"
-                  value={editVals.notes}
-                  onChange={(v) => setEditVals((s) => ({ ...s, notes: v }))}
-                />
+                <Field label="Location" value={editVals.location} onChange={(v) => setEditVals((s) => ({ ...s, location: v }))} />
+                <Field label="Notes" value={editVals.notes} onChange={(v) => setEditVals((s) => ({ ...s, notes: v }))} />
               </div>
 
               <div className="mt-5 flex gap-2">
-                <button
-                  onClick={saveEdit}
-                  disabled={savingEdit}
-                  className="flex-1 rounded-2xl px-4 py-3 font-black bg-lime-300 text-black hover:bg-lime-200 disabled:opacity-50"
-                >
+                <button onClick={saveEdit} disabled={savingEdit} className={cx(UI.btnPrimary, "flex-1 justify-center")}>
                   {savingEdit ? "Saving…" : "Save"}
                 </button>
                 <button
                   onClick={() => setEditing(null)}
                   disabled={savingEdit}
-                  className="rounded-2xl px-4 py-3 font-black bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
+                  className={cx(UI.btnSecondary, "px-4 py-3")}
                 >
                   Cancel
                 </button>
               </div>
 
-              <div className="mt-3 text-xs text-white/45">
+              <div className={cx(UI.helper, "mt-3")}>
                 Admin edits require being online. Changes are applied immediately.
               </div>
             </div>
@@ -561,12 +603,12 @@ export default function HistoryPage() {
 function Field({ label, value, onChange, inputMode }) {
   return (
     <label className="block">
-      <div className="text-[11px] text-white/50 uppercase tracking-widest mb-2">{label}</div>
+      <div className={cx(UI.helper, "mb-2")}>{label}</div>
       <input
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value)}
         inputMode={inputMode}
-        className="w-full rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
+        className={INPUT}
       />
     </label>
   );
@@ -575,7 +617,7 @@ function Field({ label, value, onChange, inputMode }) {
 function Metric({ label, value, delta }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-      <div className="text-[11px] text-white/50 uppercase tracking-widest">{label}</div>
+      <div className={cx(UI.helper)}>{label}</div>
       <div className="mt-1 text-lime-200 font-black tabular-nums">{value}</div>
       <div className="mt-0.5 text-xs tabular-nums">
         {delta !== null ? <span className="text-red-300">{fmtSigned(delta)}</span> : <span className="text-white/25">—</span>}

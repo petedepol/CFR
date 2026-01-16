@@ -80,7 +80,6 @@ const PLACEHOLDERS = {
 function normalizeSpec(maybeSpec) {
   if (!maybeSpec || typeof maybeSpec !== "object") return null;
   if (maybeSpec.mtb && typeof maybeSpec.mtb === "object") return maybeSpec.mtb;
-  // Legacy shapes: treat any object with common sections as a spec.
   if (
     Object.prototype.hasOwnProperty.call(maybeSpec, "frame") ||
     Object.prototype.hasOwnProperty.call(maybeSpec, "cockpit") ||
@@ -245,9 +244,8 @@ function fieldUiMeta(section, key) {
   const isNumeric = NUMERIC_KEYS.has(key);
   const isTextarea = TEXTAREA_KEYS.has(key);
   const placeholder = PLACEHOLDERS[key] || "";
-  const fullWidth = key === "notes" || key === "other_info"; // big fields
+  const fullWidth = key === "notes" || key === "other_info";
 
-  // iPhone-first: use numeric keyboard when it matters.
   const inputMode = isNumeric ? "numeric" : undefined;
   const pattern = isNumeric ? "[0-9]*" : undefined;
 
@@ -361,7 +359,6 @@ export default function FullSpecPage() {
       return;
     }
 
-    // dedupe signature WITHOUT timestamp
     const dedupeSig = JSON.stringify({ rider, mechanic, fullSpec: spec });
 
     const now = Date.now();
@@ -374,7 +371,6 @@ export default function FullSpecPage() {
       const res = await insertFull({ rider, mechanic, fullSpec: spec, dedupeSig });
       lastSaveRef.current = { sig: dedupeSig, at: Date.now() };
 
-      // Treat queued as saved locally (it WILL sync later)
       setDirty(false);
       clearDraft(rider);
 
@@ -393,30 +389,32 @@ export default function FullSpecPage() {
     <div className="space-y-4 pb-28">
       <button
         onClick={() => navigate(`/measurements?mech=${encodeURIComponent(mechanic)}&rider=${encodeURIComponent(rider)}`)}
-        className="inline-flex items-center gap-2 text-white/70 hover:text-white"
+        className="inline-flex items-center gap-2 text-white/75 hover:text-white transition"
       >
         <ArrowLeft size={18} /> Back
       </button>
 
-      <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-6">
+      <div className="rounded-3xl border border-white/12 bg-white/[0.06] backdrop-blur p-6">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div>
-            <div className="text-sm text-white/60 uppercase tracking-widest">Bike Spec</div>
-            <div className="text-2xl font-black mt-1">{rider || "No rider selected"}</div>
-            <div className="text-white/50 text-sm mt-1">Mechanic: {mechanic || "—"}</div>
+            <div className="text-sm text-white/65 font-bold tracking-wide">Bike Spec</div>
+            <div className="text-2xl font-black mt-1 text-white">{rider || "No rider selected"}</div>
+            <div className="text-white/60 text-sm mt-1">Mechanic: {mechanic || "—"}</div>
 
             {offline ? (
-              <div className="mt-2 text-xs text-yellow-200/80 inline-flex items-center gap-2">
+              <div className="mt-2 text-xs text-yellow-200/90 inline-flex items-center gap-2">
                 <WifiOff size={14} /> Offline — saves will queue and sync later
               </div>
             ) : null}
 
-            {dirty ? <div className="mt-2 text-xs text-yellow-200/80">Unsaved changes (kept locally until saved)</div> : null}
+            {dirty ? (
+              <div className="mt-2 text-xs text-yellow-200/90">Unsaved changes (kept locally until saved)</div>
+            ) : null}
           </div>
 
           <button
             onClick={() => load({ silent: false, keepEdits: true })}
-            className="rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-3 font-bold text-white/85 inline-flex items-center gap-2"
+            className="rounded-2xl border border-white/12 bg-white/[0.06] hover:bg-white/[0.10] px-4 py-3 font-bold text-white/90 inline-flex items-center gap-2 transition"
             title="Reload latest (won’t overwrite if you have unsaved edits)"
           >
             <RefreshCcw size={14} /> Reload
@@ -459,9 +457,9 @@ export default function FullSpecPage() {
       </div>
 
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-5xl px-4 z-30">
-        <div className="rounded-3xl border border-white/10 bg-black/50 backdrop-blur-xl p-4 shadow-lg">
+        <div className="rounded-3xl border border-white/12 bg-black/55 backdrop-blur-xl p-4 shadow-lg">
           <div className="flex items-center justify-between gap-3">
-            <div className="inline-flex items-center gap-2 text-xs text-white/70">
+            <div className="inline-flex items-center gap-2 text-xs text-white/75">
               {offline ? <WifiOff size={14} /> : null}
               {offline ? "Offline — save will queue" : dirty ? "Unsaved changes" : "Ready"}
             </div>
@@ -469,7 +467,7 @@ export default function FullSpecPage() {
             <button
               disabled={!canSave}
               onClick={handleSave}
-              className={`rounded-2xl px-5 py-3 font-black flex items-center gap-2 ${
+              className={`rounded-2xl px-5 py-3 font-black flex items-center gap-2 transition ${
                 !canSave ? "bg-white/10 text-white/30 cursor-not-allowed" : "bg-lime-300 text-black hover:bg-lime-200"
               }`}
             >
@@ -484,8 +482,11 @@ export default function FullSpecPage() {
 
 function Section({ title, children }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-black/20 p-5">
-      <div className="text-xs text-white/60 uppercase tracking-widest mb-4">{title}</div>
+    <div className="rounded-3xl border border-white/12 bg-black/25 p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-sm font-black text-white/85">{title}</div>
+        <div className="h-px flex-1 ml-4 bg-white/10" />
+      </div>
       {children}
     </div>
   );
@@ -503,7 +504,8 @@ function Field({ label, value, onChange, placeholder, textarea, rows, inputMode,
 
   return (
     <label className={wrapperClass}>
-      <div className="text-xs text-white/50 uppercase tracking-widest mb-2">{label}</div>
+      {/* Brighter, easier to read */}
+      <div className="text-sm font-bold text-white/80 mb-2">{label}</div>
 
       {textarea ? (
         <textarea
@@ -511,7 +513,7 @@ function Field({ label, value, onChange, placeholder, textarea, rows, inputMode,
           rows={rows || 3}
           placeholder={placeholder || ""}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
+          className="w-full rounded-2xl bg-white/[0.07] border border-white/15 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-lime-300/40 focus:border-white/25 transition"
         />
       ) : (
         <input
@@ -520,7 +522,7 @@ function Field({ label, value, onChange, placeholder, textarea, rows, inputMode,
           inputMode={inputMode}
           pattern={pattern}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
+          className="w-full rounded-2xl bg-white/[0.07] border border-white/15 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-lime-300/40 focus:border-white/25 transition"
         />
       )}
     </label>

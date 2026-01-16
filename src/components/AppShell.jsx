@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../features/auth/AuthProvider.jsx";
 import { Settings, Ruler, WifiOff } from "lucide-react";
@@ -21,6 +21,17 @@ function SafeArea({ children }) {
       }}
     >
       {children}
+    </div>
+  );
+}
+
+function PageFallback() {
+  return (
+    <div className="space-y-3">
+      <div className="h-10 bg-white/5 rounded-2xl animate-pulse" />
+      <div className="h-10 bg-white/5 rounded-2xl animate-pulse" />
+      <div className="h-10 bg-white/5 rounded-2xl animate-pulse" />
+      <div className="h-28 bg-white/5 rounded-2xl animate-pulse" />
     </div>
   );
 }
@@ -55,10 +66,7 @@ export default function AppShell() {
   return (
     <div className="min-h-[100dvh] bg-black">
       <SafeArea>
-        {/* Background auto-sync */}
         <OfflineSyncManager />
-
-        {/* PWA update prompt */}
         <PwaUpdateManager />
 
         {/* Top Bar */}
@@ -103,7 +111,9 @@ export default function AppShell() {
 
         {/* Page Content */}
         <main className="max-w-6xl mx-auto px-4 py-5 pb-24">
-          <Outlet />
+          <Suspense fallback={<PageFallback />}>
+            <Outlet />
+          </Suspense>
         </main>
       </SafeArea>
     </div>

@@ -1,127 +1,187 @@
-import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ensureSession, fetchRiders } from "../../measurements/api/measurementsApi";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { WifiOff } from "lucide-react";
+import { fetchRiders } from "../../measurements/api/measurementsApi";
+import { useAuth } from "../../auth/AuthProvider.jsx";
+import { useToast } from "../../../components/ToastProvider.jsx";
+import { UI } from "../../../ui/styles.js";
+
+function cx(...a) {
+  return a.filter(Boolean).join(" ");
+}
+
+const LS_LAST_RIDER = "cfr_last_rider";
+
+function getLastRider() {
+  try {
+    return localStorage.getItem(LS_LAST_RIDER) || "";
+  } catch {
+    return "";
+  }
+}
+function setLastRider(name) {
+  try {
+    localStorage.setItem(LS_LAST_RIDER, name || "");
+  } catch {
+    // ignore
+  }
+}
+
+function pickPhoto(r) {
+  return (
+    r?.photo ||
+    r?.photoUrl ||
+    r?.photo_url ||
+    r?.image ||
+    r?.img ||
+    r?.avatar ||
+    r?.avatarUrl ||
+    r?.avatar_url ||
+    ""
+  );
+}
+
+function initials(fullName) {
+  const s = String(fullName || "").trim();
+  if (!s) return "—";
+  const parts = s.split(/\s+/).slice(0, 2);
+  return parts.map((p) => p[0]?.toUpperCase()).join("");
+}
 
 export default function SettingsHome() {
-  const nav = useNavigate();
+  const navigate = useNavigate();
+  const toast = useToast();
+  const { displayName } = useAuth();
+
+  const [params, setParams] = useSearchParams();
+  const riderParam = params.get("rider") || "";
+
   const [riders, setRiders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
+  const [selectedRider, setSelectedRider] = useState(riderParam || "");
 
-  const mounted = useRef(false);
-
-  async function load({ silent = false } = {}) {
-    try {
-      if (!silent) setLoading(true);
-      setErr("");
-      await ensureSession();
-      const r = await fetchRiders();
-      if (!mounted.current) return;
-      setRiders(r || []);
-    } catch (e) {
-      if (!mounted.current) return;
-      setErr(e?.message || "Failed to load riders.");
-    } finally {
-      if (!mounted.current) return;
-      if (!silent) setLoading(false);
-    }
-  }
+  const offline = typeof navigator !== "undefined" && navigator.onLine === false;
 
   useEffect(() => {
-    mounted.current = true;
-    load();
+    if (selectedRider) setParams({ rider: selectedRider }, { replace: true });
+  }, [selectedRider, setParams]);
 
-    const onVis = () => document.visibilityState === "visible" && load({ silent: true });
-    const onFocus = () => load({ silent: true });
-    const onOnline = () => load({ silent: true });
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const list = await fetchRiders();
+        if (!alive) return;
+        setRiders(list || []);
 
-    document.addEventListener("visibilitychange", onVis);
-    window.addEventListener("focus", onFocus);
-    window.addEventListener("online", onOnline);
-
+        // If URL doesn't specify rider, keep last rider in header only (no tile highlight)
+        if (!riderParam) {
+          const last = getLastRider();
+          if (last) setSelectedRider(last);
+        }
+      } catch (e) {
+        toast.error(e?.message || "Failed to load riders");
+      }
+    })();
     return () => {
-      mounted.current = false;
-      document.removeEventListener("visibilitychange", onVis);
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener("online", onOnline);
+      alive = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return (
-    <div className="space-y-4">
-      {err ? (
-        <div className="rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-red-200 text-sm">
-          {err}
-        </div>
-      ) : null}
+  const selectedLabel = useMemo(() => {
+    if (!selectedRider) return "Select rider";
+    const r = riders.find((x) => x.name === selectedRider);
+    return r ? `${r.flag || ""} ${r.fullName || r.name}`.trim() : selectedRider;
+  }, [selectedRider, riders]);
 
-      {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <SkeletonTile key={i} />
-          ))}
-        </div>
-      ) : riders.length === 0 ? (
-        <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-8 text-white/70">
-          No riders loaded.
-          <div className="text-white/45 text-sm mt-2">Try refreshing, or check Supabase connection.</div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">
-          {riders.map((r) => (
-            <RiderTile
-              key={r.name}
-              rider={r}
-              onClick={() => nav(`/settings/mtb?rider=${encodeURIComponent(r.name)}`)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function SkeletonTile() {
-  return (
-    <div className="rounded-3xl border border-white/10 bg-black/30 overflow-hidden shadow-lg">
-      <div className="relative aspect-[4/3] bg-white/5 animate-pulse" />
-      <div className="p-3">
-        <div className="h-4 w-2/3 rounded-xl bg-white/5 animate-pulse" />
-        <div className="h-3 w-1/3 rounded-xl bg-white/5 animate-pulse mt-2" />
-      </div>
-    </div>
-  );
-}
-
-function RiderTile({ rider, onClick }) {
-  const bgStyle = rider.photo
-    ? { backgroundImage: `url(${rider.photo})` }
-    : { backgroundImage: "linear-gradient(135deg, rgba(255,255,255,0.10), rgba(0,0,0,0.35))" };
+  function goMtb(name) {
+    if (!name) {
+      toast.warning("Select a rider");
+      return;
+    }
+    setLastRider(name);
+    navigate(`/settings/mtb?rider=${encodeURIComponent(name)}`);
+  }
 
   return (
-    <button
-      onClick={onClick}
-      className="group relative overflow-hidden rounded-3xl border border-lime-300/20 bg-black/30 hover:border-lime-300/30 transition text-left shadow-lg"
-      aria-label={`Open settings for ${rider.fullName || rider.name}`}
-    >
-      <div className="relative aspect-[4/3] bg-cover bg-center" style={bgStyle}>
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/85" />
-
-        <div className="absolute top-3 right-3">
-          <div className="h-10 w-10 rounded-2xl border border-white/10 bg-black/55 backdrop-blur flex items-center justify-center text-lg">
-            {rider.flag || "🏁"}
+    <div className="space-y-4 pb-20">
+      <div className={cx(UI.card, "p-5")}>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-sm text-white/65 font-bold tracking-wide">Settings</div>
+            <div className="text-2xl font-black mt-1 text-white">{selectedLabel}</div>
+            <div className={cx(UI.helper, "mt-1")}>
+              Mechanic: <span className="text-white/70 font-bold">{displayName || "—"}</span>
+            </div>
+            <div className={cx(UI.helper, "mt-1")}>Tap a rider photo to enter MTB settings.</div>
           </div>
-        </div>
 
-        <div className="absolute bottom-3 left-3 right-3">
-          <div className="text-white font-black text-sm leading-tight drop-shadow truncate">
-            {rider.fullName || rider.name}
-          </div>
-          <div className="mt-0.5 text-[10px] text-white/55 truncate">{rider.country || ""}</div>
+          {offline ? (
+            <div className={cx(UI.pillBase, UI.pillWarn)}>
+              <span className="inline-flex items-center gap-2">
+                <WifiOff size={14} /> Offline
+              </span>
+            </div>
+          ) : null}
         </div>
       </div>
 
-      <div className="absolute inset-0 ring-0 group-hover:ring-2 group-hover:ring-lime-300/20 rounded-3xl transition" />
-    </button>
+      <div className={cx(UI.card, "p-5")}>
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="text-white font-black">Choose rider</div>
+          <div className={cx(UI.helper)}>Tap to enter</div>
+        </div>
+
+        {/* Photo grid (2 cols iPhone, denser on bigger screens) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          {riders.map((r) => {
+            const name = r.name;
+            const full = r.fullName || r.name;
+            const photo = pickPhoto(r);
+
+            return (
+              <button
+                key={name}
+                onClick={() => {
+                  setSelectedRider(name);
+                  goMtb(name);
+                }}
+                className={cx(
+                  "rounded-3xl border overflow-hidden bg-white/[0.05] hover:bg-white/[0.08] transition active:scale-[0.99] text-left",
+                  "border-white/10 hover:border-white/20"
+                )}
+                type="button"
+              >
+                <div className="aspect-square w-full bg-black/30 relative">
+                  {photo ? (
+                    <img src={photo} alt={full} className="h-full w-full object-cover" loading="lazy" />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center">
+                      <div className="h-16 w-16 rounded-3xl border border-white/10 bg-white/5 flex items-center justify-center">
+                        <div className="text-white/80 font-black text-lg">{initials(full)}</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Flag badge */}
+                  {r.flag ? (
+                    <div className="absolute left-2 top-2 text-xs font-black px-2 py-1 rounded-2xl border border-white/10 bg-black/50 backdrop-blur">
+                      {r.flag}
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="p-3">
+                  <div className="text-white font-black truncate">{full}</div>
+                  <div className={cx(UI.helper, "mt-0.5 truncate")}>{name}</div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {riders.length === 0 ? <div className="text-white/60 py-6">No riders found.</div> : null}
+      </div>
+    </div>
   );
 }

@@ -1,22 +1,64 @@
 // src/features/measurements/utils/fullSpecDefaults.js
 
+/**
+ * Bike Spec (Full Spec) template.
+ *
+ * Stored as JSON in bike_measurements.full_spec.
+ * Safe to evolve: new keys appear blank on older records; removed keys are simply not shown.
+ */
+
+// Keep insertion order = section order in UI.
 const FULL_SPEC_TEMPLATE = {
-  frame: { size: "", notes: "" },
-  saddle: { model: "", setback: "", heightAt4cm: "", heightAt15cm: "", angle: "" },
-  cockpit: { stemModel: "", spacerUnderStem: "", grips: "", handlebarModel: "" },
-  drivetrain: { crankLength: "", pedalsAxle: "" },
-  seatpost: { model: "", leverOption: "" },
-  brakes: { model: "", leverAngle: "", clampToEndBar: "" },
-  suspension: { shockTune: "", forkTune: "" },
-  wheels: { tyres: "", pressureFront: "", pressureRear: "" },
-  basesettings: { forkPsi: "", shockPsi: "", bottleCage: "" },
+  frame: {
+    size: "",
+    link: "",
+    chain_guard: "",
+    notes: "",
+  },
+
+  cockpit: {
+    saddle: "",
+    stem: "",
+    spacers_under: "", // mm
+    bars: "",
+    grips: "",
+    dropper: "",
+    dropper_lever: "",
+    lockout_lever: "",
+    distance_to_brake_lever: "", // mm
+    distance_to_dropper_lever: "", // mm
+    i_spec_adapter_hole: "",
+    garmin_mount: "",
+  },
+
+  drivetrain: {
+    crank_set: "",
+    pedals: "",
+    pedal_clicks: "", // number
+  },
+
+  brakes: {
+    levers: "",
+    calipers: "",
+    pads: "",
+  },
+
+  suspension: {
+    shock_and_tune: "",
+    fork_and_tune: "",
+  },
+
+  other: {
+    bottle_cage: "",
+    other_info: "",
+  },
 };
 
 function makeTemplate() {
   return JSON.parse(JSON.stringify(FULL_SPEC_TEMPLATE));
 }
 
-// Now FULL_SPEC_DEFAULTS includes MTB/Road/CX buckets.
+// FULL_SPEC_DEFAULTS includes MTB/Road/CX buckets.
 // MTB is the normal default; Road/CX are rarely used but available.
 export const FULL_SPEC_DEFAULTS = {
   mtb: makeTemplate(),

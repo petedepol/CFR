@@ -9,13 +9,82 @@ import { FULL_SPEC_DEFAULTS } from "../utils/fullSpecDefaults";
 
 const BASE_DEFAULTS = FULL_SPEC_DEFAULTS?.mtb ? FULL_SPEC_DEFAULTS.mtb : FULL_SPEC_DEFAULTS;
 
+// ----- Labels & field UI rules -----
+const SECTION_LABELS = {
+  frame: "Frame",
+  cockpit: "Cockpit",
+  drivetrain: "Drivetrain",
+  brakes: "Brakes",
+  suspension: "Suspension",
+  other: "Other",
+};
+
+const FIELD_LABELS = {
+  // Frame
+  size: "Size",
+  link: "Link",
+  chain_guard: "Chain guard",
+  notes: "Notes",
+
+  // Cockpit
+  saddle: "Saddle",
+  stem: "Stem",
+  spacers_under: "Spacers under",
+  bars: "Bars",
+  grips: "Grips",
+  dropper: "Dropper",
+  dropper_lever: "Dropper lever",
+  lockout_lever: "Lockout lever",
+  distance_to_brake_lever: "Distance to brake lever",
+  distance_to_dropper_lever: "Distance to dropper lever",
+  i_spec_adapter_hole: "I-Spec adapter hole",
+  garmin_mount: "Garmin mount",
+
+  // Drivetrain
+  crank_set: "Crank-set",
+  pedals: "Pedals",
+  pedal_clicks: "Pedal clicks",
+
+  // Brakes
+  levers: "Levers",
+  calipers: "Calipers",
+  pads: "Pads",
+
+  // Suspension
+  shock_and_tune: "Shock + tune",
+  fork_and_tune: "Fork + tune",
+
+  // Other
+  bottle_cage: "Bottle cage",
+  other_info: "Other info",
+};
+
+const NUMERIC_KEYS = new Set([
+  "spacers_under",
+  "distance_to_brake_lever",
+  "distance_to_dropper_lever",
+  "pedal_clicks",
+]);
+
+const TEXTAREA_KEYS = new Set(["notes", "other_info"]);
+
+const PLACEHOLDERS = {
+  spacers_under: "e.g. 20 (mm)",
+  distance_to_brake_lever: "e.g. 55 (mm)",
+  distance_to_dropper_lever: "e.g. 35 (mm)",
+  pedal_clicks: "e.g. 2",
+  notes: "Anything important…",
+  other_info: "Anything else…",
+};
+
 function normalizeSpec(maybeSpec) {
   if (!maybeSpec || typeof maybeSpec !== "object") return null;
   if (maybeSpec.mtb && typeof maybeSpec.mtb === "object") return maybeSpec.mtb;
+  // Legacy shapes: treat any object with common sections as a spec.
   if (
     Object.prototype.hasOwnProperty.call(maybeSpec, "frame") ||
-    Object.prototype.hasOwnProperty.call(maybeSpec, "saddle") ||
-    Object.prototype.hasOwnProperty.call(maybeSpec, "cockpit")
+    Object.prototype.hasOwnProperty.call(maybeSpec, "cockpit") ||
+    Object.prototype.hasOwnProperty.call(maybeSpec, "drivetrain")
   ) {
     return maybeSpec;
   }
@@ -40,10 +109,18 @@ function mergeDefaults(defaults, incoming) {
   return out;
 }
 
-function humanize(str) {
+function humanizeFallback(str) {
   return String(str || "")
     .replace(/_/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function labelForSection(section) {
+  return SECTION_LABELS[section] || humanizeFallback(section);
+}
+
+function labelForField(key) {
+  return FIELD_LABELS[key] || humanizeFallback(key);
 }
 
 function isIOS() {
@@ -162,6 +239,21 @@ function clearDraft(rider) {
   try {
     localStorage.removeItem(draftKey(rider));
   } catch {}
+}
+
+function fieldUiMeta(section, key) {
+  const isNumeric = NUMERIC_KEYS.has(key);
+  const isTextarea = TEXTAREA_KEYS.has(key);
+  const placeholder = PLACEHOLDERS[key] || "";
+  const fullWidth = key === "notes" || key === "other_info"; // big fields
+
+  // iPhone-first: use numeric keyboard when it matters.
+  const inputMode = isNumeric ? "numeric" : undefined;
+  const pattern = isNumeric ? "[0-9]*" : undefined;
+
+  const rows = key === "other_info" ? 5 : key === "notes" ? 4 : 3;
+
+  return { isNumeric, isTextarea, placeholder, fullWidth, inputMode, pattern, rows, section };
 }
 
 export default function FullSpecPage() {
@@ -288,7 +380,6 @@ export default function FullSpecPage() {
 
       if (res?.queued) {
         toast.success("Saved offline — queued to sync");
-        // Don't reload from DB (would show older data)
       } else {
         toast.success("Saved ✓");
         await load({ silent: true, keepEdits: true });
@@ -313,16 +404,14 @@ export default function FullSpecPage() {
             <div className="text-sm text-white/60 uppercase tracking-widest">Bike Spec</div>
             <div className="text-2xl font-black mt-1">{rider || "No rider selected"}</div>
             <div className="text-white/50 text-sm mt-1">Mechanic: {mechanic || "—"}</div>
+
             {offline ? (
               <div className="mt-2 text-xs text-yellow-200/80 inline-flex items-center gap-2">
                 <WifiOff size={14} /> Offline — saves will queue and sync later
               </div>
             ) : null}
-            {dirty ? (
-              <div className="mt-2 text-xs text-yellow-200/80">
-                Unsaved changes (kept locally until saved)
-              </div>
-            ) : null}
+
+            {dirty ? <div className="mt-2 text-xs text-yellow-200/80">Unsaved changes (kept locally until saved)</div> : null}
           </div>
 
           <button
@@ -343,16 +432,25 @@ export default function FullSpecPage() {
         ) : (
           <div className="mt-6 space-y-8">
             {Object.keys(spec).map((section) => (
-              <Section key={section} title={humanize(section)}>
+              <Section key={section} title={labelForSection(section)}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {Object.keys(spec[section]).map((key) => (
-                    <Field
-                      key={key}
-                      label={humanize(key)}
-                      value={spec[section][key]}
-                      onChange={(v) => setField(section, key, v)}
-                    />
-                  ))}
+                  {Object.keys(spec[section]).map((key) => {
+                    const meta = fieldUiMeta(section, key);
+                    return (
+                      <Field
+                        key={key}
+                        label={labelForField(key)}
+                        value={spec[section][key]}
+                        onChange={(v) => setField(section, key, v)}
+                        placeholder={meta.placeholder}
+                        textarea={meta.isTextarea}
+                        rows={meta.rows}
+                        inputMode={meta.inputMode}
+                        pattern={meta.pattern}
+                        fullWidth={meta.fullWidth}
+                      />
+                    );
+                  })}
                 </div>
               </Section>
             ))}
@@ -393,7 +491,7 @@ function Section({ title, children }) {
   );
 }
 
-function Field({ label, value, onChange }) {
+function Field({ label, value, onChange, placeholder, textarea, rows, inputMode, pattern, fullWidth }) {
   const safeValue =
     value === null || value === undefined
       ? ""
@@ -401,14 +499,30 @@ function Field({ label, value, onChange }) {
       ? value
       : "";
 
+  const wrapperClass = fullWidth ? "block md:col-span-2" : "block";
+
   return (
-    <label className="block">
+    <label className={wrapperClass}>
       <div className="text-xs text-white/50 uppercase tracking-widest mb-2">{label}</div>
-      <input
-        value={safeValue}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
-      />
+
+      {textarea ? (
+        <textarea
+          value={safeValue}
+          rows={rows || 3}
+          placeholder={placeholder || ""}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
+        />
+      ) : (
+        <input
+          value={safeValue}
+          placeholder={placeholder || ""}
+          inputMode={inputMode}
+          pattern={pattern}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
+        />
+      )}
     </label>
   );
 }

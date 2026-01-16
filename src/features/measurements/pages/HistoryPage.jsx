@@ -1,7 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ensureSession, fetchHistory, updateMeasurement, deleteMeasurement } from "../api/measurementsApi";
-import { ArrowLeft, Share2, Pencil, Trash2, X } from "lucide-react";
+import {
+  ensureSession,
+  fetchHistory,
+  updateMeasurement,
+  deleteMeasurement,
+} from "../api/measurementsApi";
+import { ArrowLeft, Share2, Pencil, Trash2, X, ChevronDown, ChevronUp } from "lucide-react";
 import { useAuth } from "../../auth/AuthProvider.jsx";
 import { UI } from "../../../ui/styles.js";
 
@@ -39,9 +44,237 @@ function Chip({ active, onClick, children }) {
         "px-3 py-2 rounded-2xl text-xs font-black border transition inline-flex items-center gap-2 active:scale-[0.99]",
         active ? UI.tabActive : "bg-white/5 text-white/70 border-white/10 hover:bg-white/10"
       )}
+      type="button"
     >
       {children}
     </button>
+  );
+}
+
+function Field({ label, value, onChange, inputMode }) {
+  return (
+    <label className="block">
+      <div className={cx(UI.helper, "mb-2")}>{label}</div>
+      <input
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+        inputMode={inputMode}
+        className={INPUT}
+      />
+    </label>
+  );
+}
+
+function Metric({ label, value, delta }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+      <div className={cx(UI.helper)}>{label}</div>
+      <div className="mt-1 text-lime-200 font-black tabular-nums">{value}</div>
+      <div className="mt-0.5 text-xs tabular-nums">
+        {delta !== null ? (
+          <span className="text-red-300">{fmtSigned(delta)}</span>
+        ) : (
+          <span className="text-white/25">—</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Baseline from 3 older entries (same filtered list)
+function rollingBaselineForIndex(rowsNewestFirst, index) {
+  const older = [];
+  for (let i = index + 1; i < rowsNewestFirst.length && older.length < 3; i++) {
+    const r = rowsNewestFirst[i];
+    const sb = toNum(r.saddle_setback);
+    const h4 = toNum(r.height_4cm);
+    const h15 = toNum(r.height_15cm);
+    if (sb === null && h4 === null && h15 === null) continue;
+    older.push({ sb, h4, h15 });
+  }
+  if (older.length === 0) return null;
+
+  const avg = (key) => {
+    const vals = older.map((x) => x[key]).filter((n) => n !== null);
+    if (!vals.length) return null;
+    const sum = vals.reduce((a, b) => a + b, 0);
+    return +((sum / vals.length).toFixed(1));
+  };
+
+  return { sb: avg("sb"), h4: avg("h4"), h15: avg("h15") };
+}
+
+function diff(v, b) {
+  if (v === null || b === null) return null;
+  return +(v - b).toFixed(1);
+}
+
+function toNum(v) {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function fmtNum(v) {
+  if (v === null || v === undefined) return "—";
+  return String(v);
+}
+
+function fmtSigned(n) {
+  if (n === null || n === undefined) return "—";
+  const sign = n >= 0 ? "+" : "";
+  return `${sign}${n}`;
+}
+
+function formatDateShort(iso) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "2-digit" });
+  } catch {
+    return iso;
+  }
+}
+
+function formatTime(iso) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return iso;
+  }
+}
+
+function formatDateTime(iso) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString();
+  } catch {
+    return iso;
+  }
+}
+
+// ---------- Full spec render helpers ----------
+
+function humanizeKey(key) {
+  const s = String(key || "");
+  if (!s) return "";
+  // snake_case -> words
+  const snake = s.replace(/_/g, " ");
+  // camelCase -> words
+  const spaced = snake.replace(/([a-z0-9])([A-Z])/g, "$1 $2");
+  // Title Case
+  return spaced
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+function isEmptyValue(v) {
+  if (v === null || v === undefined) return true;
+  if (typeof v === "string") return v.trim() === "";
+  if (typeof v === "number") return !Number.isFinite(v);
+  if (typeof v === "boolean") return false;
+  if (Array.isArray(v)) return v.length === 0;
+  if (typeof v === "object") return Object.keys(v).length === 0;
+  return false;
+}
+
+function normalizeFullSpec(row) {
+  // Most likely field is row.full_spec (jsonb). Be defensive.
+  const raw =
+    row?.full_spec ??
+    row?.fullSpec ??
+    row?.spec ??
+    row?.bike_spec ??
+    row?.bikeSpec ??
+    null;
+
+  if (!raw) return null;
+
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return { Notes: raw };
+    }
+  }
+
+  return raw;
+}
+
+function renderFullSpec(spec) {
+  if (!spec) return <div className="text-white/60">No spec data found on this entry.</div>;
+
+  // If it's a flat value, just stringify
+  if (typeof spec !== "object" || Array.isArray(spec)) {
+    return (
+      <pre className="text-xs text-white/60 whitespace-pre-wrap break-words bg-black/40 border border-white/10 rounded-2xl p-3">
+        {JSON.stringify(spec, null, 2)}
+      </pre>
+    );
+  }
+
+  // Group by top-level sections
+  const sectionKeys = Object.keys(spec);
+  if (sectionKeys.length === 0) {
+    return <div className="text-white/60">No spec fields saved.</div>;
+  }
+
+  const sections = sectionKeys
+    .map((sk) => {
+      const sv = spec[sk];
+
+      // If section is primitive, treat as a single field section
+      if (sv === null || sv === undefined || typeof sv !== "object" || Array.isArray(sv)) {
+        if (isEmptyValue(sv)) return null;
+        return {
+          title: humanizeKey(sk),
+          fields: [{ label: humanizeKey(sk), value: sv }],
+        };
+      }
+
+      const fieldKeys = Object.keys(sv);
+      const fields = fieldKeys
+        .map((fk) => {
+          const fv = sv[fk];
+          if (isEmptyValue(fv)) return null;
+          return { label: humanizeKey(fk), value: fv };
+        })
+        .filter(Boolean);
+
+      if (!fields.length) return null;
+      return { title: humanizeKey(sk), fields };
+    })
+    .filter(Boolean);
+
+  if (!sections.length) {
+    return <div className="text-white/60">No spec fields saved.</div>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {sections.map((sec) => (
+        <div key={sec.title} className="rounded-3xl border border-white/10 bg-black/30 p-4">
+          <div className="text-xs text-white/60 font-black tracking-widest uppercase mb-3">
+            {sec.title}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {sec.fields.map((f) => (
+              <div key={`${sec.title}-${f.label}`} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                <div className="text-xs text-white/50 font-bold mb-1">{f.label}</div>
+                <div className="text-sm text-white/85 break-words">
+                  {typeof f.value === "object"
+                    ? JSON.stringify(f.value)
+                    : String(f.value)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -69,6 +302,9 @@ export default function HistoryPage() {
     notes: "",
   });
   const [savingEdit, setSavingEdit] = useState(false);
+
+  // Full spec expand/collapse
+  const [expandedFullId, setExpandedFullId] = useState(null);
 
   async function load({ silent = false } = {}) {
     if (!rider) return;
@@ -192,7 +428,6 @@ export default function HistoryPage() {
         notes: String(editVals.notes || ""),
       };
 
-      // If any number failed parsing, keep as null (instead of NaN)
       for (const k of ["saddle_setback", "height_4cm", "height_15cm"]) {
         if (patch[k] !== null && !Number.isFinite(patch[k])) patch[k] = null;
       }
@@ -229,6 +464,7 @@ export default function HistoryPage() {
       <button
         onClick={() => navigate("/measurements")}
         className="inline-flex items-center gap-2 text-white/75 hover:text-white transition"
+        type="button"
       >
         <ArrowLeft size={18} /> Back
       </button>
@@ -247,6 +483,7 @@ export default function HistoryPage() {
                 onClick={shareLatestJig}
                 className={cx(UI.btnPrimary, "px-4 py-3")}
                 title="Share latest jig update"
+                type="button"
               >
                 <Share2 size={16} /> Share Jig
               </button>
@@ -288,6 +525,7 @@ export default function HistoryPage() {
           </div>
         ) : (
           <div className="mt-6 space-y-6">
+            {/* ---------------- Jig ---------------- */}
             {showJig ? (
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-3">
@@ -407,17 +645,14 @@ export default function HistoryPage() {
                                   {isAdmin ? (
                                     <td className="px-4 py-3 align-top">
                                       <div className="flex justify-end gap-2">
-                                        <button
-                                          onClick={() => openEdit(row)}
-                                          className={UI.btnIcon}
-                                          title="Edit"
-                                        >
+                                        <button onClick={() => openEdit(row)} className={UI.btnIcon} title="Edit" type="button">
                                           <Pencil size={16} className="text-white/75" />
                                         </button>
                                         <button
                                           onClick={() => doDelete(row)}
                                           className={cx(UI.btnIcon, "border-red-500/25")}
                                           title="Delete"
+                                          type="button"
                                         >
                                           <Trash2 size={16} className="text-red-300" />
                                         </button>
@@ -456,13 +691,14 @@ export default function HistoryPage() {
 
                               {isAdmin ? (
                                 <div className="flex gap-2 shrink-0">
-                                  <button onClick={() => openEdit(row)} className={UI.btnIcon} title="Edit">
+                                  <button onClick={() => openEdit(row)} className={UI.btnIcon} title="Edit" type="button">
                                     <Pencil size={16} className="text-white/75" />
                                   </button>
                                   <button
                                     onClick={() => doDelete(row)}
                                     className={cx(UI.btnIcon, "border-red-500/25")}
                                     title="Delete"
+                                    type="button"
                                   >
                                     <Trash2 size={16} className="text-red-300" />
                                   </button>
@@ -486,6 +722,7 @@ export default function HistoryPage() {
               </div>
             ) : null}
 
+            {/* ---------------- Full Spec ---------------- */}
             {showFull ? (
               <div className="space-y-3">
                 <div className={cx(UI.helper)}>Bike Spec History</div>
@@ -494,33 +731,71 @@ export default function HistoryPage() {
                   <div className="text-white/60">No bike spec entries yet.</div>
                 ) : (
                   <div className="space-y-2">
-                    {fullRowsNewestFirst.map((row) => (
-                      <div key={row.id || row.timestamp} className={cx(UI.card, "p-4 bg-black/30")}>
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="text-white/85 font-bold">{formatDateTime(row.timestamp)}</div>
+                    {fullRowsNewestFirst.map((row) => {
+                      const isOpen = expandedFullId === row.id;
+                      const spec = normalizeFullSpec(row);
 
-                          <div className="flex items-center gap-2">
-                            <div className={cx(UI.helper)}>{row.full_spec ? "Saved ✓" : "—"}</div>
-                            {isAdmin && row.id ? (
-                              <button
-                                onClick={() => doDelete(row)}
-                                className={cx(UI.btnIcon, "border-red-500/25")}
-                                title="Delete"
-                              >
-                                <Trash2 size={16} className="text-red-300" />
-                              </button>
-                            ) : null}
-                          </div>
+                      return (
+                        <div
+                          key={row.id || row.timestamp}
+                          className={cx(UI.card, "p-4 bg-black/30")}
+                        >
+                          {/* Header row (tap to expand) */}
+                          <button
+                            onClick={() => setExpandedFullId((prev) => (prev === row.id ? null : row.id))}
+                            className="w-full text-left"
+                            type="button"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="text-white/85 font-bold">{formatDateTime(row.timestamp)}</div>
+                                {(row.location || row.notes) ? (
+                                  <div className="mt-1 text-sm text-white/70">
+                                    {row.notes ? <div className="text-lime-200/80 italic">“{row.notes}”</div> : null}
+                                    {row.location ? <div className={cx(UI.helper, "mt-1")}>{row.location}</div> : null}
+                                  </div>
+                                ) : null}
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                <div className={cx(UI.pillBase, "bg-white/5 border-white/10 text-white/65")}>
+                                  {isOpen ? (
+                                    <span className="inline-flex items-center gap-2">
+                                      <ChevronUp size={14} /> Hide
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-2">
+                                      <ChevronDown size={14} /> View
+                                    </span>
+                                  )}
+                                </div>
+
+                                {isAdmin && row.id ? (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      doDelete(row);
+                                    }}
+                                    className={cx(UI.btnIcon, "border-red-500/25")}
+                                    title="Delete"
+                                    type="button"
+                                  >
+                                    <Trash2 size={16} className="text-red-300" />
+                                  </button>
+                                ) : null}
+                              </div>
+                            </div>
+                          </button>
+
+                          {/* Expanded content */}
+                          {isOpen ? (
+                            <div className="mt-4">
+                              {renderFullSpec(spec)}
+                            </div>
+                          ) : null}
                         </div>
-
-                        {(row.notes || row.location) ? (
-                          <div className="mt-2 text-sm text-white/70">
-                            {row.notes ? <div className="text-lime-200/80 italic">“{row.notes}”</div> : null}
-                            {row.location ? <div className={cx(UI.helper, "mt-1")}>{row.location}</div> : null}
-                          </div>
-                        ) : null}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -545,7 +820,7 @@ export default function HistoryPage() {
                   <div className={cx(UI.helper, "mt-1")}>{formatDateTime(editing.timestamp)}</div>
                 </div>
 
-                <button onClick={() => (savingEdit ? null : setEditing(null))} className={UI.btnIcon} title="Close">
+                <button onClick={() => (savingEdit ? null : setEditing(null))} className={UI.btnIcon} title="Close" type="button">
                   <X size={18} className="text-white/80" />
                 </button>
               </div>
@@ -572,128 +847,37 @@ export default function HistoryPage() {
               </div>
 
               <div className="mt-3 grid grid-cols-1 gap-3">
-                <Field label="Location" value={editVals.location} onChange={(v) => setEditVals((s) => ({ ...s, location: v }))} />
-                <Field label="Notes" value={editVals.notes} onChange={(v) => setEditVals((s) => ({ ...s, notes: v }))} />
+                <Field
+                  label="Location"
+                  value={editVals.location}
+                  onChange={(v) => setEditVals((s) => ({ ...s, location: v }))}
+                />
+                <Field
+                  label="Notes"
+                  value={editVals.notes}
+                  onChange={(v) => setEditVals((s) => ({ ...s, notes: v }))}
+                />
               </div>
 
               <div className="mt-5 flex gap-2">
-                <button onClick={saveEdit} disabled={savingEdit} className={cx(UI.btnPrimary, "flex-1 justify-center")}>
+                <button onClick={saveEdit} disabled={savingEdit} className={cx(UI.btnPrimary, "flex-1 justify-center")} type="button">
                   {savingEdit ? "Saving…" : "Save"}
                 </button>
                 <button
                   onClick={() => setEditing(null)}
                   disabled={savingEdit}
                   className={cx(UI.btnSecondary, "px-4 py-3")}
+                  type="button"
                 >
                   Cancel
                 </button>
               </div>
 
-              <div className={cx(UI.helper, "mt-3")}>
-                Admin edits require being online. Changes are applied immediately.
-              </div>
+              <div className={cx(UI.helper, "mt-3")}>Admin edits require being online. Changes are applied immediately.</div>
             </div>
           </div>
         ) : null}
       </div>
     </div>
   );
-}
-
-function Field({ label, value, onChange, inputMode }) {
-  return (
-    <label className="block">
-      <div className={cx(UI.helper, "mb-2")}>{label}</div>
-      <input
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value)}
-        inputMode={inputMode}
-        className={INPUT}
-      />
-    </label>
-  );
-}
-
-function Metric({ label, value, delta }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-      <div className={cx(UI.helper)}>{label}</div>
-      <div className="mt-1 text-lime-200 font-black tabular-nums">{value}</div>
-      <div className="mt-0.5 text-xs tabular-nums">
-        {delta !== null ? <span className="text-red-300">{fmtSigned(delta)}</span> : <span className="text-white/25">—</span>}
-      </div>
-    </div>
-  );
-}
-
-// Baseline from 3 older entries (same filtered list)
-function rollingBaselineForIndex(rowsNewestFirst, index) {
-  const older = [];
-  for (let i = index + 1; i < rowsNewestFirst.length && older.length < 3; i++) {
-    const r = rowsNewestFirst[i];
-    const sb = toNum(r.saddle_setback);
-    const h4 = toNum(r.height_4cm);
-    const h15 = toNum(r.height_15cm);
-    if (sb === null && h4 === null && h15 === null) continue;
-    older.push({ sb, h4, h15 });
-  }
-  if (older.length === 0) return null;
-
-  const avg = (key) => {
-    const vals = older.map((x) => x[key]).filter((n) => n !== null);
-    if (!vals.length) return null;
-    const sum = vals.reduce((a, b) => a + b, 0);
-    return +((sum / vals.length).toFixed(1));
-  };
-
-  return { sb: avg("sb"), h4: avg("h4"), h15: avg("h15") };
-}
-
-function diff(v, b) {
-  if (v === null || b === null) return null;
-  return +(v - b).toFixed(1);
-}
-
-function toNum(v) {
-  if (v === null || v === undefined || v === "") return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
-
-function fmtNum(v) {
-  if (v === null || v === undefined) return "—";
-  return String(v);
-}
-
-function fmtSigned(n) {
-  if (n === null || n === undefined) return "—";
-  const sign = n >= 0 ? "+" : "";
-  return `${sign}${n}`;
-}
-
-function formatDateShort(iso) {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "2-digit" });
-  } catch {
-    return iso;
-  }
-}
-
-function formatTime(iso) {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-  } catch {
-    return iso;
-  }
-}
-
-function formatDateTime(iso) {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
-  }
 }

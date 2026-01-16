@@ -5,7 +5,14 @@ import { Settings, Ruler, WifiOff, Bug, X, Copy, Trash2 } from "lucide-react";
 import OfflineSyncManager from "./OfflineSyncManager.jsx";
 import PwaUpdateManager from "./PwaUpdateManager.jsx";
 import { QUEUE_EVENT, getBikeMeasurementsQueueCount } from "../lib/offlineBikeMeasurementsQueue.js";
-import { addDiag, clearDiagLogs, formatDiagDump, getDiagLogs, installGlobalDiagnosticsHandlers } from "../lib/diagnostics.js";
+import {
+  addDiag,
+  clearDiagLogs,
+  formatDiagDump,
+  getDiagLogs,
+  installGlobalDiagnosticsHandlers,
+} from "../lib/diagnostics.js";
+import { UI } from "../ui/styles.js";
 
 function cx(...a) {
   return a.filter(Boolean).join(" ");
@@ -38,7 +45,6 @@ function PageFallback() {
 }
 
 function copyTextToClipboard(text) {
-  // iOS-safe fallback if clipboard API fails
   const tryClipboard = async () => {
     if (navigator?.clipboard?.writeText) {
       await navigator.clipboard.writeText(text);
@@ -66,7 +72,9 @@ function copyTextToClipboard(text) {
     }
   };
 
-  return tryClipboard().catch(() => false).then((ok) => ok || fallback());
+  return tryClipboard()
+    .catch(() => false)
+    .then((ok) => ok || fallback());
 }
 
 function DiagnosticsModal({ open, onClose, pending }) {
@@ -114,69 +122,57 @@ function DiagnosticsModal({ open, onClose, pending }) {
   return (
     <div className="fixed inset-0 z-[80]">
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-      <div className="absolute left-1/2 top-1/2 w-[92vw] max-w-3xl -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-white/12 bg-black/80 backdrop-blur p-5">
+      <div className={cx("absolute left-1/2 top-1/2 w-[92vw] max-w-3xl -translate-x-1/2 -translate-y-1/2 p-5", UI.card, "bg-black/80")}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <Bug size={18} className="text-lime-300" />
               <div className="text-white font-black text-lg">Diagnostics</div>
             </div>
-            <div className="text-xs text-white/55 mt-1">
+            <div className={cx(UI.helper, "mt-1")}>
               Local-only logs (this device). Copy and paste into chat when something breaks.
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="h-10 w-10 rounded-2xl border border-white/12 bg-white/5 hover:bg-white/10 inline-flex items-center justify-center"
-            title="Close"
-          >
+          <button onClick={onClose} className={UI.btnIcon} title="Close">
             <X size={18} className="text-white/85" />
           </button>
         </div>
 
         <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-            <div className="text-white/50 text-xs mb-1">User</div>
+          <div className={cx("rounded-2xl border border-white/10 bg-white/5 p-3")}>
+            <div className={cx(UI.helper, "mb-1")}>User</div>
             <div className="text-white font-bold truncate">{summary.user}</div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-            <div className="text-white/50 text-xs mb-1">Network</div>
+          <div className={cx("rounded-2xl border border-white/10 bg-white/5 p-3")}>
+            <div className={cx(UI.helper, "mb-1")}>Network</div>
             <div className="text-white font-bold">{offline ? "Offline" : "Online"}</div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-            <div className="text-white/50 text-xs mb-1">Pending queue</div>
+          <div className={cx("rounded-2xl border border-white/10 bg-white/5 p-3")}>
+            <div className={cx(UI.helper, "mb-1")}>Pending queue</div>
             <div className="text-white font-bold">{pending}</div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-            <div className="text-white/50 text-xs mb-1">URL</div>
+          <div className={cx("rounded-2xl border border-white/10 bg-white/5 p-3")}>
+            <div className={cx(UI.helper, "mb-1")}>URL</div>
             <div className="text-white/80 text-xs break-all">{summary.url || "—"}</div>
           </div>
         </div>
 
         <div className="mt-4 flex items-center gap-2">
-          <button
-            onClick={onCopy}
-            className="rounded-2xl px-4 py-2 font-black bg-lime-300 text-black hover:bg-lime-200 inline-flex items-center gap-2"
-          >
+          <button onClick={onCopy} className={UI.btnPrimary}>
             <Copy size={16} />
             {copied ? "Copied" : "Copy dump"}
           </button>
 
-          <button
-            onClick={onClear}
-            className="rounded-2xl px-4 py-2 font-black bg-red-500/10 text-red-200 border border-red-500/25 hover:bg-red-500/15 inline-flex items-center gap-2"
-          >
+          <button onClick={onClear} className={UI.btnDanger}>
             <Trash2 size={16} />
             Clear
           </button>
 
-          <div className="ml-auto text-xs text-white/45">
-            {logs.length} / 80 entries
-          </div>
+          <div className={cx("ml-auto", UI.helper)}>{logs.length} / 80 entries</div>
         </div>
 
         <div className="mt-4 max-h-[55vh] overflow-auto rounded-2xl border border-white/10 bg-black/40">
@@ -211,7 +207,7 @@ function DiagnosticsModal({ open, onClose, pending }) {
           )}
         </div>
 
-        <div className="mt-3 text-xs text-white/45">
+        <div className={cx("mt-3", UI.helper)}>
           Tip: If something goes wrong, open this panel, hit <span className="text-white/70 font-bold">Copy dump</span>,
           and paste it here.
         </div>
@@ -231,7 +227,6 @@ export default function AppShell() {
   useEffect(() => {
     const uninstall = installGlobalDiagnosticsHandlers();
 
-    // A couple of useful app lifecycle markers
     const onOnline = () => addDiag("info", "net.online");
     const onOffline = () => addDiag("info", "net.offline");
     window.addEventListener("online", onOnline);
@@ -258,53 +253,48 @@ export default function AppShell() {
   }, []);
 
   const tabClass = ({ isActive }) =>
-    cx(
-      "flex-1 rounded-2xl px-4 py-3 font-black text-sm inline-flex items-center justify-center gap-2 transition border",
-      isActive
-        ? "bg-lime-300 text-black border-lime-200"
-        : "bg-white/5 text-white/75 border-white/10 hover:bg-white/10"
-    );
+    cx(UI.tabBase, isActive ? UI.tabActive : UI.tabInactive);
 
-  // Admin-only hidden long-press on name pill to open diagnostics
+  // Admin-only long-press on name pill to open diagnostics
   const longPressTimerRef = useRef(null);
   const startLongPress = () => {
     if (!isAdmin) return;
     clearTimeout(longPressTimerRef.current);
-    longPressTimerRef.current = setTimeout(() => {
-      setDiagOpen(true);
-    }, 650);
+    longPressTimerRef.current = setTimeout(() => setDiagOpen(true), 650);
   };
   const cancelLongPress = () => {
     clearTimeout(longPressTimerRef.current);
     longPressTimerRef.current = null;
   };
 
+  const rightPillClass = offline ? cx(UI.pillBase, UI.pillWarn) : cx(UI.pillBase, UI.pillInfo);
+
   return (
-    <div className="min-h-[100dvh] bg-black">
+    <div className={UI.page}>
       <SafeArea>
         <OfflineSyncManager />
         <PwaUpdateManager />
-
         <DiagnosticsModal open={diagOpen} onClose={() => setDiagOpen(false)} pending={pending} />
 
         {/* Top Bar */}
         <div className="sticky top-0 z-40">
-          <div className="bg-black/55 backdrop-blur-xl border-b border-white/10">
+          <div className={UI.headerGlass}>
             <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-end gap-2">
+              {/* Status pill */}
               {offline ? (
-                <div className="inline-flex items-center gap-2 text-xs text-yellow-200/90 bg-yellow-400/10 border border-yellow-400/20 px-3 py-2 rounded-2xl">
-                  <WifiOff size={14} />
-                  Offline
-                  {pending > 0 ? <span className="ml-1 text-yellow-100/80">({pending})</span> : null}
+                <div className={rightPillClass}>
+                  <span className="inline-flex items-center gap-2">
+                    <WifiOff size={14} />
+                    Offline
+                    {pending > 0 ? <span className="ml-1 text-yellow-100/80">({pending})</span> : null}
+                  </span>
                 </div>
               ) : pending > 0 ? (
-                <div className="text-xs text-white/70 bg-white/5 border border-white/10 px-3 py-2 rounded-2xl">
+                <div className={cx(UI.pillBase, UI.pillNeutral)}>
                   Pending: <span className="font-black text-white">{pending}</span>
                 </div>
               ) : (
-                <div className="text-xs text-white/50 bg-white/5 border border-white/10 px-3 py-2 rounded-2xl">
-                  Online
-                </div>
+                <div className={cx(UI.pillBase, UI.pillNeutral)}>Online</div>
               )}
 
               {/* Name pill: long-press to open diagnostics (admin only) */}
@@ -315,22 +305,15 @@ export default function AppShell() {
                 onTouchStart={startLongPress}
                 onTouchEnd={cancelLongPress}
                 onTouchCancel={cancelLongPress}
-                className={cx(
-                  "text-xs bg-white/5 border border-white/10 px-3 py-2 rounded-2xl max-w-[160px] truncate select-none",
-                  isAdmin ? "text-white/80" : "text-white/70"
-                )}
+                className={cx(UI.pillBase, UI.pillNeutral, isAdmin ? "text-white/80" : "text-white/70")}
                 title={isAdmin ? "Long-press for Diagnostics" : undefined}
               >
                 {displayName || "—"}
               </div>
 
-              {/* Tiny hint icon for admins (non-intrusive) */}
+              {/* Small visible entry for admins */}
               {isAdmin ? (
-                <button
-                  onClick={() => setDiagOpen(true)}
-                  className="h-9 w-9 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 inline-flex items-center justify-center"
-                  title="Diagnostics"
-                >
+                <button onClick={() => setDiagOpen(true)} className={UI.btnIcon} title="Diagnostics">
                   <Bug size={16} className="text-white/70" />
                 </button>
               ) : null}

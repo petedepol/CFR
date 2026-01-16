@@ -606,6 +606,9 @@ export default function HistoryPage() {
                                     <div className="font-bold text-white/85">{formatDateShort(row.timestamp)}</div>
                                     <div className="text-xs text-white/45 mt-0.5">{formatTime(row.timestamp)}</div>
                                     {row.location ? <div className="text-xs text-white/45 mt-1">{row.location}</div> : null}
+                                    {row.mechanic ? (
+                                      <div className="text-xs text-white/45 mt-1">By {row.mechanic}</div>
+                                    ) : null}
                                   </td>
 
                                   <td className="px-3 py-3 text-white/70 align-top border-r border-white/10">
@@ -700,6 +703,7 @@ export default function HistoryPage() {
                                   {bikeLabelFromType(row.type)} • {formatDateTime(row.timestamp)}
                                 </div>
                                 {row.location ? <div className={cx(UI.helper, "mt-1")}>{row.location}</div> : null}
+                                {row.mechanic ? <div className={cx(UI.helper, "mt-1")}>By {row.mechanic}</div> : null}
                               </div>
 
                               {isAdmin ? (
@@ -765,6 +769,7 @@ export default function HistoryPage() {
                                   <div className="text-white/85 font-bold">{formatDateTime(row.timestamp)}</div>
                                   <span className={cx(UI.pillBase, "bg-white/5 border-white/10 text-white/65")}>{fullLabelFromType(row.type)}</span>
                                 </div>
+                                {row.mechanic ? <div className={cx(UI.helper, "mt-1")}>By {row.mechanic}</div> : null}
                                 {(row.location || row.notes) ? (
                                   <div className="mt-1 text-sm text-white/70">
                                     {row.notes ? <div className="text-lime-200/80 italic">“{row.notes}”</div> : null}

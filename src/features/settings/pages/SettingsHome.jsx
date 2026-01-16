@@ -57,6 +57,8 @@ export default function SettingsHome() {
   const [riders, setRiders] = useState([]);
   const [selectedRider, setSelectedRider] = useState(riderParam || "");
 
+  const [loadErr, setLoadErr] = useState("");
+
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;
 
   useEffect(() => {
@@ -70,6 +72,7 @@ export default function SettingsHome() {
         const list = await fetchRiders();
         if (!alive) return;
         setRiders(list || []);
+        setLoadErr("");
 
         // Preselect last rider for URL continuity only (no highlight, still requires tap)
         if (!riderParam) {
@@ -77,6 +80,11 @@ export default function SettingsHome() {
           if (last) setSelectedRider(last);
         }
       } catch (e) {
+        const isOff = typeof navigator !== "undefined" && navigator.onLine === false;
+        if (isOff) {
+          setLoadErr("Offline — riders can’t load. Reconnect and reopen.");
+          return;
+        }
         toast.error(e?.message || "Failed to load riders");
       }
     })();
@@ -88,6 +96,10 @@ export default function SettingsHome() {
 
   function goMtb(name) {
     if (!name) return;
+    if (offline) {
+      toast.warning("Offline — reconnect to continue");
+      return;
+    }
     setLastRider(name);
     navigate(`/settings/mtb?rider=${encodeURIComponent(name)}`);
   }
@@ -119,6 +131,7 @@ export default function SettingsHome() {
                 setSelectedRider(name);
                 goMtb(name);
               }}
+              disabled={offline}
               className={cx(
                 "rounded-3xl border overflow-hidden bg-white/[0.05] hover:bg-white/[0.08] transition active:scale-[0.99] text-left",
                 "border-white/10 hover:border-white/20"
@@ -152,7 +165,8 @@ export default function SettingsHome() {
         })}
       </div>
 
-      {riders.length === 0 ? <div className="text-white/60 py-6">No riders found.</div> : null}
+      {loadErr ? <div className="text-yellow-200/80 py-6 text-sm font-bold">{loadErr}</div> : null}
+      {!loadErr && riders.length === 0 ? <div className="text-white/60 py-6">No riders found.</div> : null}
     </div>
   );
 }

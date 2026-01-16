@@ -83,6 +83,7 @@ export default function MeasurementsHome() {
 
   const [mode, setMode] = useState("jig"); // jig | full
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+  const [loadErr, setLoadErr] = useState("");
 
   useEffect(() => {
     if (selectedRider) setParams({ rider: selectedRider }, { replace: true });
@@ -95,7 +96,14 @@ export default function MeasurementsHome() {
         const r = await fetchRiders();
         if (!alive) return;
         setRiders(r);
+        setLoadErr("");
       } catch (e) {
+        // If offline, don't spam errors — show a clear inline state.
+        const isOff = typeof navigator !== "undefined" && navigator.onLine === false;
+        if (isOff) {
+          setLoadErr("Offline — riders can’t load. Reconnect and reopen.");
+          return;
+        }
         toast.error(e?.message || "Failed to load riders");
       }
     })();
@@ -114,6 +122,10 @@ export default function MeasurementsHome() {
   function go(path) {
     if (!selectedRider) {
       toast.warning("Select a rider first");
+      return;
+    }
+    if (offline) {
+      toast.warning("Offline — reconnect to continue");
       return;
     }
     navigate(`${path}?rider=${encodeURIComponent(selectedRider)}`);
@@ -151,6 +163,7 @@ export default function MeasurementsHome() {
                 </option>
               ))}
             </select>
+            {loadErr ? <div className={cx(UI.helper, "mt-2 text-yellow-200/80")}>{loadErr}</div> : null}
           </div>
 
           <div className="flex flex-col">
@@ -175,16 +188,16 @@ export default function MeasurementsHome() {
             icon={Ruler}
             onClick={() => go("/measurements/quick")}
             tone="primary"
-            rightText={offline ? "queues" : ""}
-            disabled={!selectedRider}
+            rightText={offline ? "offline" : ""}
+            disabled={!selectedRider || offline}
           />
           <CardButton
             title="History"
             subtitle="Track changes over time"
             icon={History}
             onClick={() => go("/measurements/history")}
-            rightText={offline ? "view" : ""}
-            disabled={!selectedRider}
+            rightText={offline ? "offline" : ""}
+            disabled={!selectedRider || offline}
           />
         </div>
       ) : (
@@ -195,15 +208,16 @@ export default function MeasurementsHome() {
             icon={Ruler}
             onClick={() => go("/measurements/full")}
             tone="primary"
-            rightText={offline ? "queues" : ""}
-            disabled={!selectedRider}
+            rightText={offline ? "offline" : ""}
+            disabled={!selectedRider || offline}
           />
           <CardButton
             title="History"
             subtitle="Past saves"
             icon={History}
             onClick={() => go("/measurements/history")}
-            disabled={!selectedRider}
+            rightText={offline ? "offline" : ""}
+            disabled={!selectedRider || offline}
           />
         </div>
       )}

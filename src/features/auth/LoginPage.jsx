@@ -16,7 +16,13 @@ export default function LoginPage() {
     return (f.pathname || "/measurements") + (f.search || "");
   }, [location.state]);
 
-  const [email, setEmail] = useState(localStorage.getItem("cfr_login_email") || "");
+  const [email, setEmail] = useState(() => {
+    try {
+      return localStorage.getItem("cfr_login_email") || "";
+    } catch {
+      return "";
+    }
+  });
   const [otp, setOtp] = useState("");
   const [phase, setPhase] = useState("email"); // email | otp
   const [status, setStatus] = useState({ kind: "idle", msg: "" }); // idle|loading|ok|err
@@ -31,7 +37,11 @@ export default function LoginPage() {
     setStatus({ kind: "loading", msg: "Sending code…" });
 
     try {
-      localStorage.setItem("cfr_login_email", clean);
+      try {
+        localStorage.setItem("cfr_login_email", clean);
+      } catch {
+        // ignore
+      }
 
       const { error } = await supabase.auth.signInWithOtp({
         email: clean,

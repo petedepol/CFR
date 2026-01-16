@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { WifiOff } from "lucide-react";
 import { fetchRiders } from "../../measurements/api/measurementsApi";
-import { useAuth } from "../../auth/AuthProvider.jsx";
 import { useToast } from "../../../components/ToastProvider.jsx";
 import { UI } from "../../../ui/styles.js";
 
@@ -51,7 +50,6 @@ function initials(fullName) {
 export default function SettingsHome() {
   const navigate = useNavigate();
   const toast = useToast();
-  const { displayName } = useAuth();
 
   const [params, setParams] = useSearchParams();
   const riderParam = params.get("rider") || "";
@@ -73,7 +71,7 @@ export default function SettingsHome() {
         if (!alive) return;
         setRiders(list || []);
 
-        // Preselect last rider for URL continuity (no UI highlight, still requires tap)
+        // Preselect last rider for URL continuity only (no highlight, still requires tap)
         if (!riderParam) {
           const last = getLastRider();
           if (last) setSelectedRider(last);
@@ -89,35 +87,23 @@ export default function SettingsHome() {
   }, []);
 
   function goMtb(name) {
-    if (!name) {
-      toast.warning("Select a rider");
-      return;
-    }
+    if (!name) return;
     setLastRider(name);
     navigate(`/settings/mtb?rider=${encodeURIComponent(name)}`);
   }
 
   return (
-    <div className="space-y-3 pb-10">
-      <div className={cx(UI.card, "p-4")}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-white font-black">Choose rider</div>
-
-          <div className="flex items-center gap-2">
-            {offline ? (
-              <div className={cx(UI.pillBase, UI.pillWarn)}>
-                <span className="inline-flex items-center gap-2">
-                  <WifiOff size={14} /> Offline
-                </span>
-              </div>
-            ) : null}
-
-            <div className="text-xs text-white/60 font-bold">
-              {displayName ? `Mechanic: ${displayName}` : ""}
-            </div>
+    <div className="pb-10">
+      {/* Offline badge only (no header) */}
+      {offline ? (
+        <div className="fixed top-16 right-4 z-20">
+          <div className={cx(UI.pillBase, UI.pillWarn, "shadow-lg backdrop-blur")}>
+            <span className="inline-flex items-center gap-2">
+              <WifiOff size={14} /> Offline
+            </span>
           </div>
         </div>
-      </div>
+      ) : null}
 
       {/* Photo grid (2 cols iPhone, denser on bigger screens) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
@@ -150,7 +136,6 @@ export default function SettingsHome() {
                   </div>
                 )}
 
-                {/* Flag badge */}
                 {r.flag ? (
                   <div className="absolute left-2 top-2 text-xs font-black px-2 py-1 rounded-2xl border border-white/10 bg-black/50 backdrop-blur">
                     {r.flag}

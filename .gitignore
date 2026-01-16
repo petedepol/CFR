@@ -7,3 +7,6 @@ src/features/measurements/pages/NOTES.md
 ._*
 bike-app-v2.zip
 dev-dist/
+
+# local dev PWA output
+dev-dist/

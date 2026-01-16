@@ -1,4 +1,5 @@
 import { supabase } from "../../../lib/supabaseClient";
+import { enqueueBikeMeasurement, flushBikeMeasurementsQueue } from "../../../lib/offlineBikeMeasurementsQueue.js";
 
 // ---------- small helpers ----------
 function sleep(ms) {
@@ -65,6 +66,13 @@ function quickTypeForBikeType(bikeType) {
   return "quick"; // MTB + legacy default
 }
 
+function fullTypeForBikeType(bikeType) {
+  const k = String(bikeType || "mtb").toLowerCase();
+  if (k === "road") return "full_road";
+  if (k === "cx") return "full_cx";
+  return "full"; // MTB + legacy default
+}
+
 // ---------- API ----------
 export async function fetchRiders() {
   return withRetry(async () => {
@@ -98,13 +106,14 @@ export async function fetchLatestQuick(rider, bikeType = "mtb") {
   });
 }
 
-export async function fetchLatestFull(rider) {
+export async function fetchLatestFull(rider, bikeType = "mtb") {
+  const t = fullTypeForBikeType(bikeType);
   return withRetry(async () => {
     const { data, error } = await supabase
       .from("bike_measurements")
       .select("*")
       .eq("rider", rider)
-      .eq("type", "full")
+      .eq("type", t)
       .order("timestamp", { ascending: false })
       .limit(1);
 
@@ -160,40 +169,83 @@ export async function insertQuick({
   notes,
   location,
   bikeType = "mtb",
+  dedupeSig = "",
 }) {
   const type = quickTypeForBikeType(bikeType);
 
-  return withRetry(async () => {
-    const payload = {
-      rider,
-      mechanic,
-      saddle_setback: saddleSetback,
-      height_4cm: height4cm,
-      height_15cm: height15cm,
-      notes,
-      location,
-      timestamp: new Date().toISOString(),
-      type,
-    };
+  const payload = {
+    rider,
+    mechanic,
+    saddle_setback: saddleSetback,
+    height_4cm: height4cm,
+    height_15cm: height15cm,
+    notes,
+    location,
+    timestamp: new Date().toISOString(),
+    type,
+  };
 
-    const { error } = await supabase.from("bike_measurements").insert([payload]);
-    if (error) throw error;
-  });
+  try {
+    await withRetry(async () => {
+      const { error } = await supabase.from("bike_measurements").insert([payload]);
+      if (error) throw error;
+    });
+
+    // If we just saved successfully, try to flush any older queued entries too.
+    try {
+      await flushBikeMeasurementsQueue({ max: 10 });
+    } catch {
+      // ignore
+    }
+
+    return { queued: false };
+  } catch (err) {
+    const offline = err?.code === "OFFLINE" || (typeof navigator !== "undefined" && navigator.onLine === false);
+    const queueable = offline || isRetryableError(err);
+
+    if (queueable) {
+      enqueueBikeMeasurement(payload, dedupeSig);
+      return { queued: true, reason: offline ? "offline" : "retryable" };
+    }
+
+    throw err;
+  }
 }
 
-export async function insertFull({ rider, mechanic, fullSpec }) {
-  return withRetry(async () => {
-    const payload = {
-      rider,
-      mechanic,
-      type: "full",
-      full_spec: fullSpec,
-      timestamp: new Date().toISOString(),
-    };
+export async function insertFull({ rider, mechanic, fullSpec, bikeType = "mtb", dedupeSig = "" }) {
+  const type = fullTypeForBikeType(bikeType);
+  const payload = {
+    rider,
+    mechanic,
+    type,
+    full_spec: fullSpec,
+    timestamp: new Date().toISOString(),
+  };
 
-    const { error } = await supabase.from("bike_measurements").insert([payload]);
-    if (error) throw error;
-  });
+  try {
+    await withRetry(async () => {
+      const { error } = await supabase.from("bike_measurements").insert([payload]);
+      if (error) throw error;
+    });
+
+    try {
+      await flushBikeMeasurementsQueue({ max: 10 });
+    } catch {
+      // ignore
+    }
+
+    return { queued: false };
+  } catch (err) {
+    const offline = err?.code === "OFFLINE" || (typeof navigator !== "undefined" && navigator.onLine === false);
+    const queueable = offline || isRetryableError(err);
+
+    if (queueable) {
+      enqueueBikeMeasurement(payload, dedupeSig);
+      return { queued: true, reason: offline ? "offline" : "retryable" };
+    }
+
+    throw err;
+  }
 }
 
 // --- ADMIN tools (RLS must allow admin update/delete) ---

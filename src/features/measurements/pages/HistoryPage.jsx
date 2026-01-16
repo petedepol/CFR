@@ -22,6 +22,18 @@ function isQuickType(t) {
   return x === "quick" || x === "quick_road" || x === "quick_cx";
 }
 
+function isFullType(t) {
+  const x = String(t || "").toLowerCase();
+  return x === "full" || x === "full_road" || x === "full_cx";
+}
+
+function fullLabelFromType(t) {
+  const x = String(t || "").toLowerCase();
+  if (x === "full_road") return "Road";
+  if (x === "full_cx") return "CX";
+  return "MTB";
+}
+
 function quickTypeForBikeType(bikeType) {
   const k = String(bikeType || "mtb").toLowerCase();
   if (k === "road") return "quick_road";
@@ -358,7 +370,7 @@ export default function HistoryPage() {
   const fullRowsNewestFirst = useMemo(
     () =>
       (items || [])
-        .filter((x) => String(x.type || "").toLowerCase() === "full")
+        .filter((x) => isFullType(x.type))
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
     [items]
   );
@@ -459,8 +471,9 @@ export default function HistoryPage() {
     }
   }
 
+  // NOTE: the full-bleed black wrapper prevents iOS Safari "white bounce" behind scroll content.
   return (
-    <div className="space-y-4 pb-24">
+    <div className="-mx-4 px-4 space-y-4 pb-24 bg-black min-h-[100dvh]">
       <button
         onClick={() => navigate("/measurements")}
         className="inline-flex items-center gap-2 text-white/75 hover:text-white transition"
@@ -748,7 +761,10 @@ export default function HistoryPage() {
                           >
                             <div className="flex items-center justify-between gap-3">
                               <div className="min-w-0">
-                                <div className="text-white/85 font-bold">{formatDateTime(row.timestamp)}</div>
+                                <div className="flex items-center gap-2">
+                                  <div className="text-white/85 font-bold">{formatDateTime(row.timestamp)}</div>
+                                  <span className={cx(UI.pillBase, "bg-white/5 border-white/10 text-white/65")}>{fullLabelFromType(row.type)}</span>
+                                </div>
                                 {(row.location || row.notes) ? (
                                   <div className="mt-1 text-sm text-white/70">
                                     {row.notes ? <div className="text-lime-200/80 italic">“{row.notes}”</div> : null}

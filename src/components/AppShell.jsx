@@ -77,12 +77,10 @@ function copyTextToClipboard(text) {
     .then((ok) => ok || fallback());
 }
 
-function DiagnosticsModal({ open, onClose, pending }) {
+function DiagnosticsModal({ open, onClose, pending, offline }) {
   const { displayName } = useAuth();
   const [logs, setLogs] = useState([]);
   const [copied, setCopied] = useState(false);
-
-  const offline = typeof navigator !== "undefined" && navigator.onLine === false;
 
   useEffect(() => {
     if (!open) return;
@@ -219,7 +217,54 @@ function DiagnosticsModal({ open, onClose, pending }) {
 export default function AppShell() {
   const { displayName, isAdmin } = useAuth();
 
-  const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+  // Network status MUST be reactive (iOS Safari can keep the tab alive for days).
+  const [isOnline, setIsOnline] = useState(() => {
+    try {
+      return typeof navigator === "undefined" ? true : navigator.onLine !== false;
+    } catch {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    let alive = true;
+
+    const read = () => {
+      if (!alive) return;
+      try {
+        setIsOnline(typeof navigator === "undefined" ? true : navigator.onLine !== false);
+      } catch {
+        setIsOnline(true);
+      }
+    };
+
+    const onOnline = () => read();
+    const onOffline = () => read();
+    const onFocus = () => read();
+    const onVis = () => {
+      if (document.visibilityState === "visible") read();
+    };
+
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVis);
+
+    // iOS Safari sometimes fails to fire online/offline events reliably.
+    const interval = setInterval(read, 5000);
+    read();
+
+    return () => {
+      alive = false;
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVis);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const offline = !isOnline;
   const [pending, setPending] = useState(() => getBikeMeasurementsQueueCount());
   const [diagOpen, setDiagOpen] = useState(false);
 
@@ -244,10 +289,12 @@ export default function AppShell() {
     update();
     window.addEventListener(QUEUE_EVENT, update);
     window.addEventListener("online", update);
+    window.addEventListener("offline", update);
     window.addEventListener("focus", update);
     return () => {
       window.removeEventListener(QUEUE_EVENT, update);
       window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
       window.removeEventListener("focus", update);
     };
   }, []);
@@ -274,7 +321,7 @@ export default function AppShell() {
       <SafeArea>
         <OfflineSyncManager />
         <PwaUpdateManager />
-        <DiagnosticsModal open={diagOpen} onClose={() => setDiagOpen(false)} pending={pending} />
+        <DiagnosticsModal open={diagOpen} onClose={() => setDiagOpen(false)} pending={pending} offline={offline} />
 
         {/* Top Bar */}
         <div className="sticky top-0 z-40">

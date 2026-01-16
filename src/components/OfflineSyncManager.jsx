@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { flushBikeMeasurementsQueue, getBikeMeasurementsQueueCount } from "../lib/offlineBikeMeasurementsQueue.js";
 import { useToast } from "./ToastProvider.jsx";
+import { addDiag } from "../lib/diagnostics.js";
 
 export default function OfflineSyncManager() {
   const toast = useToast();
@@ -16,6 +17,19 @@ export default function OfflineSyncManager() {
       if (typeof navigator !== "undefined" && navigator.onLine === false) return;
 
       const res = await flushBikeMeasurementsQueue({ max: 50 });
+
+      // Log useful info for iOS weirdness / auth expiry cases
+      if (res?.error) {
+        addDiag("error", "queue.flush.error", {
+          reason,
+          sent: res?.sent || 0,
+          remaining: res?.remaining,
+          message: res?.error?.message || String(res?.error),
+          status: res?.error?.status || null,
+        });
+      } else if (res?.sent > 0) {
+        addDiag("info", "queue.flush.ok", { reason, sent: res?.sent, remaining: res?.remaining });
+      }
 
       // If we actually synced something, tell the user once.
       if (!alive) return;

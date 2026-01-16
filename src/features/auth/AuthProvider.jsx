@@ -4,8 +4,8 @@ import { supabase } from "../../lib/supabaseClient.js";
 
 const AuthContext = createContext(null);
 
-// Only used when no user session exists
-const DEFAULT_DISPLAY_NAME = "—";
+// Default mechanic display name shown in the UI
+const DEFAULT_DISPLAY_NAME = "Pete";
 
 function safeGetLocalStorage(key) {
   try {
@@ -25,65 +25,17 @@ function safeSetLocalStorage(key, value) {
   }
 }
 
-function safeRemoveLocalStorage(key) {
-  try {
-    if (typeof window === "undefined") return;
-    window.localStorage.removeItem(key);
-  } catch {
-    // ignore
-  }
-}
-
-function makeUserDisplayNameKey(userId) {
-  return userId ? `display_name__${userId}` : "display_name__no_user";
-}
-
-function fallbackNameFromEmail(email) {
-  const e = String(email || "").trim();
-  if (!e) return DEFAULT_DISPLAY_NAME;
-  const local = e.split("@")[0] || e;
-  const cleaned = local.replace(/[._-]+/g, " ").trim();
-  return cleaned ? cleaned.replace(/\b\w/g, (c) => c.toUpperCase()) : DEFAULT_DISPLAY_NAME;
-}
-
-async function fetchNameFromAllowedUsers(email) {
-  const em = String(email || "").trim();
-  if (!em) return null;
-
-  // Prefer exact lowercased match (most setups store email lowercased)
-  const lower = em.toLowerCase();
-
-  // 1) Try eq on lower (fast path)
-  {
-    const { data, error } = await supabase
-      .from("allowed_users")
-      .select("name,email,active")
-      .eq("email", lower)
-      .maybeSingle();
-
-    if (!error && data?.active && data?.name) return String(data.name).trim();
-  }
-
-  // 2) Fallback: case-insensitive match (handles mixed-case emails)
-  {
-    const { data, error } = await supabase
-      .from("allowed_users")
-      .select("name,email,active")
-      .ilike("email", em) // case-insensitive
-      .maybeSingle();
-
-    if (!error && data?.active && data?.name) return String(data.name).trim();
-  }
-
-  return null;
-}
-
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [booting, setBooting] = useState(true);
 
-  // A user-facing display name so the UI doesn’t show user.email.
-  const [displayName, setDisplayNameState] = useState(DEFAULT_DISPLAY_NAME);
+  // User-facing display name so the UI doesn’t show user.email.
+  const [displayName, setDisplayNameState] = useState(() => {
+    return safeGetLocalStorage("display_name") || DEFAULT_DISPLAY_NAME;
+  });
+
+  // Role from allowed_users (optional)
+  const [role, setRole] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -133,90 +85,95 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  // ✅ Per-user display name resolution:
-  // - Use localStorage key scoped to user id
-  // - If missing, pull from public.allowed_users by email (case-insensitive fallback)
-  // - If still missing, fallback to email local-part
+  // Pull allowed_users info (name/role) for the logged-in email
   useEffect(() => {
     let alive = true;
 
-    async function resolveDisplayName() {
-      const user = session?.user ?? null;
-
-      // No session → show placeholder
-      if (!user) {
-        setDisplayNameState(DEFAULT_DISPLAY_NAME);
+    async function loadAllowedUser() {
+      const email = session?.user?.email ? String(session.user.email).toLowerCase() : "";
+      if (!email) {
+        if (!alive) return;
+        setRole(null);
         return;
       }
 
-      const userId = user.id;
-      const userEmail = user.email || "";
-      const key = makeUserDisplayNameKey(userId);
-
-      // If we have a per-user cached name, use it immediately
-      const stored = safeGetLocalStorage(key);
-      if (stored && stored.trim()) {
-        setDisplayNameState(stored.trim());
-        return;
-      }
-
-      // Otherwise, fetch from allowed_users
       try {
-        const name = await fetchNameFromAllowedUsers(userEmail);
+        const { data, error } = await supabase
+          .from("allowed_users")
+          .select("name, role, active")
+          .eq("email", email)
+          .limit(1)
+          .maybeSingle();
+
         if (!alive) return;
 
-        if (name) {
-          safeSetLocalStorage(key, name);
-          setDisplayNameState(name);
+        if (error) {
+          // If RLS blocks this, the app still works (just no admin UI)
+          setRole(null);
+          return;
+        }
+
+        const au = data || null;
+        const nextRole = au?.active ? au?.role || null : null;
+        setRole(nextRole);
+
+        // If allowed_users has a name, use it for displayName
+        const auName = (au?.active ? au?.name : "") || "";
+        if (auName.trim()) {
+          safeSetLocalStorage("display_name", auName.trim());
+          setDisplayNameState(auName.trim());
           return;
         }
       } catch {
-        // ignore; fallback below
+        if (!alive) return;
+        setRole(null);
       }
-
-      // Final fallback: derive from email
-      const fallback = fallbackNameFromEmail(userEmail);
-      safeSetLocalStorage(key, fallback);
-      setDisplayNameState(fallback);
-
-      // Optional: stop using the old global key if it exists (prevents “Pete” leakage)
-      // We do NOT read it anymore, but cleaning reduces confusion.
-      safeRemoveLocalStorage("display_name");
     }
 
-    resolveDisplayName();
+    loadAllowedUser();
 
     return () => {
       alive = false;
     };
-  }, [session?.user?.id]); // re-run on login user change
+  }, [session?.user?.email]);
+
+  // Ensure a stable display name exists (fallback)
+  useEffect(() => {
+    const stored = safeGetLocalStorage("display_name");
+    if (!stored) {
+      safeSetLocalStorage("display_name", DEFAULT_DISPLAY_NAME);
+      setDisplayNameState(DEFAULT_DISPLAY_NAME);
+      return;
+    }
+    if (stored !== displayName) setDisplayNameState(stored);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id]);
 
   const value = useMemo(() => {
     const user = session?.user ?? null;
+    const email = user?.email ? String(user.email).toLowerCase() : "";
 
     return {
       session,
       user,
+      email,
 
-      // ✅ Some parts of your app expect `loading`, others `booting`
       booting,
       loading: booting,
 
       isAuthed: Boolean(user),
 
-      // ✅ Use this everywhere in the UI instead of user.email
       displayName,
+      role,
+      isAdmin: role === "admin",
 
-      // ✅ Per-user setter
       setDisplayName: (name) => {
-        const userId = user?.id;
-        const key = makeUserDisplayNameKey(userId);
-        const next = (name || "").trim() || fallbackNameFromEmail(user?.email);
-        safeSetLocalStorage(key, next);
+        const next = (name || "").trim() || DEFAULT_DISPLAY_NAME;
+        safeSetLocalStorage("display_name", next);
         setDisplayNameState(next);
       },
     };
-  }, [session, booting, displayName]);
+  }, [session, booting, displayName, role]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

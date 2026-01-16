@@ -4,3 +4,6 @@ dist
 .env.*
 .DS_Store
 src/features/measurements/pages/NOTES.md
+._*
+bike-app-v2.zip
+dev-dist/

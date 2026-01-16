@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ensureSession, fetchHistory } from "../api/measurementsApi";
-import { ArrowLeft, Share2, ChevronDown, ChevronUp } from "lucide-react";
+import { ensureSession, fetchHistory, updateMeasurement, deleteMeasurement } from "../api/measurementsApi";
+import { ArrowLeft, Share2, Pencil, Trash2, X } from "lucide-react";
 import { useAuth } from "../../auth/AuthProvider.jsx";
 
 function isQuickType(t) {
@@ -16,46 +16,37 @@ function quickTypeForBikeType(bikeType) {
   return "quick";
 }
 
-function isDeltaNonZero(d) {
-  if (d === null || d === undefined) return false;
-  return Math.abs(Number(d)) >= 0.05; // ignore tiny float noise
-}
-
-function metricCellClass({ isLatest, delta }) {
-  // Highlight ONLY the latest row when that metric changed vs baseline
-  if (!isLatest || !isDeltaNonZero(delta)) return "px-4 py-3 text-white/70 whitespace-nowrap";
-  return "px-4 py-3 text-white/85 whitespace-nowrap bg-lime-300/10 border-l border-r border-lime-300/20";
+function bikeLabelFromType(t) {
+  const x = String(t || "").toLowerCase();
+  if (x === "quick_road") return "Road";
+  if (x === "quick_cx") return "CX";
+  return "MTB";
 }
 
 export default function HistoryPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const { displayName } = useAuth();
+  const { displayName, isAdmin } = useAuth();
 
   const mechanic = (displayName || "").trim();
   const rider = params.get("rider") || "";
 
   const [items, setItems] = useState([]);
   const [status, setStatus] = useState({ kind: "idle", msg: "" }); // idle|loading|err
-
-  // dropdown: Jig / Bike Spec / All
-  const [filter, setFilter] = useState("quick"); // quick|full|all
-
-  const [openFullKey, setOpenFullKey] = useState(null); // id|timestamp of expanded full-spec row
+  const [filter, setFilter] = useState("quick"); // quick|all|full
 
   // Default is MTB so Road/CX are minimal visibility
   const [jigBikeType, setJigBikeType] = useState("mtb"); // mtb|road|cx|all
 
-  // iOS Safari sometimes doesn't paint the page until the first scroll.
-  // This 1px nudge forces a paint without changing where the user ends up.
-  useEffect(() => {
-    const isiOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
-    if (!isiOS) return;
-    requestAnimationFrame(() => {
-      window.scrollBy(0, 1);
-      window.scrollBy(0, -1);
-    });
-  }, []);
+  const [editing, setEditing] = useState(null); // row or null
+  const [editVals, setEditVals] = useState({
+    saddle_setback: "",
+    height_4cm: "",
+    height_15cm: "",
+    location: "",
+    notes: "",
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   async function load({ silent = false } = {}) {
     if (!rider) return;
@@ -132,9 +123,9 @@ export default function HistoryPage() {
 
     const text =
       `${rider} — Jig Update (${bikeLabelFromType(latest.type)})\n` +
-      `SB: ${fmtNum(sb)}${dSB !== null ? ` (${fmtSigned(dSB)})` : ""}\n` +
-      `4cm: ${fmtNum(h4)}${d4 !== null ? ` (${fmtSigned(d4)})` : ""}\n` +
-      `15cm: ${fmtNum(h15)}${d15 !== null ? ` (${fmtSigned(d15)})` : ""}\n` +
+      `SB: ${fmtNum(sb)}mm${dSB !== null ? ` (${fmtSigned(dSB)}mm)` : ""}\n` +
+      `4cm: ${fmtNum(h4)}mm${d4 !== null ? ` (${fmtSigned(d4)}mm)` : ""}\n` +
+      `15cm: ${fmtNum(h15)}mm${d15 !== null ? ` (${fmtSigned(d15)}mm)` : ""}\n` +
       (latest.location ? `Location: ${latest.location}\n` : "") +
       (latest.notes ? `Notes: ${latest.notes}\n` : "") +
       `When: ${formatDateTime(latest.timestamp)}`;
@@ -151,19 +142,73 @@ export default function HistoryPage() {
     }
   }
 
+  function openEdit(row) {
+    setEditing(row);
+    setEditVals({
+      saddle_setback: row?.saddle_setback ?? "",
+      height_4cm: row?.height_4cm ?? "",
+      height_15cm: row?.height_15cm ?? "",
+      location: row?.location ?? "",
+      notes: row?.notes ?? "",
+    });
+  }
+
+  async function saveEdit() {
+    if (!editing?.id) return;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      alert("You are offline. Admin edits require being online.");
+      return;
+    }
+
+    setSavingEdit(true);
+    try {
+      const patch = {
+        saddle_setback: editVals.saddle_setback === "" ? null : Number(editVals.saddle_setback),
+        height_4cm: editVals.height_4cm === "" ? null : Number(editVals.height_4cm),
+        height_15cm: editVals.height_15cm === "" ? null : Number(editVals.height_15cm),
+        location: String(editVals.location || ""),
+        notes: String(editVals.notes || ""),
+      };
+
+      // If any number failed parsing, keep as null (instead of NaN)
+      for (const k of ["saddle_setback", "height_4cm", "height_15cm"]) {
+        if (patch[k] !== null && !Number.isFinite(patch[k])) patch[k] = null;
+      }
+
+      await updateMeasurement(editing.id, patch);
+      setEditing(null);
+      await load({ silent: true });
+    } catch (e) {
+      alert(e?.message || "Failed to save edit.");
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  async function doDelete(row) {
+    if (!row?.id) return;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      alert("You are offline. Admin deletes require being online.");
+      return;
+    }
+    const ok = window.confirm("Delete this entry? This cannot be undone.");
+    if (!ok) return;
+
+    try {
+      await deleteMeasurement(row.id);
+      await load({ silent: true });
+    } catch (e) {
+      alert(e?.message || "Failed to delete entry.");
+    }
+  }
+
   return (
     <div className="space-y-4">
-      <button
-        onClick={() => navigate("/measurements")}
-        className="inline-flex items-center gap-2 text-white/70 hover:text-white"
-      >
+      <button onClick={() => navigate("/measurements")} className="inline-flex items-center gap-2 text-white/70 hover:text-white">
         <ArrowLeft size={18} /> Back
       </button>
 
-      <div
-        className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-6"
-        style={{ WebkitTransform: "translateZ(0)" }}
-      >
+      <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-6">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div>
             <div className="text-sm text-white/60 uppercase tracking-widest">History</div>
@@ -171,11 +216,12 @@ export default function HistoryPage() {
             <div className="text-white/50 text-sm mt-1">Mechanic: {mechanic || "—"}</div>
           </div>
 
-          <div className="flex flex-wrap items-end gap-3">
-            {showJig && jigFilteredNewestFirst.length > 0 && (
+          <div className="flex flex-wrap items-end gap-2">
+            {showJig && (
               <button
                 onClick={shareLatestJig}
-                className="rounded-2xl px-4 py-3 font-black border border-white/10 bg-white/5 hover:bg-white/10 text-white/85 inline-flex items-center gap-2"
+                className="rounded-2xl px-4 py-3 font-bold bg-lime-300 text-black hover:bg-lime-200 inline-flex items-center gap-2"
+                title="Share latest jig update"
               >
                 <Share2 size={16} /> Share Jig
               </button>
@@ -188,9 +234,9 @@ export default function HistoryPage() {
                 onChange={(e) => setFilter(e.target.value)}
                 className="rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
               >
-                <option value="quick">Jig</option>
-                <option value="full">Bike Spec</option>
+                <option value="quick">Jig History</option>
                 <option value="all">All</option>
+                <option value="full">Bike Spec</option>
               </select>
             </label>
 
@@ -213,245 +259,332 @@ export default function HistoryPage() {
         </div>
 
         {status.kind === "loading" ? (
-          <div className="mt-6 text-white/60">Loading history…</div>
+          <div className="mt-6 text-white/60">Loading…</div>
         ) : status.kind === "err" ? (
-          <div className="mt-6 text-red-200/90">{status.msg}</div>
+          <div className="mt-6 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-red-200 text-sm">
+            {status.msg}
+            <div className="mt-2 text-xs text-red-100/70">Tip: switch tabs and come back to trigger auto-recover.</div>
+          </div>
         ) : (
           <div className="mt-6 space-y-6">
             {showJig && (
               <div className="space-y-3">
-                <div className="text-xs text-white/60 uppercase tracking-widest">Jig / Quick</div>
+                <div className="text-xs text-white/60 uppercase tracking-widest">
+                  Jig History {jigBikeType !== "all" ? `(${jigBikeType.toUpperCase()})` : "(ALL)"}
+                </div>
 
                 {jigFilteredNewestFirst.length === 0 ? (
-                  <div className="text-white/60">No jig/quick entries yet.</div>
+                  <div className="text-white/60">No jig entries for this bike type.</div>
                 ) : (
-                  <div className="rounded-3xl border border-white/10 bg-black/20 overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="min-w-[820px] w-full text-sm">
-                        <thead>
-                          <tr className="bg-black/35 text-white/70">
-                            <th className="px-4 py-3 text-left font-bold">When</th>
-                            <th className="px-4 py-3 text-left font-bold">Bike</th>
-                            <th className="px-4 py-3 text-left font-bold">SB</th>
-                            <th className="px-4 py-3 text-left font-bold">4cm</th>
-                            <th className="px-4 py-3 text-left font-bold">15cm</th>
-                            <th className="px-4 py-3 text-left font-bold">Location</th>
-                            <th className="px-4 py-3 text-left font-bold">Notes</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {jigFilteredNewestFirst.map((row, idx) => {
-                            const isLatest = idx === 0;
+                  <>
+                    {/* Desktop table */}
+                    <div className="hidden md:block overflow-hidden rounded-2xl border border-white/10 bg-black/30">
+                      <div className="max-h-[70vh] overflow-auto">
+                        <table className="w-full text-sm table-fixed">
+                          <thead className="sticky top-0 bg-black/70 backdrop-blur border-b border-white/10">
+                            <tr className="text-white/60">
+                              <th className="text-left font-black px-4 py-3 w-[160px] border-r border-white/10">Date</th>
+                              <th className="text-left font-black px-3 py-3 w-[80px] border-r border-white/10">Bike</th>
 
-                            const sb = toNum(row.saddle_setback);
-                            const h4 = toNum(row.height_4cm);
-                            const h15 = toNum(row.height_15cm);
+                              <th className="text-right font-black px-3 py-3 w-[110px]">SB</th>
+                              <th className="text-right font-black px-2 py-3 w-[70px] border-r border-white/10">Δ</th>
 
-                            const base = rollingBaselineForIndex(jigFilteredNewestFirst, idx);
-                            const dSB = base ? diff(sb, base.sb) : null;
-                            const d4 = base ? diff(h4, base.h4) : null;
-                            const d15 = base ? diff(h15, base.h15) : null;
+                              <th className="text-right font-black px-3 py-3 w-[110px]">4cm</th>
+                              <th className="text-right font-black px-2 py-3 w-[70px] border-r border-white/10">Δ</th>
 
-                            return (
-                              <tr
-                                key={row.id || row.timestamp}
-                                className={`border-t border-white/10 ${isLatest ? "bg-white/[0.02]" : ""}`}
-                              >
-                                <td className="px-4 py-3 text-white/80 whitespace-nowrap">
-                                  <div className="font-semibold">{formatDateTime(row.timestamp)}</div>
-                                  <div className="text-xs text-white/40">{formatTime(row.timestamp)}</div>
-                                </td>
-                                <td className="px-4 py-3 text-white/70 whitespace-nowrap">
-                                  {bikeLabelFromType(row.type)}
-                                </td>
+                              <th className="text-right font-black px-3 py-3 w-[110px]">15cm</th>
+                              <th className="text-right font-black px-2 py-3 w-[70px] border-r border-white/10">Δ</th>
 
-                                <td className={metricCellClass({ isLatest, delta: dSB })}>
-                                  <div className="font-semibold">{fmtNum(sb)}</div>
-                                  {dSB !== null ? (
-                                    <div className={`text-xs ${isLatest && isDeltaNonZero(dSB) ? "text-lime-200/90" : "text-white/45"}`}>
-                                      {fmtSigned(dSB)}
-                                    </div>
-                                  ) : (
-                                    <div className="text-xs text-white/25">—</div>
-                                  )}
-                                </td>
+                              <th className="text-left font-black px-4 py-3 w-auto min-w-[320px]">Notes</th>
 
-                                <td className={metricCellClass({ isLatest, delta: d4 })}>
-                                  <div className="font-semibold">{fmtNum(h4)}</div>
-                                  {d4 !== null ? (
-                                    <div className={`text-xs ${isLatest && isDeltaNonZero(d4) ? "text-lime-200/90" : "text-white/45"}`}>
-                                      {fmtSigned(d4)}
-                                    </div>
-                                  ) : (
-                                    <div className="text-xs text-white/25">—</div>
-                                  )}
-                                </td>
+                              {isAdmin ? (
+                                <th className="text-right font-black px-4 py-3 w-[120px]"> </th>
+                              ) : null}
+                            </tr>
+                          </thead>
 
-                                <td className={metricCellClass({ isLatest, delta: d15 })}>
-                                  <div className="font-semibold">{fmtNum(h15)}</div>
-                                  {d15 !== null ? (
-                                    <div className={`text-xs ${isLatest && isDeltaNonZero(d15) ? "text-lime-200/90" : "text-white/45"}`}>
-                                      {fmtSigned(d15)}
-                                    </div>
-                                  ) : (
-                                    <div className="text-xs text-white/25">—</div>
-                                  )}
-                                </td>
+                          <tbody>
+                            {jigFilteredNewestFirst.map((row, idx) => {
+                              const base = rollingBaselineForIndex(jigFilteredNewestFirst, idx);
+                              const sb = toNum(row.saddle_setback);
+                              const h4 = toNum(row.height_4cm);
+                              const h15 = toNum(row.height_15cm);
 
-                                <td className="px-4 py-3 text-white/70 align-top break-words">
-                                  {row.location ? <span>{row.location}</span> : <span className="text-white/25">—</span>}
-                                </td>
-                                <td className="px-4 py-3 text-white/70 align-top break-words">
-                                  {row.notes ? (
-                                    <span className="text-lime-200/80 italic">“{row.notes}”</span>
-                                  ) : (
-                                    <span className="text-white/25">—</span>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                              const dSB = base ? diff(sb, base.sb) : null;
+                              const d4 = base ? diff(h4, base.h4) : null;
+                              const d15 = base ? diff(h15, base.h15) : null;
+
+                              const zebra = idx % 2 === 0 ? "bg-black/15" : "bg-black/5";
+
+                              return (
+                                <tr key={row.id || `${row.timestamp}-${idx}`} className={`border-b border-white/5 ${zebra}`}>
+                                  <td className="px-4 py-3 text-white/70 align-top border-r border-white/10">
+                                    <div className="font-semibold text-white/80">{formatDateShort(row.timestamp)}</div>
+                                    <div className="text-xs text-white/40 mt-0.5">{formatTime(row.timestamp)}</div>
+                                    {row.location ? <div className="text-xs text-white/40 mt-1">{row.location}</div> : null}
+                                  </td>
+
+                                  <td className="px-3 py-3 text-white/70 align-top border-r border-white/10">
+                                    <span className="inline-flex items-center rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-black text-white/70">
+                                      {bikeLabelFromType(row.type)}
+                                    </span>
+                                  </td>
+
+                                  <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">{fmtNum(sb)}</td>
+                                  <td className="px-2 py-3 text-right tabular-nums align-top border-r border-white/10">
+                                    {dSB !== null ? <span className="text-red-300">{fmtSigned(dSB)}</span> : <span className="text-white/25">—</span>}
+                                  </td>
+
+                                  <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">{fmtNum(h4)}</td>
+                                  <td className="px-2 py-3 text-right tabular-nums align-top border-r border-white/10">
+                                    {d4 !== null ? <span className="text-red-300">{fmtSigned(d4)}</span> : <span className="text-white/25">—</span>}
+                                  </td>
+
+                                  <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">{fmtNum(h15)}</td>
+                                  <td className="px-2 py-3 text-right tabular-nums align-top border-r border-white/10">
+                                    {d15 !== null ? <span className="text-red-300">{fmtSigned(d15)}</span> : <span className="text-white/25">—</span>}
+                                  </td>
+
+                                  <td className="px-4 py-3 text-white/70 align-top break-words">
+                                    {row.notes ? <span className="text-lime-200/80 italic">“{row.notes}”</span> : <span className="text-white/25">—</span>}
+                                  </td>
+
+                                  {isAdmin ? (
+                                    <td className="px-4 py-3 align-top">
+                                      <div className="flex justify-end gap-2">
+                                        <button
+                                          onClick={() => openEdit(row)}
+                                          className="h-10 w-10 rounded-2xl border border-lime-300/25 bg-black/40 hover:bg-black/60 inline-flex items-center justify-center"
+                                          title="Edit"
+                                        >
+                                          <Pencil size={16} className="text-lime-200" />
+                                        </button>
+                                        <button
+                                          onClick={() => doDelete(row)}
+                                          className="h-10 w-10 rounded-2xl border border-red-300/20 bg-black/40 hover:bg-black/60 inline-flex items-center justify-center"
+                                          title="Delete"
+                                        >
+                                          <Trash2 size={16} className="text-red-300" />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  ) : null}
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
+
+                    {/* Mobile cards (iPhone) */}
+                    <div className="md:hidden space-y-2">
+                      {jigFilteredNewestFirst.map((row, idx) => {
+                        const base = rollingBaselineForIndex(jigFilteredNewestFirst, idx);
+                        const sb = toNum(row.saddle_setback);
+                        const h4 = toNum(row.height_4cm);
+                        const h15 = toNum(row.height_15cm);
+
+                        const dSB = base ? diff(sb, base.sb) : null;
+                        const d4 = base ? diff(h4, base.h4) : null;
+                        const d15 = base ? diff(h15, base.h15) : null;
+
+                        return (
+                          <div key={row.id || `${row.timestamp}-${idx}`} className="rounded-3xl border border-white/10 bg-black/30 p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="text-white/85 font-black">
+                                  {bikeLabelFromType(row.type)} • {formatDateTime(row.timestamp)}
+                                </div>
+                                {row.location ? <div className="text-xs text-white/45 mt-1">{row.location}</div> : null}
+                              </div>
+
+                              {isAdmin ? (
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => openEdit(row)}
+                                    className="h-10 w-10 rounded-2xl border border-lime-300/25 bg-black/40 inline-flex items-center justify-center"
+                                    title="Edit"
+                                  >
+                                    <Pencil size={16} className="text-lime-200" />
+                                  </button>
+                                  <button
+                                    onClick={() => doDelete(row)}
+                                    className="h-10 w-10 rounded-2xl border border-red-300/20 bg-black/40 inline-flex items-center justify-center"
+                                    title="Delete"
+                                  >
+                                    <Trash2 size={16} className="text-red-300" />
+                                  </button>
+                                </div>
+                              ) : null}
+                            </div>
+
+                            <div className="mt-3 grid grid-cols-3 gap-2">
+                              <Metric label="SB" value={fmtNum(sb)} delta={dSB} />
+                              <Metric label="4cm" value={fmtNum(h4)} delta={d4} />
+                              <Metric label="15cm" value={fmtNum(h15)} delta={d15} />
+                            </div>
+
+                            {row.notes ? <div className="mt-3 text-lime-200/80 italic">“{row.notes}”</div> : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
               </div>
             )}
 
             {showFull && (
               <div className="space-y-3">
-                <div className="text-xs text-white/60 uppercase tracking-widest">Bike Spec</div>
+                <div className="text-xs text-white/60 uppercase tracking-widest">Bike Spec History</div>
                 {fullRowsNewestFirst.length === 0 ? (
                   <div className="text-white/60">No bike spec entries yet.</div>
                 ) : (
                   <div className="space-y-2">
-                    {fullRowsNewestFirst.map((row) => {
-                      const key = row.id || row.timestamp;
-                      const isOpen = openFullKey === key;
-                      return (
-                        <button
-                          type="button"
-                          key={key}
-                          onClick={() => setOpenFullKey((prev) => (prev === key ? null : key))}
-                          className="w-full text-left rounded-2xl border border-white/10 bg-black/30 p-4 hover:bg-black/25 transition"
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="text-white/80 font-semibold">{formatDateTime(row.timestamp)}</div>
-                            <div className="flex items-center gap-2">
-                              <div className="text-xs text-white/50">{row.full_spec ? "Saved ✓" : "—"}</div>
-                              {isOpen ? (
-                                <ChevronUp size={16} className="text-white/50" />
-                              ) : (
-                                <ChevronDown size={16} className="text-white/50" />
-                              )}
-                            </div>
+                    {fullRowsNewestFirst.map((row) => (
+                      <div key={row.id || row.timestamp} className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-white/80 font-semibold">{formatDateTime(row.timestamp)}</div>
+
+                          <div className="flex items-center gap-2">
+                            <div className="text-xs text-white/50">{row.full_spec ? "Saved ✓" : "—"}</div>
+                            {isAdmin && row.id ? (
+                              <button
+                                onClick={() => doDelete(row)}
+                                className="h-10 w-10 rounded-2xl border border-red-300/20 bg-black/40 hover:bg-black/60 inline-flex items-center justify-center"
+                                title="Delete"
+                              >
+                                <Trash2 size={16} className="text-red-300" />
+                              </button>
+                            ) : null}
                           </div>
+                        </div>
 
-                          {(row.notes || row.location) && (
-                            <div className="mt-2 text-sm text-white/70">
-                              {row.notes && <div className="text-lime-200/80 italic">“{row.notes}”</div>}
-                              {row.location && <div className="text-xs text-white/40 mt-1">{row.location}</div>}
-                            </div>
-                          )}
-
-                          {isOpen && (
-                            <div className="mt-4">
-                              {row.full_spec ? (
-                                <FullSpecViewer spec={row.full_spec} />
-                              ) : (
-                                <div className="text-sm text-white/55">No bike spec data stored in this entry.</div>
-                              )}
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
+                        {(row.notes || row.location) && (
+                          <div className="mt-2 text-sm text-white/70">
+                            {row.notes && <div className="text-lime-200/80 italic">“{row.notes}”</div>}
+                            {row.location && <div className="text-xs text-white/40 mt-1">{row.location}</div>}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
             )}
           </div>
         )}
+
+        {/* Edit Modal */}
+        {isAdmin && editing ? (
+          <div className="fixed inset-0 z-50">
+            <div className="absolute inset-0 bg-black/70" onClick={() => (savingEdit ? null : setEditing(null))} />
+            <div className="absolute left-1/2 top-1/2 w-[92vw] max-w-xl -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-white/10 bg-black/85 backdrop-blur p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-white font-black text-lg">Edit Entry</div>
+                  <div className="text-xs text-white/50 mt-1">{formatDateTime(editing.timestamp)}</div>
+                </div>
+
+                <button
+                  onClick={() => (savingEdit ? null : setEditing(null))}
+                  className="h-10 w-10 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 inline-flex items-center justify-center"
+                  title="Close"
+                >
+                  <X size={18} className="text-white/80" />
+                </button>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Field
+                  label="SB (mm)"
+                  value={editVals.saddle_setback}
+                  onChange={(v) => setEditVals((s) => ({ ...s, saddle_setback: v }))}
+                  inputMode="decimal"
+                />
+                <Field
+                  label="4cm (mm)"
+                  value={editVals.height_4cm}
+                  onChange={(v) => setEditVals((s) => ({ ...s, height_4cm: v }))}
+                  inputMode="decimal"
+                />
+                <Field
+                  label="15cm (mm)"
+                  value={editVals.height_15cm}
+                  onChange={(v) => setEditVals((s) => ({ ...s, height_15cm: v }))}
+                  inputMode="decimal"
+                />
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 gap-3">
+                <Field
+                  label="Location"
+                  value={editVals.location}
+                  onChange={(v) => setEditVals((s) => ({ ...s, location: v }))}
+                />
+                <Field
+                  label="Notes"
+                  value={editVals.notes}
+                  onChange={(v) => setEditVals((s) => ({ ...s, notes: v }))}
+                />
+              </div>
+
+              <div className="mt-5 flex gap-2">
+                <button
+                  onClick={saveEdit}
+                  disabled={savingEdit}
+                  className="flex-1 rounded-2xl px-4 py-3 font-black bg-lime-300 text-black hover:bg-lime-200 disabled:opacity-50"
+                >
+                  {savingEdit ? "Saving…" : "Save"}
+                </button>
+                <button
+                  onClick={() => setEditing(null)}
+                  disabled={savingEdit}
+                  className="rounded-2xl px-4 py-3 font-black bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              <div className="mt-3 text-xs text-white/45">
+                Admin edits require being online. Changes are applied immediately.
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
 }
 
-function FullSpecViewer({ spec }) {
-  const normalized = normalizeFullSpec(spec);
-
-  if (!normalized) {
-    return (
-      <pre className="text-xs text-white/70 bg-black/40 border border-white/10 rounded-2xl p-4 overflow-auto">
-        {safeStringify(spec)}
-      </pre>
-    );
-  }
-
-  const sections = Object.keys(normalized);
-
+function Field({ label, value, onChange, inputMode }) {
   return (
-    <div className="space-y-3">
-      {sections.map((section) => {
-        const sectionObj = normalized[section];
-        const entries = sectionObj && typeof sectionObj === "object" ? Object.entries(sectionObj) : [];
+    <label className="block">
+      <div className="text-[11px] text-white/50 uppercase tracking-widest mb-2">{label}</div>
+      <input
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+        inputMode={inputMode}
+        className="w-full rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
+      />
+    </label>
+  );
+}
 
-        return (
-          <div key={section} className="rounded-2xl border border-white/10 bg-black/20 p-4">
-            <div className="text-[11px] text-white/50 uppercase tracking-widest">{humanize(section)}</div>
-
-            {entries.length === 0 ? (
-              <div className="mt-2 text-sm text-white/55">—</div>
-            ) : (
-              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-                {entries.map(([key, value]) => (
-                  <div key={key} className="flex items-start justify-between gap-3">
-                    <div className="text-xs text-white/45 uppercase tracking-widest">{humanize(key)}</div>
-                    <div className="text-sm text-white/80 text-right break-words">{formatSpecValue(value)}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
+function Metric({ label, value, delta }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+      <div className="text-[11px] text-white/50 uppercase tracking-widest">{label}</div>
+      <div className="mt-1 text-lime-200 font-black tabular-nums">{value}</div>
+      <div className="mt-0.5 text-xs tabular-nums">
+        {delta !== null ? <span className="text-red-300">{fmtSigned(delta)}</span> : <span className="text-white/25">—</span>}
+      </div>
     </div>
   );
 }
 
-function normalizeFullSpec(spec) {
-  if (!spec || typeof spec !== "object") return null;
-  if (spec.mtb && typeof spec.mtb === "object") return spec.mtb;
-  return spec;
-}
-
-function formatSpecValue(v) {
-  if (v === null || v === undefined) return "—";
-  if (typeof v === "string") return v.trim() ? v : "—";
-  if (typeof v === "number") return String(v);
-  if (typeof v === "boolean") return v ? "Yes" : "No";
-  try {
-    return JSON.stringify(v);
-  } catch {
-    return String(v);
-  }
-}
-
-function safeStringify(v) {
-  try {
-    return JSON.stringify(v, null, 2);
-  } catch {
-    return String(v);
-  }
-}
-
-function humanize(str) {
-  return String(str || "")
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
+// Baseline from 3 older entries (same filtered list)
 function rollingBaselineForIndex(rowsNewestFirst, index) {
   const older = [];
   for (let i = index + 1; i < rowsNewestFirst.length && older.length < 3; i++) {
@@ -474,33 +607,35 @@ function rollingBaselineForIndex(rowsNewestFirst, index) {
   return { sb: avg("sb"), h4: avg("h4"), h15: avg("h15") };
 }
 
+function diff(v, b) {
+  if (v === null || b === null) return null;
+  return +(v - b).toFixed(1);
+}
+
 function toNum(v) {
   if (v === null || v === undefined || v === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
 
-function diff(a, b) {
-  if (a === null || b === null) return null;
-  return +((a - b).toFixed(1));
+function fmtNum(v) {
+  if (v === null || v === undefined) return "—";
+  return String(v);
 }
 
 function fmtSigned(n) {
   if (n === null || n === undefined) return "—";
-  const s = n > 0 ? `+${n}` : String(n);
-  return `${s}mm`;
+  const sign = n >= 0 ? "+" : "";
+  return `${sign}${n}`;
 }
 
-function fmtNum(n) {
-  if (n === null || n === undefined) return "—";
-  return `${n}mm`;
-}
-
-function bikeLabelFromType(t) {
-  const x = String(t || "").toLowerCase();
-  if (x === "quick_road") return "Road";
-  if (x === "quick_cx") return "CX";
-  return "MTB";
+function formatDateShort(iso) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "2-digit" });
+  } catch {
+    return iso;
+  }
 }
 
 function formatTime(iso) {

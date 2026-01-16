@@ -1,184 +1,217 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ensureSession, fetchRiders } from "../api/measurementsApi";
-import { useAuth } from "../../auth/AuthProvider";
-import { ChevronRight } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Ruler, History, ArrowRight, WifiOff } from "lucide-react";
+import { fetchRiders } from "../api/measurementsApi";
+import { useAuth } from "../../auth/AuthProvider.jsx";
+import { useToast } from "../../../components/ToastProvider.jsx";
+import { UI } from "../../../ui/styles.js";
+
+function cx(...a) {
+  return a.filter(Boolean).join(" ");
+}
+
+const INPUT =
+  "w-full rounded-2xl bg-white/[0.07] border border-white/15 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-lime-300/40 focus:border-white/25 transition";
+
+function Chip({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cx(
+        "px-3 py-2 rounded-2xl text-xs font-black border transition inline-flex items-center gap-2 active:scale-[0.99]",
+        active ? UI.tabActive : "bg-white/5 text-white/70 border-white/10 hover:bg-white/10"
+      )}
+      type="button"
+    >
+      {children}
+    </button>
+  );
+}
+
+function CardButton({ title, subtitle, icon: Icon, onClick, rightText, disabled, tone = "neutral" }) {
+  const base =
+    "w-full text-left rounded-3xl border p-5 transition active:scale-[0.995] hover:bg-white/[0.07]";
+
+  const toneCls =
+    tone === "primary"
+      ? "border-lime-300/25 bg-lime-300/10 hover:bg-lime-300/15"
+      : tone === "danger"
+      ? "border-red-500/25 bg-red-500/10 hover:bg-red-500/15"
+      : "border-white/12 bg-white/[0.05]";
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cx(base, toneCls, disabled && "opacity-50 cursor-not-allowed")}
+      type="button"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="h-10 w-10 rounded-2xl border border-white/10 bg-black/20 flex items-center justify-center shrink-0">
+            <Icon size={18} className={tone === "primary" ? "text-lime-200" : "text-white/75"} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-white font-black text-lg leading-tight">{title}</div>
+            <div className={cx(UI.helper, "mt-1")}>{subtitle}</div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {rightText ? (
+            <div className="text-xs font-black text-white/65 px-2 py-1 rounded-2xl border border-white/10 bg-white/5">
+              {rightText}
+            </div>
+          ) : null}
+          <ArrowRight size={18} className="text-white/35" />
+        </div>
+      </div>
+    </button>
+  );
+}
 
 export default function MeasurementsHome() {
   const navigate = useNavigate();
+  const toast = useToast();
   const { displayName } = useAuth();
 
+  const [params, setParams] = useSearchParams();
+  const riderParam = params.get("rider") || "";
+
   const [riders, setRiders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
+  const [selectedRider, setSelectedRider] = useState(riderParam);
 
-  const mountedRef = useRef(true);
-  const reqIdRef = useRef(0);
-
-  const mechanic = useMemo(() => (displayName || "").trim(), [displayName]);
+  const [mode, setMode] = useState("jig"); // jig | full
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;
 
   useEffect(() => {
-    mountedRef.current = true;
+    if (selectedRider) setParams({ rider: selectedRider }, { replace: true });
+  }, [selectedRider, setParams]);
 
-    async function load() {
-      const myId = ++reqIdRef.current;
-      setLoading(true);
-      setErr("");
-
+  useEffect(() => {
+    let alive = true;
+    (async () => {
       try {
-        await ensureSession();
-        const data = await fetchRiders();
-        if (!mountedRef.current || myId !== reqIdRef.current) return;
-        setRiders(data || []);
+        const r = await fetchRiders();
+        if (!alive) return;
+        setRiders(r);
       } catch (e) {
-        if (!mountedRef.current || myId !== reqIdRef.current) return;
-        setErr(e.message || "Failed to load riders.");
-      } finally {
-        if (!mountedRef.current || myId !== reqIdRef.current) return;
-        setLoading(false);
+        toast.error(e?.message || "Failed to load riders");
       }
-    }
-
-    load();
-
-    const onFocus = () => load();
-    const onOnline = () => load();
-
-    window.addEventListener("focus", onFocus);
-    window.addEventListener("online", onOnline);
-
+    })();
     return () => {
-      mountedRef.current = false;
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener("online", onOnline);
+      alive = false;
     };
-  }, []);
+  }, [toast]);
 
-  function go(path, riderName) {
-    const mech = encodeURIComponent(mechanic || "");
-    const rider = encodeURIComponent(riderName || "");
-    navigate(`${path}?mech=${mech}&rider=${rider}`);
+  const riderLabel = useMemo(() => {
+    if (!selectedRider) return "Select rider";
+    const r = riders.find((x) => x.name === selectedRider);
+    if (!r) return selectedRider;
+    return `${r.flag} ${r.fullName}`;
+  }, [selectedRider, riders]);
+
+  function go(path) {
+    if (!selectedRider) {
+      toast.warning("Select a rider first");
+      return;
+    }
+    navigate(`${path}?rider=${encodeURIComponent(selectedRider)}`);
   }
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-6">
-        {err ? <div className="text-sm text-red-200/90">{err}</div> : null}
-
-        {loading ? (
-          <div className="mt-2 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <SkeletonRiderCard key={i} />
-            ))}
+    <div className="space-y-4 pb-20">
+      <div className={cx(UI.card, "p-5")}>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-sm text-white/65 font-bold tracking-wide">Measurements</div>
+            <div className="text-2xl font-black mt-1 text-white">{riderLabel}</div>
+            <div className={cx(UI.helper, "mt-1")}>
+              Mechanic: <span className="text-white/70 font-bold">{displayName || "—"}</span>
+            </div>
           </div>
-        ) : riders.length === 0 ? (
-          <div className="py-10 text-white/60">No riders loaded.</div>
-        ) : (
-          <div className="mt-2 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {riders.map((r) => (
-              <RiderCard
-                key={r.name}
-                rider={r}
-                mechanic={mechanic}
-                offline={offline}
-                onJigUpdate={() => go("/measurements/quick", r.name)}
-                onBikeSpec={() => go("/measurements/full", r.name)}
-                onHistory={() => go("/measurements/history", r.name)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
-function SkeletonRiderCard() {
-  return (
-    <div className="rounded-3xl border border-white/10 bg-black/30 overflow-hidden">
-      {/* Photo block (fixed aspect like Settings tiles) */}
-      <div className="aspect-[4/3] bg-white/5 animate-pulse" />
-      {/* Button strip (fixed height) */}
-      <div className="p-4 space-y-2">
-        <div className="h-12 rounded-2xl bg-white/5 animate-pulse" />
-        <div className="h-12 rounded-2xl bg-white/5 animate-pulse" />
-        <div className="h-12 rounded-2xl bg-white/5 animate-pulse" />
-      </div>
-    </div>
-  );
-}
-
-function RiderCard({ rider, mechanic, offline, onJigUpdate, onBikeSpec, onHistory }) {
-  const bgStyle = rider.photo
-    ? { backgroundImage: `url(${rider.photo})` }
-    : { backgroundImage: "linear-gradient(135deg, rgba(255,255,255,0.10), rgba(0,0,0,0.35))" };
-
-  const disabledAll = !mechanic;
-  const disabledSaves = !mechanic || offline;
-
-  return (
-    <div className="rounded-3xl border border-lime-300/20 bg-black/30 overflow-hidden shadow-lg">
-      {/* Photo block: consistent size like Settings */}
-      <div className="relative aspect-[4/3] bg-cover bg-center" style={bgStyle}>
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/85" />
-
-        <div className="absolute top-3 right-3">
-          <div className="h-11 w-11 rounded-2xl border border-white/10 bg-black/55 backdrop-blur flex items-center justify-center text-xl">
-            {rider.flag || "🏁"}
-          </div>
+          {offline ? (
+            <div className={cx(UI.pillBase, UI.pillWarn)}>
+              <span className="inline-flex items-center gap-2">
+                <WifiOff size={14} /> Offline
+              </span>
+            </div>
+          ) : null}
         </div>
 
-        <div className="absolute bottom-3 left-4 right-4">
-          <div className="text-xl font-black text-white leading-tight drop-shadow">
-            {rider.fullName || rider.name}
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <div className={cx(UI.label, "mb-2")}>Rider</div>
+            <select value={selectedRider} onChange={(e) => setSelectedRider(e.target.value)} className={INPUT}>
+              <option value="">-- Select Rider --</option>
+              {riders.map((r) => (
+                <option key={r.name} value={r.name}>
+                  {r.flag} {r.fullName}
+                </option>
+              ))}
+            </select>
           </div>
-          <div className="mt-0.5 text-[11px] text-white/55">
-            {offline ? "Offline" : mechanic ? `Mechanic: ${mechanic}` : "No mechanic"}
+
+          <div className="flex flex-col">
+            <div className={cx(UI.label, "mb-2")}>Mode</div>
+            <div className="flex flex-wrap gap-2">
+              <Chip active={mode === "jig"} onClick={() => setMode("jig")}>
+                <Ruler size={14} /> Jig
+              </Chip>
+              <Chip active={mode === "full"} onClick={() => setMode("full")}>
+                Full Spec
+              </Chip>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Button strip: big tap targets for iPhone */}
-      <div className="p-4 space-y-2">
-        <ActionButton
-          disabled={disabledSaves}
-          primary
-          label="Jig Update"
-          onClick={onJigUpdate}
-        />
-        <ActionButton
-          disabled={disabledSaves}
-          label="Bike Spec"
-          onClick={onBikeSpec}
-        />
-        <ActionButton
-          disabled={disabledAll}
-          label="History"
-          onClick={onHistory}
-        />
+      {mode === "jig" ? (
+        <div className="space-y-3">
+          <CardButton
+            title="Jig Entry"
+            subtitle="Fast update: SB, 4cm, 15cm + notes"
+            icon={Ruler}
+            onClick={() => go("/measurements/quick")}
+            tone="primary"
+            rightText={offline ? "queues" : ""}
+            disabled={!selectedRider}
+          />
+          <CardButton
+            title="History"
+            subtitle="Track changes over time"
+            icon={History}
+            onClick={() => go("/measurements/history")}
+            rightText={offline ? "view" : ""}
+            disabled={!selectedRider}
+          />
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <CardButton
+            title="Full Spec"
+            subtitle="Bike spec capture"
+            icon={Ruler}
+            onClick={() => go("/measurements/full")}
+            tone="primary"
+            rightText={offline ? "queues" : ""}
+            disabled={!selectedRider}
+          />
+          <CardButton
+            title="History"
+            subtitle="Past saves"
+            icon={History}
+            onClick={() => go("/measurements/history")}
+            disabled={!selectedRider}
+          />
+        </div>
+      )}
+
+      <div className={cx(UI.section, "p-4")}>
+        <div className="text-white/70 font-bold">Tip</div>
+        <div className={cx(UI.helper, "mt-1")}>Pick rider → open a module → save.</div>
       </div>
     </div>
-  );
-}
-
-function ActionButton({ label, onClick, disabled, primary }) {
-  return (
-    <button
-      disabled={disabled}
-      onClick={onClick}
-      className={[
-        "w-full rounded-2xl px-4 h-12 font-black inline-flex items-center justify-between transition select-none",
-        primary
-          ? disabled
-            ? "bg-white/5 text-white/20 cursor-not-allowed border border-white/10"
-            : "bg-lime-300 text-black hover:bg-lime-200"
-          : disabled
-          ? "bg-white/5 text-white/20 cursor-not-allowed border border-white/10"
-          : "bg-white/5 text-white/80 border border-white/15 hover:bg-white/10",
-      ].join(" ")}
-    >
-      {label} <ChevronRight size={18} />
-    </button>
   );
 }

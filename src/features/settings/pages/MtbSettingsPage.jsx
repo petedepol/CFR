@@ -1,6 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Save, ChevronRight, ChevronDown, History, WifiOff, Flag, Pencil, Trash2, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Save,
+  ChevronRight,
+  ChevronDown,
+  History,
+  WifiOff,
+  Flag,
+  Pencil,
+  Trash2,
+  X,
+} from "lucide-react";
 
 import { useAuth } from "../../auth/AuthProvider.jsx";
 import { fetchRiders } from "../../measurements/api/measurementsApi";
@@ -9,10 +20,10 @@ import {
   fetchLatestMtbSettings,
   insertMtbSettings,
   setMtbSettingsRaceMark,
-  updateMtbSettingsEntry,
-  deleteMtbSettingsEntry,
 } from "../api/settingsApi";
+import { supabase } from "../../../lib/supabaseClient";
 import { useToast } from "../../../components/ToastProvider.jsx";
+import { UI } from "../../../ui/styles.js";
 
 const LS_EVENT_CONTEXT = "cfr_settings_event_context_last";
 const LS_DRAFT_PREFIX = "cfr_settings_mtb_setup_draft__"; // + riderName
@@ -76,6 +87,10 @@ const FAST_ORDER = [
   "shock_rebound",
   "notes",
 ];
+
+function cx(...a) {
+  return a.filter(Boolean).join(" ");
+}
 
 function labelize(key) {
   return key
@@ -175,12 +190,6 @@ function getChanges(currentSetup = {}, previousSetup = {}) {
   return { defaultChanged, expandedChanged, notesChanged };
 }
 
-function changedCellClass(changed) {
-  return changed
-    ? "bg-lime-400/10 p-2 rounded border border-lime-400/25"
-    : "p-2 rounded border border-white/0";
-}
-
 function fmtPsi(v) {
   const s = String(v ?? "").trim();
   return s ? `${s} psi` : "—";
@@ -234,19 +243,15 @@ function daysAgoLocal(n) {
   return d;
 }
 
-function chipClass(active) {
-  return [
-    "px-3 py-2 rounded-2xl text-xs font-black border transition inline-flex items-center gap-2",
-    active ? "bg-lime-300 text-black border-lime-200" : "bg-white/5 text-white/70 border-white/10 hover:bg-white/10",
-  ].join(" ");
-}
-
 function isPressureKey(k) {
   return k === "front_pressure" || k === "rear_pressure" || k === "fork_pressure" || k === "shock_pressure";
 }
 function isReboundKey(k) {
   return k === "fork_rebound" || k === "shock_rebound";
 }
+
+const INPUT =
+  "w-full rounded-2xl bg-white/[0.07] border border-white/15 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-lime-300/40 focus:border-white/25 transition";
 
 function InputField({ k, value, onChange, inputRef, onEnterNext, enterHint }) {
   const numericPressure = isPressureKey(k);
@@ -256,8 +261,7 @@ function InputField({ k, value, onChange, inputRef, onEnterNext, enterHint }) {
     ref: inputRef,
     value: value ?? "",
     onChange: (e) => onChange(e.target.value),
-    className:
-      "w-full px-3 py-2 bg-black border border-white/10 text-white rounded-lg focus:ring-2 focus:ring-lime-400",
+    className: INPUT,
     autoComplete: "off",
     enterKeyHint: enterHint || "next",
     onKeyDown: (e) => {
@@ -282,17 +286,47 @@ function InputField({ k, value, onChange, inputRef, onEnterNext, enterHint }) {
 
   if (numericRebound) {
     return (
-      <input
-        {...common}
-        inputMode="numeric"
-        pattern="[0-9]*"
-        placeholder="e.g. 10"
-        aria-label={labelize(k)}
-      />
+      <input {...common} inputMode="numeric" pattern="[0-9]*" placeholder="e.g. 10" aria-label={labelize(k)} />
     );
   }
 
   return <input {...common} aria-label={labelize(k)} />;
+}
+
+function Chip({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cx(
+        "px-3 py-2 rounded-2xl text-xs font-black border transition inline-flex items-center gap-2 active:scale-[0.99]",
+        active ? UI.tabActive : "bg-white/5 text-white/70 border-white/10 hover:bg-white/10"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ModalShell({ open, title, subtitle, onClose, children }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[90]">
+      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+      <div className={cx("absolute left-1/2 top-1/2 w-[92vw] max-w-3xl -translate-x-1/2 -translate-y-1/2 p-5", UI.card, "bg-black/80")}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-white font-black text-lg">{title}</div>
+            {subtitle ? <div className={cx(UI.helper, "mt-1")}>{subtitle}</div> : null}
+          </div>
+
+          <button onClick={onClose} className={UI.btnIcon} title="Close">
+            <X size={18} className="text-white/85" />
+          </button>
+        </div>
+        <div className="mt-4">{children}</div>
+      </div>
+    </div>
+  );
 }
 
 export default function MtbSettingsPage() {
@@ -316,13 +350,6 @@ export default function MtbSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Admin edit/delete
-  const [editingRow, setEditingRow] = useState(null);
-  const [editEventContext, setEditEventContext] = useState("");
-  const [editSetup, setEditSetup] = useState(DEFAULT_SETUP);
-  const [editShowExpanded, setEditShowExpanded] = useState(false);
-  const [savingEdit, setSavingEdit] = useState(false);
-
   // history filters
   const [range, setRange] = useState("week"); // week | 30d | all
   const [raceOnly, setRaceOnly] = useState(false);
@@ -332,6 +359,13 @@ export default function MtbSettingsPage() {
   // refs for fast "Next" focusing
   const inputRefs = useRef({});
   const lastAutoFocusRiderRef = useRef("");
+
+  // Admin edit/delete modal
+  const [editOpen, setEditOpen] = useState(false);
+  const [editRow, setEditRow] = useState(null);
+  const [editEventContext, setEditEventContext] = useState("");
+  const [editSetup, setEditSetup] = useState(DEFAULT_SETUP);
+  const [editSaving, setEditSaving] = useState(false);
 
   const setRefFor = useCallback((key) => {
     return (el) => {
@@ -351,7 +385,6 @@ export default function MtbSettingsPage() {
       const nextKey = FAST_ORDER[idx + 1];
       if (nextKey) focusKey(nextKey);
       else {
-        // no next -> blur
         const el = inputRefs.current[key];
         if (el && typeof el.blur === "function") el.blur();
       }
@@ -440,7 +473,6 @@ export default function MtbSettingsPage() {
     if (lastAutoFocusRiderRef.current === selectedRider) return;
     lastAutoFocusRiderRef.current = selectedRider;
 
-    // allow paint
     setTimeout(() => {
       focusKey("front_tyre");
     }, 50);
@@ -469,53 +501,6 @@ export default function MtbSettingsPage() {
       return next;
     });
   };
-
-  function openEdit(row) {
-    const fs = safeFullSpec(row?.full_spec);
-    setEditingRow(row);
-    setEditEventContext(String(fs?.event_context ?? ""));
-    setEditSetup(normalizeSetup(fs?.setup || {}));
-    setEditShowExpanded(false);
-  }
-
-  async function saveEdit() {
-    if (!editingRow?.id) return;
-    if (typeof navigator !== "undefined" && navigator.onLine === false) {
-      toast.warning("Offline — admin edits require being online");
-      return;
-    }
-    if (savingEdit) return;
-
-    setSavingEdit(true);
-    try {
-      await updateMtbSettingsEntry({ id: editingRow.id, eventContext: editEventContext, setup: editSetup });
-      toast.success("Updated ✓");
-      setEditingRow(null);
-      await loadAll();
-    } catch (e) {
-      toast.error(`Edit failed: ${e?.message || "unknown error"}`);
-    } finally {
-      setSavingEdit(false);
-    }
-  }
-
-  async function doDelete(row) {
-    if (!row?.id) return;
-    if (typeof navigator !== "undefined" && navigator.onLine === false) {
-      toast.warning("Offline — admin deletes require being online");
-      return;
-    }
-    const ok = window.confirm("Delete this settings entry? This cannot be undone.");
-    if (!ok) return;
-
-    try {
-      await deleteMtbSettingsEntry(row.id);
-      toast.success("Deleted");
-      await loadAll();
-    } catch (e) {
-      toast.error(`Delete failed: ${e?.message || "unknown error"}`);
-    }
-  }
 
   const handleSave = async () => {
     if (!selectedRider) {
@@ -582,41 +567,112 @@ export default function MtbSettingsPage() {
     }
   }
 
-  return (
-    <div className="max-w-6xl mx-auto px-4 py-4 pb-10">
-      {/* Minimal header */}
-      <div className="flex items-center justify-between gap-3 mb-3">
-        <button
-          onClick={() => nav("/settings")}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-black/40 hover:bg-black/55 border border-white/10 hover:border-white/20 text-white/80 transition"
-        >
-          <ArrowLeft size={18} />
-          Back
-        </button>
+  function openEdit(row) {
+    const fs = safeFullSpec(row?.full_spec);
+    setEditRow(row);
+    setEditEventContext(String(fs?.event_context ?? ""));
+    setEditSetup(normalizeSetup(fs?.setup));
+    setEditOpen(true);
+  }
 
-        <div className="flex items-center gap-2">
+  async function adminSaveEdit() {
+    if (!isAdmin) return;
+    if (offline) {
+      toast.warning("Offline — can’t edit right now");
+      return;
+    }
+    if (!editRow?.id) {
+      toast.error("Missing id");
+      return;
+    }
+    if (editSaving) return;
+
+    setEditSaving(true);
+    try {
+      const curFs = safeFullSpec(editRow.full_spec);
+      const nextFs = {
+        ...curFs,
+        event_context: editEventContext || "",
+        setup: normalizeSetup(editSetup),
+      };
+
+      const { error } = await supabase
+        .from("bike_measurements")
+        .update({
+          full_spec: nextFs,
+          notes: normalizeSetup(editSetup)?.notes || "",
+        })
+        .eq("id", editRow.id);
+
+      if (error) throw error;
+
+      toast.success("Updated ✓");
+      setEditOpen(false);
+      setEditRow(null);
+      await loadAll();
+    } catch (e) {
+      toast.error(`Update failed: ${e?.message || "unknown error"}`);
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function adminDeleteRow(row) {
+    if (!isAdmin) return;
+    if (offline) {
+      toast.warning("Offline — can’t delete right now");
+      return;
+    }
+    if (!row?.id) {
+      toast.error("Missing id");
+      return;
+    }
+    const ok = window.confirm("Delete this settings entry? This cannot be undone.");
+    if (!ok) return;
+
+    try {
+      const { error } = await supabase.from("bike_measurements").delete().eq("id", row.id);
+      if (error) throw error;
+      toast.success("Deleted ✓");
+      await loadAll();
+    } catch (e) {
+      toast.error(`Delete failed: ${e?.message || "unknown error"}`);
+    }
+  }
+
+  const canSave = Boolean(selectedRider) && Boolean(displayName);
+
+  return (
+    <div className="space-y-4 pb-28">
+      <button onClick={() => nav("/settings")} className="inline-flex items-center gap-2 text-white/75 hover:text-white transition">
+        <ArrowLeft size={18} /> Back
+      </button>
+
+      {/* Rider + context */}
+      <div className={cx(UI.card, "p-5")}>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-sm text-white/65 font-bold tracking-wide">MTB Setup</div>
+            <div className="text-2xl font-black mt-1 text-white">{selectedRider || "Select rider"}</div>
+            <div className={cx(UI.helper, "mt-1")}>Fast entry + history for tyre/pressure/suspension.</div>
+          </div>
+
           {offline ? (
-            <div className="inline-flex items-center gap-2 text-xs text-yellow-200/90 bg-yellow-400/10 border border-yellow-400/20 px-3 py-2 rounded-2xl">
-              <WifiOff size={14} />
-              Offline
+            <div className={cx(UI.pillBase, UI.pillWarn)}>
+              <span className="inline-flex items-center gap-2">
+                <WifiOff size={14} /> Offline
+              </span>
             </div>
           ) : null}
-
-          <div className="text-xs text-white/70 bg-white/5 border border-white/10 px-3 py-2 rounded-2xl max-w-[160px] truncate">
-            {displayName || "—"}
-          </div>
         </div>
-      </div>
 
-      {/* Quick entry area */}
-      <div className="bg-black/40 border border-white/10 rounded-2xl p-4 mb-3">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-black text-white/55 uppercase mb-1">Rider</label>
+            <div className={cx(UI.label, "mb-2")}>Rider</div>
             <select
               value={selectedRider}
               onChange={(e) => setSelectedRider(e.target.value)}
-              className="w-full px-4 py-3 bg-black border border-white/10 text-white rounded-xl focus:ring-2 focus:ring-lime-400"
+              className={INPUT}
             >
               <option value="">-- Select Rider --</option>
               {riders.map((r) => (
@@ -628,41 +684,42 @@ export default function MtbSettingsPage() {
           </div>
 
           <div>
-            <label className="block text-[11px] font-black text-white/55 uppercase mb-1">Event / Context</label>
+            <div className={cx(UI.label, "mb-2")}>Event / Context</div>
             <input
               value={eventContext}
               onChange={(e) => setEventContext(e.target.value)}
-              placeholder="e.g., Nove Mesto WC2 / Wet"
-              className="w-full px-4 py-3 bg-black border border-white/10 text-white rounded-xl focus:ring-2 focus:ring-lime-400"
+              placeholder="e.g. Nove Mesto WC2 / Wet"
+              className={INPUT}
               autoComplete="off"
             />
           </div>
         </div>
       </div>
 
-      {/* CURRENT SETUP */}
-      <div className="bg-black/40 border border-white/10 rounded-2xl p-4 mb-3">
+      {/* Current setup */}
+      <div className={cx(UI.card, "p-5")}>
         {!selectedRider ? (
-          <div className="text-white/60 py-5">Select a rider to start.</div>
+          <div className="text-white/60 py-3">Select a rider to start.</div>
         ) : loading ? (
-          <div className="py-5 space-y-3">
-            <div className="h-10 bg-white/5 rounded-xl animate-pulse" />
-            <div className="h-10 bg-white/5 rounded-xl animate-pulse" />
-            <div className="h-10 bg-white/5 rounded-xl animate-pulse" />
+          <div className="py-3 space-y-3">
+            <div className="h-10 bg-white/5 rounded-2xl animate-pulse" />
+            <div className="h-10 bg-white/5 rounded-2xl animate-pulse" />
+            <div className="h-10 bg-white/5 rounded-2xl animate-pulse" />
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {DEFAULT_KEYS.map((k) => {
                 const idx = FAST_ORDER.indexOf(k);
                 const enterHint = idx === FAST_ORDER.length - 1 ? "done" : "next";
+
+                const unit = k.includes("pressure") ? "psi" : k.includes("rebound") ? "clicks" : "";
                 return (
                   <div key={k}>
-                    <label className="block text-[11px] font-black text-white/55 uppercase mb-1">
-                      {labelize(k)}
-                      {k.includes("pressure") ? " (psi)" : ""}
-                      {k.includes("rebound") ? " (clicks)" : ""}
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className={UI.label}>{labelize(k)}</div>
+                      {unit ? <div className={cx(UI.helper, "px-2 py-0.5 rounded-xl border border-white/10 bg-white/5")}>{unit}</div> : null}
+                    </div>
 
                     <InputField
                       k={k}
@@ -677,13 +734,13 @@ export default function MtbSettingsPage() {
               })}
 
               <div className="md:col-span-2">
-                <label className="block text-[11px] font-black text-white/55 uppercase mb-1">Notes</label>
+                <div className={cx(UI.label, "mb-2")}>Notes</div>
                 <textarea
                   ref={setRefFor("notes")}
-                  rows={2}
+                  rows={3}
                   value={setup.notes}
                   onChange={(e) => setSetup((p) => ({ ...p, notes: e.target.value }))}
-                  className="w-full px-3 py-2 bg-black border border-white/10 text-white rounded-lg focus:ring-2 focus:ring-lime-400"
+                  className={cx(INPUT, "min-h-[88px]")}
                   placeholder="Any observations / changes…"
                   autoComplete="off"
                   enterKeyHint="done"
@@ -693,74 +750,66 @@ export default function MtbSettingsPage() {
 
             <button
               onClick={() => setShowExpanded((s) => !s)}
-              className="w-full mt-3 flex items-center justify-center gap-2 py-2 rounded-xl bg-lime-400/10 text-lime-300 border border-lime-400/20 hover:bg-lime-400/15 transition"
+              className={cx(
+                "w-full mt-4 rounded-2xl px-4 py-3 font-black border transition active:scale-[0.99] inline-flex items-center justify-center gap-2",
+                showExpanded
+                  ? "bg-white/5 text-white/80 border-white/10 hover:bg-white/10"
+                  : "bg-lime-300/10 text-lime-200 border-lime-300/25 hover:bg-lime-300/15"
+              )}
             >
               {showExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-              {showExpanded ? "Hide" : "More"}
+              {showExpanded ? "Hide advanced" : "More"}
             </button>
 
             {showExpanded && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 pt-3 border-t border-white/10">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-white/10">
                 {EXPANDED_KEYS.map((k) => (
                   <div key={k} className={k === "wheelset" ? "md:col-span-2" : ""}>
-                    <label className="block text-[11px] font-black text-white/55 uppercase mb-1">{labelize(k)}</label>
+                    <div className={cx(UI.label, "mb-2")}>{labelize(k)}</div>
                     <input
                       value={setup[k]}
                       onChange={(e) => setSetup((p) => ({ ...p, [k]: e.target.value }))}
-                      className="w-full px-3 py-2 bg-black border border-white/10 text-white rounded-lg focus:ring-2 focus:ring-lime-400"
+                      className={INPUT}
                       autoComplete="off"
                     />
                   </div>
                 ))}
               </div>
             )}
-
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className={`w-full mt-4 py-4 rounded-xl font-black text-lg flex items-center justify-center gap-2 shadow-2xl transition ${
-                saving
-                  ? "bg-white/10 text-white/30 cursor-not-allowed border border-white/10"
-                  : "bg-gradient-to-r from-lime-400 to-green-500 text-black hover:from-lime-500 hover:to-green-600"
-              }`}
-            >
-              <Save size={22} />
-              {saving ? "SAVING…" : offline ? "SAVE (QUEUE)" : "SAVE"}
-            </button>
           </>
         )}
       </div>
 
-      {/* HISTORY */}
+      {/* History */}
       {selectedRider && (historyRaw?.length || 0) > 0 && (
-        <div className="bg-black/40 border border-white/10 rounded-2xl p-4">
-          <div className="text-white font-black mb-3 flex items-center gap-2">
-            <span>History</span>
-            <span className="text-white/50 font-bold">
-              ({history.length}
-              {history.length !== historyRaw.length ? ` / ${historyRaw.length}` : ""})
-            </span>
-            <History size={18} className="text-lime-300 ml-1" />
+        <div className={cx(UI.card, "p-5")}>
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="text-white font-black">History</div>
+              <div className="text-white/50 font-bold">
+                ({history.length}
+                {history.length !== historyRaw.length ? ` / ${historyRaw.length}` : ""})
+              </div>
+              <History size={18} className="text-lime-300 ml-1" />
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2 mb-4">
-            <button className={chipClass(range === "week")} onClick={() => setRange("week")}>
+            <Chip active={range === "week"} onClick={() => setRange("week")}>
               This week
-            </button>
-            <button className={chipClass(range === "30d")} onClick={() => setRange("30d")}>
+            </Chip>
+            <Chip active={range === "30d"} onClick={() => setRange("30d")}>
               30 days
-            </button>
-            <button className={chipClass(range === "all")} onClick={() => setRange("all")}>
+            </Chip>
+            <Chip active={range === "all"} onClick={() => setRange("all")}>
               All
-            </button>
-
-            <button className={chipClass(raceOnly)} onClick={() => setRaceOnly((v) => !v)}>
-              <Flag size={14} />
-              Race only
-            </button>
+            </Chip>
+            <Chip active={raceOnly} onClick={() => setRaceOnly((v) => !v)}>
+              <Flag size={14} /> Race only
+            </Chip>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             {history.map((row, idx) => {
               const isLatest = idx === 0;
               const id = row.id || `${row.timestamp}-${idx}`;
@@ -782,58 +831,82 @@ export default function MtbSettingsPage() {
 
               const summaryItems = buildCollapsedSummary(cur, prev, isLatest, changes);
 
+              const borderClass = isRace
+                ? "border-yellow-400/35"
+                : isLatest && (changes?.defaultChanged.length || hasExpandedOnlyChanges || changes?.notesChanged)
+                ? "border-lime-300/35"
+                : "border-white/10 hover:border-white/20";
+
               return (
                 <div
                   key={id}
-                  className={`bg-black/40 rounded-xl border overflow-hidden cursor-pointer transition ${
-                    isRace
-                      ? "border-yellow-400/35"
-                      : isLatest && (changes?.defaultChanged.length || hasExpandedOnlyChanges || changes?.notesChanged)
-                      ? "border-lime-400/40"
-                      : "border-white/10 hover:border-white/20"
-                  }`}
+                  className={cx("rounded-3xl border overflow-hidden bg-white/[0.03] hover:bg-white/[0.05] transition", borderClass)}
                   onClick={() => toggleHistoryExpand(id)}
+                  role="button"
+                  tabIndex={0}
                 >
-                  <div className="p-4 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="p-4 flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
                       {isExpanded ? (
-                        <ChevronDown size={18} className="text-lime-300" />
+                        <ChevronDown size={18} className="text-lime-300 mt-0.5" />
                       ) : (
-                        <ChevronRight size={18} className="text-white/50" />
+                        <ChevronRight size={18} className="text-white/50 mt-0.5" />
                       )}
+
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-white truncate">{row.mechanic || "—"}</span>
                           <span className="text-xs text-white/50">{formatTimestamp(row.timestamp)}</span>
 
-                          {!!fs?.event_context && (
-                            <span className="text-xs text-lime-300/80 px-2 py-0.5 bg-lime-400/10 rounded border border-lime-400/20">
+                          {!!fs?.event_context ? (
+                            <span className="text-xs text-lime-200/80 px-2 py-0.5 bg-lime-300/10 rounded-2xl border border-lime-300/20">
                               {fs.event_context}
                             </span>
-                          )}
+                          ) : null}
 
-                          {isRace && (
-                            <span className="text-xs font-black text-yellow-200 px-2 py-0.5 bg-yellow-400/10 rounded border border-yellow-400/20 inline-flex items-center gap-1">
+                          {isRace ? (
+                            <span className="text-xs font-black text-yellow-200 px-2 py-0.5 bg-yellow-400/10 rounded-2xl border border-yellow-400/20 inline-flex items-center gap-1">
                               <Flag size={12} /> Race
                             </span>
-                          )}
+                          ) : null}
 
-                          {hasExpandedOnlyChanges && (
-                            <span className="text-xs font-bold text-yellow-300 px-2 py-0.5 bg-yellow-400/10 rounded border border-yellow-400/20">
+                          {hasExpandedOnlyChanges ? (
+                            <span className="text-xs font-bold text-yellow-200 px-2 py-0.5 bg-yellow-400/10 rounded-2xl border border-yellow-400/20">
                               Other changed
                             </span>
-                          )}
+                          ) : null}
 
-                          {isLatest && changes?.notesChanged && (
-                            <span className="text-xs font-bold text-lime-300 px-2 py-0.5 bg-lime-400/10 rounded border border-lime-400/20">
+                          {isLatest && changes?.notesChanged ? (
+                            <span className="text-xs font-bold text-lime-200 px-2 py-0.5 bg-lime-300/10 rounded-2xl border border-lime-300/20">
                               Notes changed
                             </span>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleRace(row, !isRace);
+                        }}
+                        disabled={offline || !row?.id}
+                        className={cx(
+                          "rounded-2xl px-3 py-2 text-xs font-black border transition inline-flex items-center gap-2 active:scale-[0.99]",
+                          offline || !row?.id
+                            ? "bg-white/5 text-white/30 border-white/10 cursor-not-allowed"
+                            : isRace
+                            ? "bg-yellow-400/15 text-yellow-100 border-yellow-400/25 hover:bg-yellow-400/20"
+                            : "bg-white/5 text-white/70 border-white/10 hover:bg-white/10"
+                        )}
+                        title={offline ? "Offline" : isRace ? "Unmark race" : "Mark as race"}
+                      >
+                        <Flag size={14} />
+                        {isRace ? "Race" : "Mark"}
+                      </button>
+
                       {isAdmin ? (
                         <>
                           <button
@@ -843,228 +916,218 @@ export default function MtbSettingsPage() {
                               openEdit(row);
                             }}
                             disabled={offline || !row?.id}
-                            className={[
-                              "h-10 w-10 rounded-2xl border inline-flex items-center justify-center transition",
+                            className={cx(
+                              "rounded-2xl px-3 py-2 text-xs font-black border transition inline-flex items-center gap-2 active:scale-[0.99]",
                               offline || !row?.id
                                 ? "bg-white/5 text-white/30 border-white/10 cursor-not-allowed"
-                                : "bg-white/5 text-white/80 border-white/10 hover:bg-white/10",
-                            ].join(" ")}
-                            title={offline ? "Offline" : "Edit"}
+                                : "bg-white/5 text-white/70 border-white/10 hover:bg-white/10"
+                            )}
+                            title="Edit (admin)"
                           >
-                            <Pencil size={18} />
+                            <Pencil size={14} />
+                            Edit
                           </button>
 
                           <button
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              doDelete(row);
+                              adminDeleteRow(row);
                             }}
                             disabled={offline || !row?.id}
-                            className={[
-                              "h-10 w-10 rounded-2xl border inline-flex items-center justify-center transition",
+                            className={cx(
+                              "rounded-2xl px-3 py-2 text-xs font-black border transition inline-flex items-center gap-2 active:scale-[0.99]",
                               offline || !row?.id
                                 ? "bg-white/5 text-white/30 border-white/10 cursor-not-allowed"
-                                : "bg-red-500/10 text-red-200 border-red-500/25 hover:bg-red-500/15",
-                            ].join(" ")}
-                            title={offline ? "Offline" : "Delete"}
+                                : "bg-red-500/10 text-red-200 border-red-500/25 hover:bg-red-500/15"
+                            )}
+                            title="Delete (admin)"
                           >
-                            <Trash2 size={18} />
+                            <Trash2 size={14} />
+                            Del
                           </button>
                         </>
                       ) : null}
-
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          toggleRace(row, !isRace);
-                        }}
-                        disabled={offline || !row?.id}
-                        className={[
-                          "shrink-0 rounded-2xl px-3 py-2 text-xs font-black border transition inline-flex items-center gap-2",
-                          offline || !row?.id
-                            ? "bg-white/5 text-white/30 border-white/10 cursor-not-allowed"
-                            : isRace
-                            ? "bg-yellow-400/15 text-yellow-100 border-yellow-400/25 hover:bg-yellow-400/20"
-                            : "bg-white/5 text-white/70 border-white/10 hover:bg-white/10",
-                        ].join(" ")}
-                        title={offline ? "Offline" : isRace ? "Unmark race" : "Mark as race"}
-                      >
-                        <Flag size={14} />
-                        {isRace ? "Race" : "Mark race"}
-                      </button>
                     </div>
                   </div>
 
+                  {/* Summary grid */}
                   <div className="px-4 pb-4 grid grid-cols-2 gap-3 text-sm">
                     {summaryItems.map((it) => (
-                      <div key={it.label} className={changedCellClass(it.changed)}>
-                        <div className="text-white/50 text-xs">{it.label}</div>
-                        <div className={`font-medium truncate ${it.changed ? "text-lime-200" : "text-white"}`}>
+                      <div
+                        key={it.label}
+                        className={cx(
+                          "p-3 rounded-2xl border",
+                          it.changed ? "bg-lime-300/10 border-lime-300/20" : "bg-white/5 border-white/10"
+                        )}
+                      >
+                        <div className={cx(UI.helper)}>{it.label}</div>
+                        <div className={cx("mt-1 font-bold truncate", it.changed ? "text-lime-200" : "text-white")}>
                           {it.value || "—"}
                         </div>
-                        {it.changed && (
-                          <div className="text-[11px] text-white/45 truncate mt-0.5">
-                            Prev: <span className="text-white/55">{it.prevValue || "—"}</span>
+                        {it.changed ? (
+                          <div className="text-[11px] text-white/45 truncate mt-1">
+                            Prev: <span className="text-white/60">{it.prevValue || "—"}</span>
                           </div>
-                        )}
+                        ) : null}
                       </div>
                     ))}
                   </div>
 
-                  {isExpanded && (
-                    <div className="px-4 pb-4 pt-2 border-t border-white/10">
-                      <div className="grid grid-cols-2 gap-2 text-sm">
+                  {/* Expanded */}
+                  {isExpanded ? (
+                    <div className="px-4 pb-4 pt-3 border-t border-white/10">
+                      <div className="grid grid-cols-2 gap-3 text-sm">
                         {EXPANDED_KEYS.map((k) => {
                           const v = cur?.[k];
                           const changed = isLatest && changes?.expandedChanged.includes(k);
                           if (!v && !changed) return null;
+
                           return (
                             <div
                               key={k}
-                              className={changed ? "bg-lime-400/10 p-2 rounded border border-lime-400/25" : "p-2"}
+                              className={cx(
+                                "p-3 rounded-2xl border",
+                                changed ? "bg-lime-300/10 border-lime-300/20" : "bg-white/5 border-white/10"
+                              )}
                             >
-                              <div className="text-white/50 text-xs">{labelize(k)}</div>
-                              <div className="text-white font-medium">{v || "—"}</div>
+                              <div className={UI.helper}>{labelize(k)}</div>
+                              <div className="text-white font-bold mt-1 break-words">{v || "—"}</div>
                             </div>
                           );
                         })}
                       </div>
 
-                      {!!cur?.notes && (
-                        <div className="mt-3">
-                          <div className="text-white/50 text-xs">Notes</div>
-                          <div className="text-white/80 italic">“{cur.notes}”</div>
+                      {!!cur?.notes ? (
+                        <div className="mt-4 p-3 rounded-2xl border border-white/10 bg-white/5">
+                          <div className={UI.helper}>Notes</div>
+                          <div className="text-white/85 mt-1 italic break-words">“{cur.notes}”</div>
                         </div>
-                      )}
+                      ) : null}
                     </div>
-                  )}
+                  ) : null}
                 </div>
               );
             })}
 
-            {history.length === 0 && (
+            {history.length === 0 ? (
               <div className="text-white/60 py-6">
                 No entries for this filter. Try switching to <span className="font-black text-white">All</span>.
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       )}
 
-      {/* Admin Edit Modal */}
-      {isAdmin && editingRow ? (
-        <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/70" onClick={() => (savingEdit ? null : setEditingRow(null))} />
-
-          <div className="absolute left-1/2 top-1/2 w-[92vw] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-white/10 bg-black/85 backdrop-blur p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-white font-black text-lg">Edit Settings Entry</div>
-                <div className="text-xs text-white/50 mt-1 truncate">
-                  {selectedRider || "—"} • {formatTimestamp(editingRow?.timestamp)} • {editingRow?.mechanic || "—"}
-                </div>
-              </div>
-
-              <button
-                onClick={() => (savingEdit ? null : setEditingRow(null))}
-                className="h-10 w-10 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 inline-flex items-center justify-center"
-                title="Close"
-              >
-                <X size={18} className="text-white/80" />
-              </button>
+      {/* Sticky save bar */}
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-6xl px-4 z-30">
+        <div className="rounded-3xl border border-white/12 bg-black/55 backdrop-blur-xl p-4 shadow-lg">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-xs text-white/70">
+              {offline ? "Offline — save will queue" : saving ? "Saving…" : selectedRider ? "Ready" : "Select a rider"}
             </div>
 
-            <div className="mt-4 max-h-[70vh] overflow-auto pr-1">
-              <label className="block">
-                <div className="text-[11px] text-white/50 uppercase tracking-widest mb-2">Event / Context</div>
-                <input
-                  value={editEventContext}
-                  onChange={(e) => setEditEventContext(e.target.value)}
-                  className="w-full rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
-                  autoComplete="off"
-                />
-              </label>
-
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {DEFAULT_KEYS.map((k) => (
-                  <label key={k} className="block">
-                    <div className="text-[11px] text-white/50 uppercase tracking-widest mb-2">
-                      {labelize(k)}
-                      {k.includes("pressure") ? " (psi)" : ""}
-                      {k.includes("rebound") ? " (clicks)" : ""}
-                    </div>
-                    <input
-                      value={editSetup?.[k] ?? ""}
-                      onChange={(e) => setEditSetup((p) => ({ ...p, [k]: e.target.value }))}
-                      inputMode={isPressureKey(k) ? "decimal" : isReboundKey(k) ? "numeric" : undefined}
-                      className="w-full rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
-                      autoComplete="off"
-                    />
-                  </label>
-                ))}
-              </div>
-
-              <button
-                onClick={() => setEditShowExpanded((s) => !s)}
-                className="w-full mt-4 flex items-center justify-center gap-2 py-2 rounded-xl bg-lime-400/10 text-lime-300 border border-lime-400/20 hover:bg-lime-400/15 transition"
-              >
-                {editShowExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                {editShowExpanded ? "Hide" : "More"}
-              </button>
-
-              {editShowExpanded ? (
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {EXPANDED_KEYS.map((k) => (
-                    <label key={k} className={k === "wheelset" ? "block sm:col-span-2" : "block"}>
-                      <div className="text-[11px] text-white/50 uppercase tracking-widest mb-2">{labelize(k)}</div>
-                      <input
-                        value={editSetup?.[k] ?? ""}
-                        onChange={(e) => setEditSetup((p) => ({ ...p, [k]: e.target.value }))}
-                        className="w-full rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
-                        autoComplete="off"
-                      />
-                    </label>
-                  ))}
-                </div>
-              ) : null}
-
-              <div className="mt-4">
-                <label className="block">
-                  <div className="text-[11px] text-white/50 uppercase tracking-widest mb-2">Notes</div>
-                  <textarea
-                    rows={3}
-                    value={editSetup?.notes ?? ""}
-                    onChange={(e) => setEditSetup((p) => ({ ...p, notes: e.target.value }))}
-                    className="w-full rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
-                    autoComplete="off"
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="mt-5 flex gap-2">
-              <button
-                onClick={saveEdit}
-                disabled={savingEdit}
-                className="flex-1 rounded-2xl px-4 py-3 font-black bg-lime-300 text-black hover:bg-lime-200 disabled:opacity-50"
-              >
-                {savingEdit ? "Saving…" : "Save"}
-              </button>
-              <button
-                onClick={() => setEditingRow(null)}
-                disabled={savingEdit}
-                className="rounded-2xl px-4 py-3 font-black bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-            </div>
-
-            <div className="mt-3 text-xs text-white/45">Admin edits require being online. Changes apply immediately.</div>
+            <button
+              disabled={!canSave || saving}
+              onClick={handleSave}
+              className={cx(
+                "rounded-2xl px-5 py-3 font-black inline-flex items-center gap-2 transition active:scale-[0.99]",
+                !canSave || saving
+                  ? "bg-white/10 text-white/30 cursor-not-allowed"
+                  : "bg-lime-300 text-black hover:bg-lime-200"
+              )}
+            >
+              <Save size={18} /> {offline ? "Save (Queue)" : "Save"}
+            </button>
           </div>
         </div>
-      ) : null}
+      </div>
+
+      {/* Admin edit modal */}
+      <ModalShell
+        open={editOpen}
+        onClose={() => {
+          if (editSaving) return;
+          setEditOpen(false);
+          setEditRow(null);
+        }}
+        title="Edit settings entry"
+        subtitle={editRow?.timestamp ? `Saved: ${formatTimestamp(editRow.timestamp)} • ${editRow.mechanic || "—"}` : ""}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="md:col-span-2">
+            <div className={cx(UI.label, "mb-2")}>Event / Context</div>
+            <input
+              value={editEventContext}
+              onChange={(e) => setEditEventContext(e.target.value)}
+              className={INPUT}
+              placeholder="e.g. Nove Mesto WC2 / Wet"
+              autoComplete="off"
+            />
+          </div>
+
+          {DEFAULT_KEYS.map((k) => (
+            <div key={k}>
+              <div className={cx(UI.label, "mb-2")}>{labelize(k)}</div>
+              <InputField
+                k={k}
+                value={editSetup[k]}
+                onChange={(v) => setEditSetup((p) => ({ ...p, [k]: v }))}
+              />
+            </div>
+          ))}
+
+          <div className="md:col-span-2">
+            <div className={cx(UI.label, "mb-2")}>Notes</div>
+            <textarea
+              rows={4}
+              value={editSetup.notes || ""}
+              onChange={(e) => setEditSetup((p) => ({ ...p, notes: e.target.value }))}
+              className={cx(INPUT, "min-h-[110px]")}
+              placeholder="Any observations / changes…"
+              autoComplete="off"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <div className={cx(UI.label, "mb-2")}>Advanced</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {EXPANDED_KEYS.map((k) => (
+                <div key={k} className={k === "wheelset" ? "md:col-span-2" : ""}>
+                  <div className={cx(UI.helper, "mb-2")}>{labelize(k)}</div>
+                  <input
+                    value={editSetup[k] || ""}
+                    onChange={(e) => setEditSetup((p) => ({ ...p, [k]: e.target.value }))}
+                    className={INPUT}
+                    autoComplete="off"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="md:col-span-2 flex items-center justify-end gap-2 mt-2">
+            <button
+              onClick={() => {
+                if (editSaving) return;
+                setEditOpen(false);
+                setEditRow(null);
+              }}
+              className={UI.btnSecondary}
+            >
+              Cancel
+            </button>
+
+            <button
+              onClick={adminSaveEdit}
+              disabled={editSaving || offline}
+              className={cx(UI.btnPrimary, (editSaving || offline) && "opacity-60 cursor-not-allowed")}
+            >
+              <Save size={16} /> {editSaving ? "Saving…" : "Save changes"}
+            </button>
+          </div>
+        </div>
+      </ModalShell>
     </div>
   );
 }

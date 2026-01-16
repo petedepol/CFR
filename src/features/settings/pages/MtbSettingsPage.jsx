@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Save, ChevronRight, ChevronDown, History, WifiOff, Flag } from "lucide-react";
+import { ArrowLeft, Save, ChevronRight, ChevronDown, History, WifiOff, Flag, Pencil, Trash2, X } from "lucide-react";
 
 import { useAuth } from "../../auth/AuthProvider.jsx";
 import { fetchRiders } from "../../measurements/api/measurementsApi";
@@ -9,6 +9,8 @@ import {
   fetchLatestMtbSettings,
   insertMtbSettings,
   setMtbSettingsRaceMark,
+  updateMtbSettingsEntry,
+  deleteMtbSettingsEntry,
 } from "../api/settingsApi";
 import { useToast } from "../../../components/ToastProvider.jsx";
 
@@ -299,7 +301,7 @@ export default function MtbSettingsPage() {
   const riderParam = params.get("rider") || "";
 
   const toast = useToast();
-  const { displayName } = useAuth();
+  const { displayName, isAdmin } = useAuth();
 
   const [riders, setRiders] = useState([]);
   const [selectedRider, setSelectedRider] = useState(riderParam);
@@ -313,6 +315,13 @@ export default function MtbSettingsPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Admin edit/delete
+  const [editingRow, setEditingRow] = useState(null);
+  const [editEventContext, setEditEventContext] = useState("");
+  const [editSetup, setEditSetup] = useState(DEFAULT_SETUP);
+  const [editShowExpanded, setEditShowExpanded] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // history filters
   const [range, setRange] = useState("week"); // week | 30d | all
@@ -460,6 +469,53 @@ export default function MtbSettingsPage() {
       return next;
     });
   };
+
+  function openEdit(row) {
+    const fs = safeFullSpec(row?.full_spec);
+    setEditingRow(row);
+    setEditEventContext(String(fs?.event_context ?? ""));
+    setEditSetup(normalizeSetup(fs?.setup || {}));
+    setEditShowExpanded(false);
+  }
+
+  async function saveEdit() {
+    if (!editingRow?.id) return;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      toast.warning("Offline — admin edits require being online");
+      return;
+    }
+    if (savingEdit) return;
+
+    setSavingEdit(true);
+    try {
+      await updateMtbSettingsEntry({ id: editingRow.id, eventContext: editEventContext, setup: editSetup });
+      toast.success("Updated ✓");
+      setEditingRow(null);
+      await loadAll();
+    } catch (e) {
+      toast.error(`Edit failed: ${e?.message || "unknown error"}`);
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  async function doDelete(row) {
+    if (!row?.id) return;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      toast.warning("Offline — admin deletes require being online");
+      return;
+    }
+    const ok = window.confirm("Delete this settings entry? This cannot be undone.");
+    if (!ok) return;
+
+    try {
+      await deleteMtbSettingsEntry(row.id);
+      toast.success("Deleted");
+      await loadAll();
+    } catch (e) {
+      toast.error(`Delete failed: ${e?.message || "unknown error"}`);
+    }
+  }
 
   const handleSave = async () => {
     if (!selectedRider) {
@@ -777,26 +833,68 @@ export default function MtbSettingsPage() {
                       </div>
                     </div>
 
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        toggleRace(row, !isRace);
-                      }}
-                      disabled={offline || !row?.id}
-                      className={[
-                        "shrink-0 rounded-2xl px-3 py-2 text-xs font-black border transition inline-flex items-center gap-2",
-                        offline || !row?.id
-                          ? "bg-white/5 text-white/30 border-white/10 cursor-not-allowed"
-                          : isRace
-                          ? "bg-yellow-400/15 text-yellow-100 border-yellow-400/25 hover:bg-yellow-400/20"
-                          : "bg-white/5 text-white/70 border-white/10 hover:bg-white/10",
-                      ].join(" ")}
-                      title={offline ? "Offline" : isRace ? "Unmark race" : "Mark as race"}
-                    >
-                      <Flag size={14} />
-                      {isRace ? "Race" : "Mark race"}
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {isAdmin ? (
+                        <>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              openEdit(row);
+                            }}
+                            disabled={offline || !row?.id}
+                            className={[
+                              "h-10 w-10 rounded-2xl border inline-flex items-center justify-center transition",
+                              offline || !row?.id
+                                ? "bg-white/5 text-white/30 border-white/10 cursor-not-allowed"
+                                : "bg-white/5 text-white/80 border-white/10 hover:bg-white/10",
+                            ].join(" ")}
+                            title={offline ? "Offline" : "Edit"}
+                          >
+                            <Pencil size={18} />
+                          </button>
+
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              doDelete(row);
+                            }}
+                            disabled={offline || !row?.id}
+                            className={[
+                              "h-10 w-10 rounded-2xl border inline-flex items-center justify-center transition",
+                              offline || !row?.id
+                                ? "bg-white/5 text-white/30 border-white/10 cursor-not-allowed"
+                                : "bg-red-500/10 text-red-200 border-red-500/25 hover:bg-red-500/15",
+                            ].join(" ")}
+                            title={offline ? "Offline" : "Delete"}
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </>
+                      ) : null}
+
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleRace(row, !isRace);
+                        }}
+                        disabled={offline || !row?.id}
+                        className={[
+                          "shrink-0 rounded-2xl px-3 py-2 text-xs font-black border transition inline-flex items-center gap-2",
+                          offline || !row?.id
+                            ? "bg-white/5 text-white/30 border-white/10 cursor-not-allowed"
+                            : isRace
+                            ? "bg-yellow-400/15 text-yellow-100 border-yellow-400/25 hover:bg-yellow-400/20"
+                            : "bg-white/5 text-white/70 border-white/10 hover:bg-white/10",
+                        ].join(" ")}
+                        title={offline ? "Offline" : isRace ? "Unmark race" : "Mark as race"}
+                      >
+                        <Flag size={14} />
+                        {isRace ? "Race" : "Mark race"}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="px-4 pb-4 grid grid-cols-2 gap-3 text-sm">
@@ -854,6 +952,119 @@ export default function MtbSettingsPage() {
           </div>
         </div>
       )}
+
+      {/* Admin Edit Modal */}
+      {isAdmin && editingRow ? (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/70" onClick={() => (savingEdit ? null : setEditingRow(null))} />
+
+          <div className="absolute left-1/2 top-1/2 w-[92vw] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-white/10 bg-black/85 backdrop-blur p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-white font-black text-lg">Edit Settings Entry</div>
+                <div className="text-xs text-white/50 mt-1 truncate">
+                  {selectedRider || "—"} • {formatTimestamp(editingRow?.timestamp)} • {editingRow?.mechanic || "—"}
+                </div>
+              </div>
+
+              <button
+                onClick={() => (savingEdit ? null : setEditingRow(null))}
+                className="h-10 w-10 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 inline-flex items-center justify-center"
+                title="Close"
+              >
+                <X size={18} className="text-white/80" />
+              </button>
+            </div>
+
+            <div className="mt-4 max-h-[70vh] overflow-auto pr-1">
+              <label className="block">
+                <div className="text-[11px] text-white/50 uppercase tracking-widest mb-2">Event / Context</div>
+                <input
+                  value={editEventContext}
+                  onChange={(e) => setEditEventContext(e.target.value)}
+                  className="w-full rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
+                  autoComplete="off"
+                />
+              </label>
+
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {DEFAULT_KEYS.map((k) => (
+                  <label key={k} className="block">
+                    <div className="text-[11px] text-white/50 uppercase tracking-widest mb-2">
+                      {labelize(k)}
+                      {k.includes("pressure") ? " (psi)" : ""}
+                      {k.includes("rebound") ? " (clicks)" : ""}
+                    </div>
+                    <input
+                      value={editSetup?.[k] ?? ""}
+                      onChange={(e) => setEditSetup((p) => ({ ...p, [k]: e.target.value }))}
+                      inputMode={isPressureKey(k) ? "decimal" : isReboundKey(k) ? "numeric" : undefined}
+                      className="w-full rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
+                      autoComplete="off"
+                    />
+                  </label>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setEditShowExpanded((s) => !s)}
+                className="w-full mt-4 flex items-center justify-center gap-2 py-2 rounded-xl bg-lime-400/10 text-lime-300 border border-lime-400/20 hover:bg-lime-400/15 transition"
+              >
+                {editShowExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                {editShowExpanded ? "Hide" : "More"}
+              </button>
+
+              {editShowExpanded ? (
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {EXPANDED_KEYS.map((k) => (
+                    <label key={k} className={k === "wheelset" ? "block sm:col-span-2" : "block"}>
+                      <div className="text-[11px] text-white/50 uppercase tracking-widest mb-2">{labelize(k)}</div>
+                      <input
+                        value={editSetup?.[k] ?? ""}
+                        onChange={(e) => setEditSetup((p) => ({ ...p, [k]: e.target.value }))}
+                        className="w-full rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
+                        autoComplete="off"
+                      />
+                    </label>
+                  ))}
+                </div>
+              ) : null}
+
+              <div className="mt-4">
+                <label className="block">
+                  <div className="text-[11px] text-white/50 uppercase tracking-widest mb-2">Notes</div>
+                  <textarea
+                    rows={3}
+                    value={editSetup?.notes ?? ""}
+                    onChange={(e) => setEditSetup((p) => ({ ...p, notes: e.target.value }))}
+                    className="w-full rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
+                    autoComplete="off"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="mt-5 flex gap-2">
+              <button
+                onClick={saveEdit}
+                disabled={savingEdit}
+                className="flex-1 rounded-2xl px-4 py-3 font-black bg-lime-300 text-black hover:bg-lime-200 disabled:opacity-50"
+              >
+                {savingEdit ? "Saving…" : "Save"}
+              </button>
+              <button
+                onClick={() => setEditingRow(null)}
+                disabled={savingEdit}
+                className="rounded-2xl px-4 py-3 font-black bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <div className="mt-3 text-xs text-white/45">Admin edits require being online. Changes apply immediately.</div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

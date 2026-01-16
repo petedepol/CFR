@@ -175,3 +175,65 @@ export async function setMtbSettingsRaceMark({ id, isRace }) {
     return { ok: true, full_spec: next };
   });
 }
+
+/**
+ * Admin edit: update event context + setup for a settings entry.
+ * Updates both JSON full_spec and the top-level notes column.
+ */
+export async function updateMtbSettingsEntry({ id, eventContext, setup }) {
+  if (!id) throw new Error("Missing id");
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    const e = new Error("Offline");
+    e.code = "OFFLINE";
+    throw e;
+  }
+
+  return withRetry(async () => {
+    // 1) Read current full_spec so we don't accidentally wipe data
+    const { data: row, error: readErr } = await supabase
+      .from("bike_measurements")
+      .select("id, full_spec")
+      .eq("id", id)
+      .limit(1)
+      .maybeSingle();
+
+    if (readErr) throw readErr;
+
+    const cur = row?.full_spec && typeof row.full_spec === "object" ? row.full_spec : {};
+    const next = {
+      ...cur,
+      event_context: String(eventContext ?? ""),
+      setup: setup && typeof setup === "object" ? setup : {},
+      edited_at: new Date().toISOString(),
+    };
+
+    const notes = String((setup && setup.notes) || "");
+
+    const { error: updErr } = await supabase
+      .from("bike_measurements")
+      .update({ full_spec: next, notes })
+      .eq("id", id);
+
+    if (updErr) throw updErr;
+
+    return { ok: true, full_spec: next };
+  });
+}
+
+/**
+ * Admin delete: remove a settings entry.
+ */
+export async function deleteMtbSettingsEntry(id) {
+  if (!id) throw new Error("Missing id");
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    const e = new Error("Offline");
+    e.code = "OFFLINE";
+    throw e;
+  }
+
+  return withRetry(async () => {
+    const { error } = await supabase.from("bike_measurements").delete().eq("id", id);
+    if (error) throw error;
+    return { ok: true };
+  });
+}

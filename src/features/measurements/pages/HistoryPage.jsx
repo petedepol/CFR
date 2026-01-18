@@ -454,6 +454,20 @@ export default function HistoryPage() {
     }
   }
 
+  function bikeTypeFromType(t) {
+    const s = String(t || "").toLowerCase();
+    if (s.endsWith("_road")) return "road";
+    if (s.endsWith("_cx")) return "cx";
+    return "mtb";
+  }
+
+  function startFullSpecEdit(row) {
+    if (!isAdmin || !row?.id) return;
+    const bt = bikeTypeFromType(row.type);
+    const next = `/measurements/full?rider=${encodeURIComponent(rider)}&mech=${encodeURIComponent(mechanic || "")}&bike=${encodeURIComponent(bt)}&edit=${encodeURIComponent(row.id)}`;
+    navigate(next);
+  }
+
   async function doDelete(row) {
     if (!row?.id) return;
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
@@ -792,17 +806,30 @@ export default function HistoryPage() {
                                 </div>
 
                                 {isAdmin && row.id ? (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      doDelete(row);
-                                    }}
-                                    className={cx(UI.btnIcon, "border-red-500/25")}
-                                    title="Delete"
-                                    type="button"
-                                  >
-                                    <Trash2 size={16} className="text-red-300" />
-                                  </button>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        startFullSpecEdit(row);
+                                      }}
+                                      className={cx(UI.btnIcon)}
+                                      title="Edit"
+                                      type="button"
+                                    >
+                                      <Pencil size={16} className="text-white/75" />
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        doDelete(row);
+                                      }}
+                                      className={cx(UI.btnIcon, "border-red-500/25")}
+                                      title="Delete"
+                                      type="button"
+                                    >
+                                      <Trash2 size={16} className="text-red-300" />
+                                    </button>
+                                  </div>
                                 ) : null}
                               </div>
                             </div>

@@ -282,6 +282,16 @@ export async function insertFull({ rider, mechanic, fullSpec, bikeType = "mtb", 
   }
 }
 
+
+export async function fetchMeasurementById(id) {
+  if (!id) throw new Error("Missing measurement id.");
+  return withRetry(async () => {
+    const { data, error } = await supabase.from("bike_measurements").select("*").eq("id", id).limit(1);
+    if (error) throw error;
+    return data?.[0] ?? null;
+  });
+}
+
 // --- ADMIN tools (RLS must allow admin update/delete) ---
 export async function updateMeasurement(id, patch) {
   if (!id) throw new Error("Missing measurement id.");

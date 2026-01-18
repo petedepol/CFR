@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Save, WifiOff, RefreshCcw, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Save, WifiOff, RefreshCcw, ChevronDown, ChevronUp, Pencil, Trash2, X } from "lucide-react";
 import { useAuth } from "../../auth/AuthProvider.jsx";
 import { useToast } from "../../../components/ToastProvider.jsx";
 
-import { ensureSession, fetchLatestFull, fetchFullHistory, insertFull } from "../api/measurementsApi";
+import { ensureSession, fetchLatestFull, fetchFullHistory, fetchMeasurementById, insertFull, updateMeasurement, deleteMeasurement } from "../api/measurementsApi";
 import { FULL_SPEC_DEFAULTS } from "../utils/fullSpecDefaults";
 
 const BASE_DEFAULTS = FULL_SPEC_DEFAULTS?.mtb ? FULL_SPEC_DEFAULTS.mtb : FULL_SPEC_DEFAULTS;
@@ -258,12 +258,14 @@ function fieldUiMeta(section, key) {
 export default function FullSpecPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const { displayName } = useAuth();
+  const { displayName, isAdmin } = useAuth();
   const toast = useToast();
 
   const mechanicFromUrl = params.get("mech") || "";
   const mechanic = (displayName || mechanicFromUrl || "").trim();
   const rider = params.get("rider") || "";
+
+  const editIdFromUrl = params.get("edit") || "";
 
   const initialBikeType = (() => {
     const bt = String(params.get("bike") || "mtb").toLowerCase();
@@ -278,6 +280,9 @@ export default function FullSpecPage() {
   const [historyRows, setHistoryRows] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [expandedHistoryId, setExpandedHistoryId] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editingStamp, setEditingStamp] = useState("");
+  const [savingAdmin, setSavingAdmin] = useState(false);
 
   const scrollKey = rider ? `cfr_scroll_fullspec__${encodeURIComponent(rider)}__${bikeType}` : "";
   useStickyScroll(scrollKey, Boolean(rider));
@@ -301,6 +306,27 @@ export default function FullSpecPage() {
 
   const lastSaveRef = useRef({ at: 0, sig: "" });
   const canSave = useMemo(() => mechanic && rider, [mechanic, rider]);
+
+  function clearEditParam() {
+    try {
+      const nextParams = new URLSearchParams(params);
+      nextParams.delete("edit");
+      setParams(nextParams, { replace: true });
+    } catch {
+      // ignore
+    }
+  }
+
+  function setEditParam(id) {
+    try {
+      const nextParams = new URLSearchParams(params);
+      if (id) nextParams.set("edit", id);
+      else nextParams.delete("edit");
+      setParams(nextParams, { replace: true });
+    } catch {
+      // ignore
+    }
+  }
 
   function changeBikeType(next) {
     const bt = String(next || "mtb").toLowerCase();
@@ -378,6 +404,11 @@ export default function FullSpecPage() {
     load();
     loadHistory();
 
+    if (editIdFromUrl && isAdmin) {
+      // Start edit mode from URL (used by History page)
+      startEditById(editIdFromUrl);
+    }
+
     const onVis = () => {
       if (document.visibilityState === "visible") {
         load({ silent: true, keepEdits: true });
@@ -421,13 +452,97 @@ export default function FullSpecPage() {
     }));
   }
 
+  function bikeTypeFromRowType(t) {
+    const s = String(t || "").toLowerCase();
+    if (s.endsWith("_road")) return "road";
+    if (s.endsWith("_cx")) return "cx";
+    return "mtb";
+  }
+
+  async function startEditById(id) {
+    if (!id || !isAdmin) return;
+    try {
+      await ensureSession();
+      const row = await fetchMeasurementById(id);
+      if (!row || row.rider !== rider) {
+        toast.error("Edit entry not found");
+        clearEditParam();
+        return;
+      }
+      const bt = bikeTypeFromRowType(row.type);
+      if (bt !== bikeType) {
+        changeBikeType(bt);
+        // load() will run via effect; keep edits will protect, but we're about to set spec anyway
+      }
+      const specObj = normalizeSpec(row?.full_spec);
+      if (!specObj) {
+        toast.error("This entry has no spec data");
+        clearEditParam();
+        return;
+      }
+      setSpec(mergeDefaults(defaults, specObj));
+      setDirty(true);
+      setEditingId(row.id);
+      setEditingStamp(row.timestamp || "");
+      setEditParam(row.id);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      toast.success("Editing history entry");
+    } catch (e) {
+      toast.error(e?.message || "Failed to start edit");
+    }
+  }
+
+  function startEditFromRow(row) {
+    if (!isAdmin || !row?.id) return;
+    const specObj = normalizeSpec(row?.full_spec);
+    if (!specObj) {
+      toast.error("This entry has no spec data");
+      return;
+    }
+    setSpec(mergeDefaults(defaults, specObj));
+    setDirty(true);
+    setEditingId(row.id);
+    setEditingStamp(row.timestamp || "");
+    setEditParam(row.id);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditingStamp("");
+    clearEditParam();
+    setDirty(false);
+    load({ silent: true, keepEdits: false });
+  }
+
+  async function adminDeleteRow(row) {
+    if (!isAdmin || !row?.id) return;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      toast.error("You are offline. Admin deletes require being online.");
+      return;
+    }
+    const ok = window.confirm("Delete this entry? This cannot be undone.");
+    if (!ok) return;
+    try {
+      setSavingAdmin(true);
+      await deleteMeasurement(row.id);
+      if (editingId === row.id) cancelEdit();
+      await loadHistory({ silent: true });
+      toast.success("Deleted");
+    } catch (e) {
+      toast.error(e?.message || "Delete failed");
+    } finally {
+      setSavingAdmin(false);
+    }
+  }
+
   async function handleSave() {
     if (!canSave) {
       toast.error("Missing rider or mechanic");
       return;
     }
 
-    const dedupeSig = JSON.stringify({ rider, mechanic, bikeType, fullSpec: spec });
+    const dedupeSig = JSON.stringify({ rider, mechanic, bikeType, fullSpec: spec, editingId: editingId || "" });
 
     const now = Date.now();
     if (lastSaveRef.current.sig === dedupeSig && now - lastSaveRef.current.at < 1500) {
@@ -436,6 +551,26 @@ export default function FullSpecPage() {
     }
 
     try {
+      if (editingId && isAdmin) {
+        // Overwrite existing history entry
+        setSavingAdmin(true);
+        await updateMeasurement(editingId, {
+          full_spec: spec,
+          mechanic,
+          timestamp: new Date().toISOString(),
+        });
+        lastSaveRef.current = { sig: dedupeSig, at: Date.now() };
+        setDirty(false);
+        clearDraft(rider, bikeType);
+        setEditingId(null);
+        setEditingStamp("");
+        clearEditParam();
+        toast.success("Updated ✓");
+        await load({ silent: true, keepEdits: true });
+        await loadHistory({ silent: true });
+        return;
+      }
+
       const res = await insertFull({ rider, mechanic, bikeType, fullSpec: spec, dedupeSig });
       lastSaveRef.current = { sig: dedupeSig, at: Date.now() };
 
@@ -447,9 +582,12 @@ export default function FullSpecPage() {
       } else {
         toast.success("Saved ✓");
         await load({ silent: true, keepEdits: true });
+        await loadHistory({ silent: true });
       }
     } catch (e) {
       toast.error(`Save failed: ${e?.message || "unknown error"}`);
+    } finally {
+      setSavingAdmin(false);
     }
   }
 
@@ -580,7 +718,36 @@ export default function FullSpecPage() {
                       <div className="text-white/85 font-black text-sm">{formatDateTime(row.timestamp)}</div>
                       <div className="text-xs text-white/60 mt-0.5">{row.mechanic ? `By ${row.mechanic}` : ""}</div>
                     </div>
-                    <div className="shrink-0 text-white/60 mt-0.5">{open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</div>
+                    <div className="shrink-0 flex items-center gap-2 text-white/60 mt-0.5">
+                      {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                      {isAdmin && row.id ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startEditFromRow(row);
+                            }}
+                            className="rounded-xl border border-white/12 bg-white/5 hover:bg-white/10 px-2 py-2"
+                            title="Edit"
+                          >
+                            <Pencil size={16} className="text-white/80" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={savingAdmin}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              adminDeleteRow(row);
+                            }}
+                            className="rounded-xl border border-red-500/25 bg-white/5 hover:bg-white/10 px-2 py-2"
+                            title="Delete"
+                          >
+                            <Trash2 size={16} className="text-red-300" />
+                          </button>
+                        </>
+                      ) : null}
+                    </div>
                   </button>
 
                   {open ? (

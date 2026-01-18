@@ -122,6 +122,40 @@ export async function fetchLatestFull(rider, bikeType = "mtb") {
   });
 }
 
+export async function fetchQuickHistory(rider, bikeType = "mtb", limit = 10) {
+  const t = quickTypeForBikeType(bikeType);
+
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from("bike_measurements")
+      .select("*")
+      .eq("rider", rider)
+      .eq("type", t)
+      .order("timestamp", { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return data ?? [];
+  });
+}
+
+export async function fetchFullHistory(rider, bikeType = "mtb", limit = 10) {
+  const t = fullTypeForBikeType(bikeType);
+
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from("bike_measurements")
+      .select("*")
+      .eq("rider", rider)
+      .eq("type", t)
+      .order("timestamp", { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return data ?? [];
+  });
+}
+
 export async function fetchHistory(rider, limit = 50) {
   return withRetry(async () => {
     const { data, error } = await supabase

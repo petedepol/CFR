@@ -1,39 +1,25 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ensureSession, fetchLatestQuick, insertQuick } from "../api/measurementsApi";
-import { ArrowLeft, Save, WifiOff, AlertTriangle, X } from "lucide-react";
+import {
+  ensureSession,
+  fetchLatestQuick,
+  insertQuick,
+  fetchHistory,
+  updateMeasurement,
+  deleteMeasurement,
+} from "../api/measurementsApi";
+import { ArrowLeft, Save, WifiOff, AlertTriangle, X, Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "../../auth/AuthProvider.jsx";
 import { useToast } from "../../../components/ToastProvider.jsx";
 import { UI } from "../../../ui/styles.js";
 
 const WARN_THRESHOLD_MM = 4;
 
-const BIKE_TYPES = [
-  { key: "mtb", label: "MTB" },
-  { key: "road", label: "Road" },
-  { key: "cx", label: "CX" },
-];
-
 const INPUT =
   "w-full rounded-2xl bg-white/[0.07] border border-white/15 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-lime-300/40 focus:border-white/25 transition";
 
 function cx(...a) {
   return a.filter(Boolean).join(" ");
-}
-
-function Chip({ active, onClick, children }) {
-  return (
-    <button
-      onClick={onClick}
-      className={cx(
-        "px-3 py-2 rounded-2xl text-xs font-black border transition inline-flex items-center gap-2 active:scale-[0.99]",
-        active ? UI.tabActive : "bg-white/5 text-white/70 border-white/10 hover:bg-white/10"
-      )}
-      type="button"
-    >
-      {children}
-    </button>
-  );
 }
 
 function Field({ label, unit, children }) {
@@ -55,13 +41,14 @@ function Field({ label, unit, children }) {
 export default function QuickEntryPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const { displayName } = useAuth();
+  const { displayName, isAdmin } = useAuth();
   const toast = useToast();
 
   const mechanic = (displayName || "").trim();
   const rider = params.get("rider") || "";
 
-  const [bikeType, setBikeType] = useState("mtb");
+  // Road/CX are rare — keep Jig workflow MTB-only.
+  const bikeType = "mtb";
   const [form, setForm] = useState({
     saddleSetback: "",
     height4cm: "",
@@ -74,6 +61,20 @@ export default function QuickEntryPage() {
   const [loading, setLoading] = useState(true);
   const [snapshot, setSnapshot] = useState(null);
 
+  const [historyRows, setHistoryRows] = useState([]);
+  const [historyStatus, setHistoryStatus] = useState({ kind: "loading", msg: "" }); // loading|ok|err
+
+  // Admin edit/delete (embedded history)
+  const [editing, setEditing] = useState(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editVals, setEditVals] = useState({
+    saddle_setback: "",
+    height_4cm: "",
+    height_15cm: "",
+    location: "",
+    notes: "",
+  });
+
   const lastLoadedQuickRef = useRef(null);
 
   const [warnOpen, setWarnOpen] = useState(false);
@@ -84,6 +85,20 @@ export default function QuickEntryPage() {
 
   const canSave = useMemo(() => mechanic && rider, [mechanic, rider]);
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+
+  async function loadHistory({ silent = false } = {}) {
+    if (!rider) return;
+    if (!silent) setHistoryStatus({ kind: "loading", msg: "" });
+
+    try {
+      await ensureSession();
+      const rows = await fetchHistory(rider, 50);
+      setHistoryRows(rows || []);
+      if (!silent) setHistoryStatus({ kind: "ok", msg: "" });
+    } catch (e) {
+      if (!silent) setHistoryStatus({ kind: "err", msg: e?.message || "Failed to load history." });
+    }
+  }
 
   async function load({ silent = false } = {}) {
     if (!rider) return;
@@ -106,6 +121,9 @@ export default function QuickEntryPage() {
       }
 
       if (!silent) setStatus({ kind: "idle", msg: "" });
+
+      // keep history fresh (silent)
+      await loadHistory({ silent: true });
     } catch (e) {
       if (!silent) setStatus({ kind: "err", msg: e.message || "Failed to load latest jig update." });
     } finally {
@@ -132,7 +150,71 @@ export default function QuickEntryPage() {
       window.removeEventListener("online", onOnline);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rider, bikeType]);
+  }, [rider]);
+
+  const jigRowsNewestFirst = useMemo(() => {
+    return (historyRows || []).filter((r) => String(r?.type || "") === "quick");
+  }, [historyRows]);
+
+  function openEdit(row) {
+    if (!row) return;
+    setEditing(row);
+    setEditVals({
+      saddle_setback: row?.saddle_setback ?? "",
+      height_4cm: row?.height_4cm ?? "",
+      height_15cm: row?.height_15cm ?? "",
+      location: row?.location ?? "",
+      notes: row?.notes ?? "",
+    });
+  }
+
+  async function saveEdit() {
+    if (!editing?.id) return;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      alert("You are offline. Admin edits require being online.");
+      return;
+    }
+
+    setSavingEdit(true);
+    try {
+      const patch = {
+        saddle_setback: editVals.saddle_setback === "" ? null : Number(editVals.saddle_setback),
+        height_4cm: editVals.height_4cm === "" ? null : Number(editVals.height_4cm),
+        height_15cm: editVals.height_15cm === "" ? null : Number(editVals.height_15cm),
+        location: String(editVals.location || ""),
+        notes: String(editVals.notes || ""),
+      };
+
+      for (const k of ["saddle_setback", "height_4cm", "height_15cm"]) {
+        if (patch[k] !== null && !Number.isFinite(patch[k])) patch[k] = null;
+      }
+
+      await updateMeasurement(editing.id, patch);
+      setEditing(null);
+      await load({ silent: true });
+    } catch (e) {
+      alert(e?.message || "Failed to save edit.");
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  async function doDelete(row) {
+    if (!row?.id) return;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      alert("You are offline. Admin deletes require being online.");
+      return;
+    }
+    const ok = window.confirm("Delete this entry? This cannot be undone.");
+    if (!ok) return;
+
+    try {
+      await deleteMeasurement(row.id);
+      await load({ silent: true });
+    } catch (e) {
+      alert(e?.message || "Failed to delete entry.");
+    }
+  }
 
   async function doSave(payload) {
     if (!canSave) {
@@ -277,16 +359,6 @@ export default function QuickEntryPage() {
           ) : null}
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <div className={cx(UI.helper, "mr-2")}>Bike type</div>
-          {BIKE_TYPES.map((t) => (
-            <Chip key={t.key} active={bikeType === t.key} onClick={() => setBikeType(t.key)}>
-              {t.label}
-            </Chip>
-          ))}
-          <div className={cx(UI.helper, "w-full mt-1")}>Road/CX are rare — default is MTB.</div>
-        </div>
-
         {loading ? (
           <div className="mt-6 space-y-3">
             <div className="h-10 bg-white/5 rounded-2xl animate-pulse" />
@@ -352,6 +424,210 @@ export default function QuickEntryPage() {
           </div>
         )}
       </div>
+
+      {/* Embedded Jig History (same look/behavior as HistoryPage: table on desktop, cards on mobile) */}
+      <div className="space-y-3">
+        <div className={cx(UI.helper)}>Jig History</div>
+
+        {historyStatus.kind === "err" ? (
+          <div className="rounded-3xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-red-200 text-sm">
+            {historyStatus.msg || "Failed to load history."}
+          </div>
+        ) : jigRowsNewestFirst.length === 0 ? (
+          <div className="text-white/60">No jig entries yet.</div>
+        ) : (
+          <>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-hidden rounded-3xl border border-white/15 bg-black/30">
+              <div className="max-h-[70vh] overflow-auto">
+                <table className="w-full text-sm table-fixed">
+                  <thead className="sticky top-0 bg-black/70 backdrop-blur border-b border-white/15">
+                    <tr className="text-white/60">
+                      <th className="text-left font-black px-4 py-3 w-[170px] border-r border-white/15">Date</th>
+                      <th className="text-left font-black px-3 py-3 w-[90px] border-r border-white/15">Bike</th>
+
+                      <th className="text-right font-black px-3 py-3 w-[110px]">SB</th>
+                      <th className="text-right font-black px-2 py-3 w-[70px] border-r border-white/15">Δ</th>
+
+                      <th className="text-right font-black px-3 py-3 w-[110px]">4cm</th>
+                      <th className="text-right font-black px-2 py-3 w-[70px] border-r border-white/15">Δ</th>
+
+                      <th className="text-right font-black px-3 py-3 w-[110px]">15cm</th>
+                      <th className="text-right font-black px-2 py-3 w-[70px] border-r border-white/15">Δ</th>
+
+                      <th className="text-left font-black px-4 py-3 w-auto min-w-[320px]">Notes</th>
+
+                      {isAdmin ? <th className="text-right font-black px-4 py-3 w-[130px]"> </th> : null}
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {jigRowsNewestFirst.map((row, idx) => {
+                      const base = rollingBaselineForIndex(jigRowsNewestFirst, idx);
+                      const sb = toNum(row.saddle_setback);
+                      const h4 = toNum(row.height_4cm);
+                      const h15 = toNum(row.height_15cm);
+
+                      const dSB = base ? diff(sb, base.sb) : null;
+                      const d4 = base ? diff(h4, base.h4) : null;
+                      const d15 = base ? diff(h15, base.h15) : null;
+
+                      const zebra = idx % 2 === 0 ? "bg-black/15" : "bg-black/5";
+
+                      return (
+                        <tr key={row.id || `${row.timestamp}-${idx}`} className={`border-b border-white/8 ${zebra}`}>
+                          <td className="px-4 py-3 text-white/70 align-top border-r border-white/15">
+                            <div className="font-bold text-white/85">{formatDateShort(row.timestamp)}</div>
+                            <div className="text-xs text-white/45 mt-0.5">{formatTime(row.timestamp)}</div>
+                            {row.location ? <div className="text-xs text-white/45 mt-1">{row.location}</div> : null}
+                            {row.mechanic ? <div className="text-xs text-white/45 mt-1">By {row.mechanic}</div> : null}
+                          </td>
+
+                          <td className="px-3 py-3 text-white/70 align-top border-r border-white/15">
+                            <span className="inline-flex items-center rounded-2xl border border-white/12 bg-white/5 px-2 py-1 text-[11px] font-black text-white/70">
+                              {bikeLabelFromType(row.type)}
+                            </span>
+                          </td>
+
+                          <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">{fmtNum(sb)}</td>
+                          <td className="px-2 py-3 text-right tabular-nums align-top border-r border-white/15">
+                            {dSB !== null ? <span className="text-red-300">{fmtSigned(dSB)}</span> : <span className="text-white/25">—</span>}
+                          </td>
+
+                          <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">{fmtNum(h4)}</td>
+                          <td className="px-2 py-3 text-right tabular-nums align-top border-r border-white/15">
+                            {d4 !== null ? <span className="text-red-300">{fmtSigned(d4)}</span> : <span className="text-white/25">—</span>}
+                          </td>
+
+                          <td className="px-3 py-3 text-right font-black text-lime-200 tabular-nums align-top">{fmtNum(h15)}</td>
+                          <td className="px-2 py-3 text-right tabular-nums align-top border-r border-white/15">
+                            {d15 !== null ? <span className="text-red-300">{fmtSigned(d15)}</span> : <span className="text-white/25">—</span>}
+                          </td>
+
+                          <td className="px-4 py-3 text-white/70 align-top break-words">
+                            {row.notes ? <span className="text-lime-200/80 italic">“{row.notes}”</span> : <span className="text-white/25">—</span>}
+                          </td>
+
+                          {isAdmin ? (
+                            <td className="px-4 py-3 align-top">
+                              <div className="flex justify-end gap-2">
+                                <button onClick={() => openEdit(row)} className={UI.btnIcon} title="Edit" type="button">
+                                  <Pencil size={16} className="text-white/75" />
+                                </button>
+                                <button
+                                  onClick={() => doDelete(row)}
+                                  className={cx(UI.btnIcon, "border-red-500/25")}
+                                  title="Delete"
+                                  type="button"
+                                >
+                                  <Trash2 size={16} className="text-red-300" />
+                                </button>
+                              </div>
+                            </td>
+                          ) : null}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Mobile cards (iPhone) */}
+            <div className="md:hidden space-y-2">
+              {jigRowsNewestFirst.map((row, idx) => {
+                const base = rollingBaselineForIndex(jigRowsNewestFirst, idx);
+                const sb = toNum(row.saddle_setback);
+                const h4 = toNum(row.height_4cm);
+                const h15 = toNum(row.height_15cm);
+
+                const dSB = base ? diff(sb, base.sb) : null;
+                const d4 = base ? diff(h4, base.h4) : null;
+                const d15 = base ? diff(h15, base.h15) : null;
+
+                return (
+                  <div key={row.id || `${row.timestamp}-${idx}`} className={cx(UI.card, "p-4 bg-black/30")}> 
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-white/85 font-black">
+                          {bikeLabelFromType(row.type)} • {formatDateTime(row.timestamp)}
+                        </div>
+                        {row.location ? <div className={cx(UI.helper, "mt-1")}>{row.location}</div> : null}
+                        {row.mechanic ? <div className={cx(UI.helper, "mt-1")}>By {row.mechanic}</div> : null}
+                      </div>
+
+                      {isAdmin ? (
+                        <div className="flex gap-2 shrink-0">
+                          <button onClick={() => openEdit(row)} className={UI.btnIcon} title="Edit" type="button">
+                            <Pencil size={16} className="text-white/75" />
+                          </button>
+                          <button
+                            onClick={() => doDelete(row)}
+                            className={cx(UI.btnIcon, "border-red-500/25")}
+                            title="Delete"
+                            type="button"
+                          >
+                            <Trash2 size={16} className="text-red-300" />
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                      <Metric label="SB" value={fmtNum(sb)} delta={dSB} />
+                      <Metric label="4cm" value={fmtNum(h4)} delta={d4} />
+                      <Metric label="15cm" value={fmtNum(h15)} delta={d15} />
+                    </div>
+
+                    {row.notes ? <div className="mt-3 text-lime-200/80 italic">“{row.notes}”</div> : null}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Edit Modal (admin) */}
+      {isAdmin && editing ? (
+        <div className="fixed inset-0 z-[80]">
+          <div className="absolute inset-0 bg-black/70" onClick={() => (savingEdit ? null : setEditing(null))} />
+          <div className={cx("absolute left-1/2 top-1/2 w-[92vw] max-w-xl -translate-x-1/2 -translate-y-1/2 p-5", UI.card, "bg-black/80")}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-white font-black text-lg">Edit Entry</div>
+                <div className={cx(UI.helper, "mt-1")}>{formatDateTime(editing.timestamp)}</div>
+              </div>
+
+              <button onClick={() => (savingEdit ? null : setEditing(null))} className={UI.btnIcon} title="Close" type="button">
+                <X size={18} className="text-white/80" />
+              </button>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <EditField label="SB (mm)" value={editVals.saddle_setback} onChange={(v) => setEditVals((s) => ({ ...s, saddle_setback: v }))} inputMode="decimal" />
+              <EditField label="4cm (mm)" value={editVals.height_4cm} onChange={(v) => setEditVals((s) => ({ ...s, height_4cm: v }))} inputMode="decimal" />
+              <EditField label="15cm (mm)" value={editVals.height_15cm} onChange={(v) => setEditVals((s) => ({ ...s, height_15cm: v }))} inputMode="decimal" />
+            </div>
+
+            <div className="mt-3 grid grid-cols-1 gap-3">
+              <EditField label="Location" value={editVals.location} onChange={(v) => setEditVals((s) => ({ ...s, location: v }))} />
+              <EditField label="Notes" value={editVals.notes} onChange={(v) => setEditVals((s) => ({ ...s, notes: v }))} />
+            </div>
+
+            <div className="mt-5 flex gap-2">
+              <button onClick={saveEdit} disabled={savingEdit} className={cx(UI.btnPrimary, "flex-1 justify-center")} type="button">
+                {savingEdit ? "Saving…" : "Save"}
+              </button>
+              <button onClick={() => setEditing(null)} disabled={savingEdit} className={cx(UI.btnSecondary, "px-4 py-3")} type="button">
+                Cancel
+              </button>
+            </div>
+
+            <div className={cx(UI.helper, "mt-3")}>Admin edits require being online. Changes are applied immediately.</div>
+          </div>
+        </div>
+      ) : null}
 
       {/* Warning modal */}
       {warnOpen && warnInfo ? (
@@ -421,8 +697,7 @@ export default function QuickEntryPage() {
                 <div className="text-xs text-white/70">
                   <span className="text-white/85 font-black">Saved:</span>{" "}
                   <span className="font-black text-white/85 tabular-nums">
-                    {bikeTypeLabel(snapshot.bikeType)} • SB {fmt(snapshot.saddleSetback)} • 4cm {fmt(snapshot.height4cm)} •
-                    15cm {fmt(snapshot.height15cm)}
+                    MTB • SB {fmt(snapshot.saddleSetback)} • 4cm {fmt(snapshot.height4cm)} • 15cm {fmt(snapshot.height15cm)}
                   </span>
                   <span className="text-white/40"> • {snapshot.at.toLocaleTimeString()}</span>
                   {snapshot.queued ? <span className="ml-2 text-yellow-200/80">• queued</span> : null}
@@ -459,6 +734,88 @@ export default function QuickEntryPage() {
 
 function bikeTypeLabel(k) {
   return k === "road" ? "Road" : k === "cx" ? "CX" : "MTB";
+}
+
+function EditField({ label, value, onChange, inputMode }) {
+  return (
+    <label className="block">
+      <div className={cx(UI.helper, "mb-2")}>{label}</div>
+      <input value={value ?? ""} onChange={(e) => onChange(e.target.value)} inputMode={inputMode} className={INPUT} />
+    </label>
+  );
+}
+
+function Metric({ label, value, delta }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+      <div className={cx(UI.helper)}>{label}</div>
+      <div className="mt-1 text-lime-200 font-black tabular-nums">{value}</div>
+      <div className="mt-0.5 text-xs tabular-nums">
+        {delta !== null ? <span className="text-red-300">{fmtSigned(delta)}</span> : <span className="text-white/25">—</span>}
+      </div>
+    </div>
+  );
+}
+
+function rollingBaselineForIndex(rowsNewestFirst, index) {
+  const older = [];
+  for (let i = index + 1; i < rowsNewestFirst.length && older.length < 3; i++) {
+    const r = rowsNewestFirst[i];
+    const sb = toNum(r.saddle_setback);
+    const h4 = toNum(r.height_4cm);
+    const h15 = toNum(r.height_15cm);
+    if (sb === null && h4 === null && h15 === null) continue;
+    older.push({ sb, h4, h15 });
+  }
+  if (older.length === 0) return null;
+
+  const avg = (key) => {
+    const vals = older.map((x) => x[key]).filter((n) => n !== null);
+    if (!vals.length) return null;
+    const sum = vals.reduce((a, b) => a + b, 0);
+    return +((sum / vals.length).toFixed(1));
+  };
+
+  return { sb: avg("sb"), h4: avg("h4"), h15: avg("h15") };
+}
+
+function diff(v, b) {
+  if (v === null || b === null) return null;
+  return +(v - b).toFixed(1);
+}
+
+function bikeLabelFromType(t) {
+  const x = String(t || "").toLowerCase();
+  if (x === "quick_road") return "Road";
+  if (x === "quick_cx") return "CX";
+  return "MTB";
+}
+
+function formatDateShort(iso) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "2-digit" });
+  } catch {
+    return iso;
+  }
+}
+
+function formatTime(iso) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return iso;
+  }
+}
+
+function formatDateTime(iso) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString();
+  } catch {
+    return iso;
+  }
 }
 
 function toNum(v) {

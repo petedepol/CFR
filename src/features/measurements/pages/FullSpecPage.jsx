@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Save, WifiOff, RefreshCcw } from "lucide-react";
+import { ArrowLeft, Save, WifiOff, RefreshCcw, ChevronDown, ChevronUp } from "lucide-react";
 import { useAuth } from "../../auth/AuthProvider.jsx";
 import { useToast } from "../../../components/ToastProvider.jsx";
 
-import { ensureSession, fetchLatestFull, insertFull } from "../api/measurementsApi";
+import { ensureSession, fetchLatestFull, fetchFullHistory, insertFull } from "../api/measurementsApi";
 import { FULL_SPEC_DEFAULTS } from "../utils/fullSpecDefaults";
 
 const BASE_DEFAULTS = FULL_SPEC_DEFAULTS?.mtb ? FULL_SPEC_DEFAULTS.mtb : FULL_SPEC_DEFAULTS;
@@ -273,6 +273,12 @@ export default function FullSpecPage() {
 
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;
 
+
+  const historyRef = useRef(null);
+  const [historyRows, setHistoryRows] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [expandedHistoryId, setExpandedHistoryId] = useState(null);
+
   const scrollKey = rider ? `cfr_scroll_fullspec__${encodeURIComponent(rider)}__${bikeType}` : "";
   useStickyScroll(scrollKey, Boolean(rider));
 
@@ -353,14 +359,39 @@ export default function FullSpecPage() {
     }
   }
 
+  async function loadHistory({ silent = false } = {}) {
+    if (!rider) return;
+    if (!silent) setHistoryLoading(true);
+
+    try {
+      await ensureSession();
+      const rows = await fetchFullHistory(rider, bikeType, 10);
+      setHistoryRows(Array.isArray(rows) ? rows : []);
+    } catch {
+      // History is helpful but non-critical; ignore errors.
+    } finally {
+      if (!silent) setHistoryLoading(false);
+    }
+  }
+
   useEffect(() => {
     load();
+    loadHistory();
 
     const onVis = () => {
-      if (document.visibilityState === "visible") load({ silent: true, keepEdits: true });
+      if (document.visibilityState === "visible") {
+        load({ silent: true, keepEdits: true });
+        loadHistory({ silent: true });
+      }
     };
-    const onFocus = () => load({ silent: true, keepEdits: true });
-    const onOnline = () => load({ silent: true, keepEdits: true });
+    const onFocus = () => {
+      load({ silent: true, keepEdits: true });
+      loadHistory({ silent: true });
+    };
+    const onOnline = () => {
+      load({ silent: true, keepEdits: true });
+      loadHistory({ silent: true });
+    };
 
     document.addEventListener("visibilitychange", onVis);
     window.addEventListener("focus", onFocus);
@@ -424,12 +455,27 @@ export default function FullSpecPage() {
 
   return (
     <div className="space-y-4 pb-28">
-      <button
-        onClick={() => navigate(`/measurements?mech=${encodeURIComponent(mechanic)}&rider=${encodeURIComponent(rider)}`)}
-        className="inline-flex items-center gap-2 text-white/75 hover:text-white transition"
-      >
-        <ArrowLeft size={18} /> Back
-      </button>
+      <div className="flex items-center justify-between gap-3">
+        <button
+          onClick={() => navigate(`/measurements?rider=${encodeURIComponent(rider)}`)}
+          className="inline-flex items-center gap-2 text-white/75 hover:text-white transition"
+          type="button"
+        >
+          <ArrowLeft size={18} /> Back
+        </button>
+
+        <button
+          onClick={() => {
+            if (historyRef.current) {
+              historyRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+          }}
+          className="text-xs font-black text-white/70 hover:text-white transition"
+          type="button"
+        >
+          History ↓
+        </button>
+      </div>
 
       <div className="rounded-3xl border border-white/12 bg-white/[0.06] backdrop-blur p-6">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -506,6 +552,75 @@ export default function FullSpecPage() {
         )}
       </div>
 
+      <div ref={historyRef} className="rounded-3xl border border-white/12 bg-white/[0.06] backdrop-blur p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-sm text-white/65 font-bold tracking-wide">History</div>
+          <div className="text-xs font-black text-white/50">{bikeType.toUpperCase()}</div>
+        </div>
+
+        {historyLoading ? (
+          <div className="mt-4 space-y-2">
+            <div className="h-10 bg-white/5 rounded-2xl animate-pulse" />
+            <div className="h-10 bg-white/5 rounded-2xl animate-pulse" />
+          </div>
+        ) : historyRows && historyRows.length ? (
+          <div className="mt-4 space-y-2">
+            {historyRows.map((row) => {
+              const rowKey = row.id || row.timestamp;
+              const open = expandedHistoryId === rowKey;
+              const specObj = normalizeSpec(row?.full_spec);
+              return (
+                <div key={rowKey} className="rounded-2xl border border-white/10 bg-white/5">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedHistoryId(open ? null : rowKey)}
+                    className="w-full px-4 py-3 flex items-start justify-between gap-3 text-left"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-white/85 font-black text-sm">{formatDateTime(row.timestamp)}</div>
+                      <div className="text-xs text-white/60 mt-0.5">{row.mechanic ? `By ${row.mechanic}` : ""}</div>
+                    </div>
+                    <div className="shrink-0 text-white/60 mt-0.5">{open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</div>
+                  </button>
+
+                  {open ? (
+                    <div className="px-4 pb-4">
+                      {specObj ? (
+                        <div className="space-y-4">
+                          {Object.keys(specObj).map((sectionKey) => {
+                            const sec = specObj[sectionKey];
+                            if (!sec || typeof sec !== "object") return null;
+                            const items = Object.entries(sec).filter(([_, v]) => !isBlank(v));
+                            if (!items.length) return null;
+                            return (
+                              <div key={sectionKey} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                <div className="text-white font-black text-sm">{labelForSection(sectionKey)}</div>
+                                <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  {items.map(([k, v]) => (
+                                    <div key={k} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+                                      <div className="text-[11px] text-white/55 font-black tracking-wide">{labelForField(k)}</div>
+                                      <div className="mt-1 text-sm text-white/85 whitespace-pre-wrap">{String(v)}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-white/60">No spec data found on this entry.</div>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="mt-4 text-sm text-white/60">No history yet.</div>
+        )}
+      </div>
+
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-5xl px-4 z-30">
         <div className="rounded-3xl border border-white/12 bg-black/55 backdrop-blur-xl p-4 shadow-lg">
           <div className="flex items-center justify-between gap-3">
@@ -577,4 +692,19 @@ function Field({ label, value, onChange, placeholder, textarea, rows, inputMode,
       )}
     </label>
   );
+}
+
+function isBlank(v) {
+  if (v === null || v === undefined) return true;
+  if (typeof v === "string") return v.trim() === "";
+  return false;
+}
+
+function formatDateTime(iso) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString();
+  } catch {
+    return String(iso);
+  }
 }

@@ -1,8 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Ruler, History, ArrowRight, WifiOff } from "lucide-react";
+import { WifiOff } from "lucide-react";
 import { fetchRiders } from "../api/measurementsApi";
-import { useAuth } from "../../auth/AuthProvider.jsx";
 import { useToast } from "../../../components/ToastProvider.jsx";
 import { UI } from "../../../ui/styles.js";
 
@@ -10,80 +9,56 @@ function cx(...a) {
   return a.filter(Boolean).join(" ");
 }
 
-const INPUT =
-  "w-full rounded-2xl bg-white/[0.07] border border-white/15 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-lime-300/40 focus:border-white/25 transition";
+const LS_LAST_RIDER = "cfr_last_rider";
 
-function Chip({ active, onClick, children }) {
+function getLastRider() {
+  try {
+    return localStorage.getItem(LS_LAST_RIDER) || "";
+  } catch {
+    return "";
+  }
+}
+function setLastRider(name) {
+  try {
+    localStorage.setItem(LS_LAST_RIDER, name || "");
+  } catch {
+    // ignore
+  }
+}
+
+function pickPhoto(r) {
   return (
-    <button
-      onClick={onClick}
-      className={cx(
-        "px-3 py-2 rounded-2xl text-xs font-black border transition inline-flex items-center gap-2 active:scale-[0.99]",
-        active ? UI.tabActive : "bg-white/5 text-white/70 border-white/10 hover:bg-white/10"
-      )}
-      type="button"
-    >
-      {children}
-    </button>
+    r?.photo ||
+    r?.photoUrl ||
+    r?.photo_url ||
+    r?.image ||
+    r?.img ||
+    r?.avatar ||
+    r?.avatarUrl ||
+    r?.avatar_url ||
+    ""
   );
 }
 
-function CardButton({ title, subtitle, icon: Icon, onClick, rightText, disabled, tone = "neutral" }) {
-  const base =
-    "w-full text-left rounded-3xl border p-5 transition active:scale-[0.995] hover:bg-white/[0.07]";
-
-  const toneCls =
-    tone === "primary"
-      ? "border-lime-300/25 bg-lime-300/10 hover:bg-lime-300/15"
-      : tone === "danger"
-      ? "border-red-500/25 bg-red-500/10 hover:bg-red-500/15"
-      : "border-white/12 bg-white/[0.05]";
-
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={cx(base, toneCls, disabled && "opacity-50 cursor-not-allowed")}
-      type="button"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3 min-w-0">
-          <div className="h-10 w-10 rounded-2xl border border-white/10 bg-black/20 flex items-center justify-center shrink-0">
-            <Icon size={18} className={tone === "primary" ? "text-lime-200" : "text-white/75"} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-white font-black text-lg leading-tight">{title}</div>
-            <div className={cx(UI.helper, "mt-1")}>{subtitle}</div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {rightText ? (
-            <div className="text-xs font-black text-white/65 px-2 py-1 rounded-2xl border border-white/10 bg-white/5">
-              {rightText}
-            </div>
-          ) : null}
-          <ArrowRight size={18} className="text-white/35" />
-        </div>
-      </div>
-    </button>
-  );
+function initials(fullName) {
+  const s = String(fullName || "").trim();
+  if (!s) return "—";
+  const parts = s.split(/\s+/).slice(0, 2);
+  return parts.map((p) => p[0]?.toUpperCase()).join("");
 }
 
 export default function MeasurementsHome() {
   const navigate = useNavigate();
   const toast = useToast();
-  const { displayName } = useAuth();
 
   const [params, setParams] = useSearchParams();
   const riderParam = params.get("rider") || "";
 
   const [riders, setRiders] = useState([]);
-  const [selectedRider, setSelectedRider] = useState(riderParam);
-
-  const [mode, setMode] = useState("jig"); // jig | full
-  const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+  const [selectedRider, setSelectedRider] = useState(riderParam || "");
   const [loadErr, setLoadErr] = useState("");
+
+  const offline = typeof navigator !== "undefined" && navigator.onLine === false;
 
   useEffect(() => {
     if (selectedRider) setParams({ rider: selectedRider }, { replace: true });
@@ -93,12 +68,16 @@ export default function MeasurementsHome() {
     let alive = true;
     (async () => {
       try {
-        const r = await fetchRiders();
+        const list = await fetchRiders();
         if (!alive) return;
-        setRiders(r);
+        setRiders(list || []);
         setLoadErr("");
+
+        if (!riderParam) {
+          const last = getLastRider();
+          if (last) setSelectedRider(last);
+        }
       } catch (e) {
-        // If offline, don't spam errors — show a clear inline state.
         const isOff = typeof navigator !== "undefined" && navigator.onLine === false;
         if (isOff) {
           setLoadErr("Offline — riders can’t load. Reconnect and reopen.");
@@ -110,122 +89,122 @@ export default function MeasurementsHome() {
     return () => {
       alive = false;
     };
-  }, [toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const riderLabel = useMemo(() => {
-    if (!selectedRider) return "Select rider";
-    const r = riders.find((x) => x.name === selectedRider);
-    if (!r) return selectedRider;
-    return `${r.flag} ${r.fullName}`;
-  }, [selectedRider, riders]);
-
-  function go(path) {
-    if (!selectedRider) {
-      toast.warning("Select a rider first");
-      return;
-    }
+  function goJig(name) {
+    if (!name) return;
     if (offline) {
       toast.warning("Offline — reconnect to continue");
       return;
     }
-    navigate(`${path}?rider=${encodeURIComponent(selectedRider)}`);
+    setLastRider(name);
+    navigate(`/measurements/quick?rider=${encodeURIComponent(name)}`);
+  }
+
+  function goBike(name) {
+    if (!name) return;
+    if (offline) {
+      toast.warning("Offline — reconnect to continue");
+      return;
+    }
+    setLastRider(name);
+    navigate(`/measurements/full?rider=${encodeURIComponent(name)}`);
   }
 
   return (
-    <div className="space-y-4 pb-20">
-      <div className={cx(UI.card, "p-5")}>
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="text-sm text-white/65 font-bold tracking-wide">Measurements</div>
-            <div className="text-2xl font-black mt-1 text-white">{riderLabel}</div>
-            <div className={cx(UI.helper, "mt-1")}>
-              Mechanic: <span className="text-white/70 font-bold">{displayName || "—"}</span>
-            </div>
-          </div>
-
-          {offline ? (
-            <div className={cx(UI.pillBase, UI.pillWarn)}>
-              <span className="inline-flex items-center gap-2">
-                <WifiOff size={14} /> Offline
-              </span>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <div className={cx(UI.label, "mb-2")}>Rider</div>
-            <select value={selectedRider} onChange={(e) => setSelectedRider(e.target.value)} className={INPUT}>
-              <option value="">-- Select Rider --</option>
-              {riders.map((r) => (
-                <option key={r.name} value={r.name}>
-                  {r.flag} {r.fullName}
-                </option>
-              ))}
-            </select>
-            {loadErr ? <div className={cx(UI.helper, "mt-2 text-yellow-200/80")}>{loadErr}</div> : null}
-          </div>
-
-          <div className="flex flex-col">
-            <div className={cx(UI.label, "mb-2")}>Mode</div>
-            <div className="flex flex-wrap gap-2">
-              <Chip active={mode === "jig"} onClick={() => setMode("jig")}>
-                <Ruler size={14} /> Jig
-              </Chip>
-              <Chip active={mode === "full"} onClick={() => setMode("full")}>
-                Full Spec
-              </Chip>
-            </div>
+    <div className="pb-10">
+      {/* Offline badge only (no header), matches Settings */}
+      {offline ? (
+        <div className="fixed top-16 right-4 z-20">
+          <div className={cx(UI.pillBase, UI.pillWarn, "shadow-lg backdrop-blur")}>
+            <span className="inline-flex items-center gap-2">
+              <WifiOff size={14} /> Offline
+            </span>
           </div>
         </div>
+      ) : null}
+
+      {/* Photo grid (same sizing as Settings) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        {riders.map((r) => {
+          const name = r.name;
+          const full = r.fullName || r.name;
+          const photo = pickPhoto(r);
+
+          return (
+            <button
+              key={name}
+              onClick={() => {
+                setSelectedRider(name);
+                goJig(name); // default action
+              }}
+              disabled={offline}
+              className={cx(
+                "rounded-3xl border overflow-hidden bg-white/[0.05] hover:bg-white/[0.08] transition active:scale-[0.99] text-left",
+                "border-white/10 hover:border-white/20"
+              )}
+              type="button"
+            >
+              <div className="aspect-square w-full bg-black/30 relative">
+                {photo ? (
+                  <img src={photo} alt={full} className="h-full w-full object-cover" loading="lazy" />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center">
+                    <div className="h-16 w-16 rounded-3xl border border-white/10 bg-white/5 flex items-center justify-center">
+                      <div className="text-white/80 font-black text-lg">{initials(full)}</div>
+                    </div>
+                  </div>
+                )}
+
+                {r.flag ? (
+                  <div className="absolute left-2 top-2 text-xs font-black px-2 py-1 rounded-2xl border border-white/10 bg-black/50 backdrop-blur">
+                    {r.flag}
+                  </div>
+                ) : null}
+
+                {/* JIG / BIKE overlay (taller tap targets) */}
+                <div className="absolute left-2 right-2 bottom-2">
+                  <div className="grid grid-cols-2 overflow-hidden rounded-2xl border border-white/15 bg-black/55 backdrop-blur">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedRider(name);
+                        goJig(name);
+                      }}
+                      className="py-3 text-sm font-black text-white/90 hover:bg-white/10 transition"
+                      disabled={offline}
+                    >
+                      JIG
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedRider(name);
+                        goBike(name);
+                      }}
+                      className="py-3 text-sm font-black text-white/90 hover:bg-white/10 transition border-l border-white/15"
+                      disabled={offline}
+                    >
+                      BIKE
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3">
+                <div className="text-white font-black truncate">{full}</div>
+                <div className={cx(UI.helper, "mt-0.5 truncate")}>{name}</div>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
-      {mode === "jig" ? (
-        <div className="space-y-3">
-          <CardButton
-            title="Jig Entry"
-            subtitle="Fast update: SB, 4cm, 15cm + notes"
-            icon={Ruler}
-            onClick={() => go("/measurements/quick")}
-            tone="primary"
-            rightText={offline ? "offline" : ""}
-            disabled={!selectedRider || offline}
-          />
-          <CardButton
-            title="History"
-            subtitle="Track changes over time"
-            icon={History}
-            onClick={() => go("/measurements/history")}
-            rightText={offline ? "offline" : ""}
-            disabled={!selectedRider || offline}
-          />
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <CardButton
-            title="Full Spec"
-            subtitle="Bike spec capture"
-            icon={Ruler}
-            onClick={() => go("/measurements/full")}
-            tone="primary"
-            rightText={offline ? "offline" : ""}
-            disabled={!selectedRider || offline}
-          />
-          <CardButton
-            title="History"
-            subtitle="Past saves"
-            icon={History}
-            onClick={() => go("/measurements/history")}
-            rightText={offline ? "offline" : ""}
-            disabled={!selectedRider || offline}
-          />
-        </div>
-      )}
-
-      <div className={cx(UI.section, "p-4")}>
-        <div className="text-white/70 font-bold">Tip</div>
-        <div className={cx(UI.helper, "mt-1")}>Pick rider → open a module → save.</div>
-      </div>
+      {loadErr ? <div className="text-yellow-200/80 py-6 text-sm font-bold">{loadErr}</div> : null}
+      {!loadErr && riders.length === 0 ? <div className="text-white/60 py-6">No riders found.</div> : null}
     </div>
   );
 }

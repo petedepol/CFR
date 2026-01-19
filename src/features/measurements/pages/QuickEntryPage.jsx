@@ -4,7 +4,7 @@ import {
   ensureSession,
   fetchLatestQuick,
   insertQuick,
-  fetchHistory,
+  fetchQuickHistory,
   updateMeasurement,
   deleteMeasurement,
 } from "../api/measurementsApi";
@@ -40,15 +40,18 @@ function Field({ label, unit, children }) {
 
 export default function QuickEntryPage() {
   const navigate = useNavigate();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const { displayName, isAdmin } = useAuth();
   const toast = useToast();
 
   const mechanic = (displayName || "").trim();
   const rider = params.get("rider") || "";
 
-  // Road/CX are rare — keep Jig workflow MTB-only.
-  const bikeType = "mtb";
+  const initialBikeType = (() => {
+    const bt = String(params.get("bike") || "mtb").toLowerCase();
+    return bt === "road" || bt === "cx" || bt === "mtb" ? bt : "mtb";
+  })();
+  const [bikeType, setBikeType] = useState(initialBikeType);
   const [form, setForm] = useState({
     saddleSetback: "",
     height4cm: "",
@@ -86,13 +89,27 @@ export default function QuickEntryPage() {
   const canSave = useMemo(() => mechanic && rider, [mechanic, rider]);
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;
 
+  function changeBikeType(next) {
+    const bt = String(next || "mtb").toLowerCase();
+    const normalized = bt === "road" || bt === "cx" || bt === "mtb" ? bt : "mtb";
+    if (normalized == bikeType) return;
+    setBikeType(normalized);
+    try {
+      const nextParams = new URLSearchParams(params);
+      nextParams.set("bike", normalized);
+      setParams(nextParams, { replace: true });
+    } catch {
+      // ignore
+    }
+  }
+
   async function loadHistory({ silent = false } = {}) {
     if (!rider) return;
     if (!silent) setHistoryStatus({ kind: "loading", msg: "" });
 
     try {
       await ensureSession();
-      const rows = await fetchHistory(rider, 50);
+      const rows = await fetchQuickHistory(rider, bikeType, 50);
       setHistoryRows(rows || []);
       if (!silent) setHistoryStatus({ kind: "ok", msg: "" });
     } catch (e) {
@@ -150,10 +167,10 @@ export default function QuickEntryPage() {
       window.removeEventListener("online", onOnline);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rider]);
+  }, [rider, bikeType]);
 
   const jigRowsNewestFirst = useMemo(() => {
-    return (historyRows || []).filter((r) => String(r?.type || "") === "quick");
+    return historyRows || [];
   }, [historyRows]);
 
   function openEdit(row) {
@@ -348,6 +365,18 @@ export default function QuickEntryPage() {
             <div className="text-sm text-white/65 font-bold tracking-wide">Jig Update</div>
             <div className="text-2xl font-black mt-1 text-white">{rider || "No rider selected"}</div>
             <div className={cx(UI.helper, "mt-1")}>Mechanic: {mechanic || "—"}</div>
+            <div className="mt-3 flex items-center gap-2">
+              <div className="text-xs text-white/50 font-black tracking-wide">Bike</div>
+              <select
+                value={bikeType}
+                onChange={(e) => changeBikeType(e.target.value)}
+                className="rounded-2xl border border-white/12 bg-white/[0.06] px-3 py-2 text-sm font-black text-white/90"
+              >
+                <option value="mtb">MTB</option>
+                <option value="road">Road</option>
+                <option value="cx">CX</option>
+              </select>
+            </div>
           </div>
 
           {offline ? (

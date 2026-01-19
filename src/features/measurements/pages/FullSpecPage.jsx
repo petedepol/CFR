@@ -66,6 +66,9 @@ const NUMERIC_KEYS = new Set([
   "pedal_clicks",
 ]);
 
+// Allow decimals for these distance fields
+const DECIMAL_KEYS = new Set(["distance_to_brake_lever", "distance_to_dropper_lever"]);
+
 const TEXTAREA_KEYS = new Set(["notes", "other_info"]);
 
 const PLACEHOLDERS = {
@@ -246,9 +249,10 @@ function fieldUiMeta(section, key) {
   const isTextarea = TEXTAREA_KEYS.has(key);
   const placeholder = PLACEHOLDERS[key] || "";
   const fullWidth = key === "notes" || key === "other_info";
+  const wantsDecimal = DECIMAL_KEYS.has(key);
 
-  const inputMode = isNumeric ? "numeric" : undefined;
-  const pattern = isNumeric ? "[0-9]*" : undefined;
+  const inputMode = isNumeric ? (wantsDecimal ? "decimal" : "numeric") : undefined;
+  const pattern = isNumeric ? (wantsDecimal ? "[0-9]*[\.,]?[0-9]*" : "[0-9]*") : undefined;
 
   const rows = key === "other_info" ? 5 : key === "notes" ? 4 : 3;
 

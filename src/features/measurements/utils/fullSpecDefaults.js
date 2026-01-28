@@ -58,12 +58,14 @@ function makeTemplate() {
   return JSON.parse(JSON.stringify(FULL_SPEC_TEMPLATE));
 }
 
-// FULL_SPEC_DEFAULTS includes MTB/Road/CX buckets.
-// MTB is the normal default; Road/CX are rarely used but available.
+// FULL_SPEC_DEFAULTS includes all 5 bike types.
+// Each bike type has its own separate spec storage.
 export const FULL_SPEC_DEFAULTS = {
-  mtb: makeTemplate(),
-  road: makeTemplate(),
-  cx: makeTemplate(),
+  race: makeTemplate(),      // Race MTB
+  training: makeTemplate(),  // Training MTB
+  ebike: makeTemplate(),     // Electric MTB
+  road: makeTemplate(),      // Road bike
+  cx: makeTemplate(),        // Cyclocross
 };
 
 // Export template too (useful for normalization/merging)

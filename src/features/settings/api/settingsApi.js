@@ -1,5 +1,12 @@
 import { supabase } from "../../../lib/supabaseClient";
 import { enqueueBikeMeasurement, flushBikeMeasurementsQueue } from "../../../lib/offlineBikeMeasurementsQueue.js";
+import {
+  setCachedSettingsLatest,
+  setCachedSettingsHistory,
+  getCachedSettingsLatest,
+  getCachedSettingsHistory,
+  invalidateCache,
+} from "../../../lib/offlineCache.js";
 
 // ---------- helpers ----------
 function sleep(ms) {
@@ -67,8 +74,26 @@ export async function fetchLatestMtbSettings(rider) {
       .limit(1);
 
     if (error) throw error;
-    return (data ?? [])[0] ?? null;
+    const result = (data ?? [])[0] ?? null;
+    setCachedSettingsLatest(rider, result);
+    return result;
   });
+}
+
+export async function fetchLatestMtbSettingsWithCache(rider, { forceRefresh = false } = {}) {
+  if (!rider) return { data: null, fromCache: false };
+
+  if (!forceRefresh) {
+    const cached = getCachedSettingsLatest(rider);
+    if (cached !== null) {
+      // Background refresh
+      fetchLatestMtbSettings(rider).catch(() => {});
+      return { data: cached, fromCache: true };
+    }
+  }
+
+  const data = await fetchLatestMtbSettings(rider);
+  return { data, fromCache: false };
 }
 
 export async function fetchMtbSettingsHistory(rider, limit = 200) {
@@ -84,8 +109,26 @@ export async function fetchMtbSettingsHistory(rider, limit = 200) {
       .limit(limit);
 
     if (error) throw error;
-    return data ?? [];
+    const result = data ?? [];
+    setCachedSettingsHistory(rider, result, 50);
+    return result;
   });
+}
+
+export async function fetchMtbSettingsHistoryWithCache(rider, limit = 50, { forceRefresh = false } = {}) {
+  if (!rider) return { data: [], fromCache: false };
+
+  if (!forceRefresh) {
+    const cached = getCachedSettingsHistory(rider);
+    if (cached !== null) {
+      // Background refresh
+      fetchMtbSettingsHistory(rider, limit).catch(() => {});
+      return { data: cached, fromCache: true };
+    }
+  }
+
+  const data = await fetchMtbSettingsHistory(rider, limit);
+  return { data, fromCache: false };
 }
 
 export async function insertMtbSettings({ rider, mechanic, eventContext, setup, dedupeSig = "" }) {
@@ -120,6 +163,9 @@ export async function insertMtbSettings({ rider, mechanic, eventContext, setup, 
     } catch {
       // ignore
     }
+
+    // Invalidate cache for this rider after successful save
+    invalidateCache(`rider:${rider}`);
 
     return { queued: false };
   } catch (err) {

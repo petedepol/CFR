@@ -1,5 +1,18 @@
 import { supabase } from "../../../lib/supabaseClient";
 import { enqueueBikeMeasurement, flushBikeMeasurementsQueue } from "../../../lib/offlineBikeMeasurementsQueue.js";
+import {
+  setCachedRiders,
+  getCachedRiders,
+  setCachedJigLatest,
+  getCachedJigLatest,
+  setCachedJigHistory,
+  getCachedJigHistory,
+  setCachedSpecLatest,
+  getCachedSpecLatest,
+  setCachedSpecHistory,
+  getCachedSpecHistory,
+  invalidateCache,
+} from "../../../lib/offlineCache.js";
 
 // ---------- small helpers ----------
 function sleep(ms) {
@@ -61,16 +74,28 @@ export async function ensureSession() {
 
 function quickTypeForBikeType(bikeType) {
   const k = String(bikeType || "mtb").toLowerCase();
+
+  // Handle prefixed formats
+  if (k === "quick_race" || k === "quick") return "quick"; // Race uses legacy "quick"
+  if (k.startsWith("quick_")) return k;
+
+  // Handle short names - Race uses legacy "quick" for backwards compatibility
+  if (k === "race" || k === "mtb") return "quick";
+  if (k === "training") return "quick_training";
+  if (k === "ebike") return "quick_ebike";
   if (k === "road") return "quick_road";
   if (k === "cx") return "quick_cx";
-  return "quick"; // MTB + legacy default
+
+  return "quick"; // Legacy default
 }
 
 function fullTypeForBikeType(bikeType) {
-  const k = String(bikeType || "mtb").toLowerCase();
+  const k = String(bikeType || "race").toLowerCase();
+  if (k === "training") return "full_training";
+  if (k === "ebike") return "full_ebike";
   if (k === "road") return "full_road";
   if (k === "cx") return "full_cx";
-  return "full"; // MTB + legacy default
+  return "full"; // race + legacy (mtb) default
 }
 
 // ---------- API ----------
@@ -79,14 +104,28 @@ export async function fetchRiders() {
     const { data, error } = await supabase.from("riders").select("*").order("name");
     if (error) throw error;
 
-    return (data ?? []).map((r) => ({
+    const riders = (data ?? []).map((r) => ({
       name: r.name,
       fullName: r.full_name ?? r.name,
       flag: r.flag ?? "🏁",
       country: r.country ?? "",
       photo: r.photo ?? "",
     }));
+    setCachedRiders(riders);
+    return riders;
   });
+}
+
+export async function fetchRidersWithCache({ forceRefresh = false } = {}) {
+  if (!forceRefresh) {
+    const cached = getCachedRiders();
+    if (cached !== null) {
+      fetchRiders().catch(() => {});
+      return { data: cached, fromCache: true };
+    }
+  }
+  const data = await fetchRiders();
+  return { data, fromCache: false };
 }
 
 export async function fetchLatestQuick(rider, bikeType = "mtb") {
@@ -102,8 +141,22 @@ export async function fetchLatestQuick(rider, bikeType = "mtb") {
       .limit(1);
 
     if (error) throw error;
-    return data?.[0] ?? null;
+    const result = data?.[0] ?? null;
+    setCachedJigLatest(rider, bikeType, result);
+    return result;
   });
+}
+
+export async function fetchLatestQuickWithCache(rider, bikeType = "mtb", { forceRefresh = false } = {}) {
+  if (!forceRefresh) {
+    const cached = getCachedJigLatest(rider, bikeType);
+    if (cached !== null) {
+      fetchLatestQuick(rider, bikeType).catch(() => {});
+      return { data: cached, fromCache: true };
+    }
+  }
+  const data = await fetchLatestQuick(rider, bikeType);
+  return { data, fromCache: false };
 }
 
 export async function fetchLatestFull(rider, bikeType = "mtb") {
@@ -118,8 +171,22 @@ export async function fetchLatestFull(rider, bikeType = "mtb") {
       .limit(1);
 
     if (error) throw error;
-    return data?.[0] ?? null;
+    const result = data?.[0] ?? null;
+    setCachedSpecLatest(rider, bikeType, result);
+    return result;
   });
+}
+
+export async function fetchLatestFullWithCache(rider, bikeType = "mtb", { forceRefresh = false } = {}) {
+  if (!forceRefresh) {
+    const cached = getCachedSpecLatest(rider, bikeType);
+    if (cached !== null) {
+      fetchLatestFull(rider, bikeType).catch(() => {});
+      return { data: cached, fromCache: true };
+    }
+  }
+  const data = await fetchLatestFull(rider, bikeType);
+  return { data, fromCache: false };
 }
 
 export async function fetchQuickHistory(rider, bikeType = "mtb", limit = 10) {
@@ -135,8 +202,22 @@ export async function fetchQuickHistory(rider, bikeType = "mtb", limit = 10) {
       .limit(limit);
 
     if (error) throw error;
-    return data ?? [];
+    const result = data ?? [];
+    setCachedJigHistory(rider, bikeType, result, 20);
+    return result;
   });
+}
+
+export async function fetchQuickHistoryWithCache(rider, bikeType = "mtb", limit = 20, { forceRefresh = false } = {}) {
+  if (!forceRefresh) {
+    const cached = getCachedJigHistory(rider, bikeType);
+    if (cached !== null) {
+      fetchQuickHistory(rider, bikeType, limit).catch(() => {});
+      return { data: cached, fromCache: true };
+    }
+  }
+  const data = await fetchQuickHistory(rider, bikeType, limit);
+  return { data, fromCache: false };
 }
 
 export async function fetchFullHistory(rider, bikeType = "mtb", limit = 10) {
@@ -152,8 +233,22 @@ export async function fetchFullHistory(rider, bikeType = "mtb", limit = 10) {
       .limit(limit);
 
     if (error) throw error;
-    return data ?? [];
+    const result = data ?? [];
+    setCachedSpecHistory(rider, bikeType, result, 10);
+    return result;
   });
+}
+
+export async function fetchFullHistoryWithCache(rider, bikeType = "mtb", limit = 10, { forceRefresh = false } = {}) {
+  if (!forceRefresh) {
+    const cached = getCachedSpecHistory(rider, bikeType);
+    if (cached !== null) {
+      fetchFullHistory(rider, bikeType, limit).catch(() => {});
+      return { data: cached, fromCache: true };
+    }
+  }
+  const data = await fetchFullHistory(rider, bikeType, limit);
+  return { data, fromCache: false };
 }
 
 export async function fetchHistory(rider, limit = 50) {
@@ -232,6 +327,9 @@ export async function insertQuick({
       // ignore
     }
 
+    // Invalidate cache for this rider after successful save
+    invalidateCache(`rider:${rider}`);
+
     return { queued: false };
   } catch (err) {
     const offline = err?.code === "OFFLINE" || (typeof navigator !== "undefined" && navigator.onLine === false);
@@ -267,6 +365,9 @@ export async function insertFull({ rider, mechanic, fullSpec, bikeType = "mtb", 
     } catch {
       // ignore
     }
+
+    // Invalidate cache for this rider after successful save
+    invalidateCache(`rider:${rider}`);
 
     return { queued: false };
   } catch (err) {

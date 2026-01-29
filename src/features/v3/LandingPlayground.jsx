@@ -1,11 +1,10 @@
 // src/features/v3/LandingPlayground.jsx
-// V3 Landing Page - Figma Design (Light First, Minimal)
+// V3 Landing Page - 2026 CFR Race Frame Design (Dark Only)
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
-import { Toaster, toast } from "sonner";
-import { Sun, Moon } from "lucide-react";
+import { Toaster } from "sonner";
 
 import { Avatar } from "./components/Avatar.jsx";
 import { BottomNav } from "./components/BottomNav.jsx";
@@ -13,49 +12,42 @@ import { RidersModal } from "./components/RidersModal.jsx";
 import { BikeTypePicker } from "./components/BikeTypePicker.jsx";
 import { ActionPicker } from "./components/ActionPicker.jsx";
 
-// Real CFR riders - will be replaced with Supabase data
+// Real CFR riders
 const RIDERS = [
-  { id: "ana", name: "Ana", initial: "A", image: "/riders/ana.jpeg" },
-  { id: "charlie", name: "Charlie", initial: "C", image: "/riders/charlie.jpeg" },
-  { id: "cole", name: "Cole", initial: "C", image: "/riders/cole.jpeg" },
-  { id: "luca", name: "Luca", initial: "L", image: "/riders/luca.jpeg" },
-  { id: "jolanda", name: "Jolanda", initial: "J", image: "/riders/jolanda.jpeg" },
+  { id: "ana", name: "Ana", initial: "A", image: "/riders/ana.png" },
+  { id: "charlie", name: "Charlie", initial: "C", image: "/riders/charlie.png" },
+  { id: "cole", name: "Cole", initial: "C", image: "/riders/cole.png" },
+  { id: "luca", name: "Luca", initial: "L", image: "/riders/luca.png" },
+  { id: "jolanda", name: "Jolanda", initial: "J", image: "/riders/jolanda.png" },
 ];
+
+// CFR Foundation Colors (from docs/design/tokens.css)
+const CFR = {
+  bgPrimary: '#132823',
+  bgSurface: '#1F3D36',
+  bgElevated: '#2A4B43',
+  brandOrange: '#D24A1F',
+  brandOrangeHi: '#E56A3A',
+  textPrimary: '#F4F6F5',
+  textSecondary: '#B8C2BE',
+  textMuted: '#8A9A94',
+};
 
 export default function LandingPlayground() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("home");
   const [isRidersListOpen, setIsRidersListOpen] = useState(false);
-  const [isDark, setIsDark] = useState(false);
 
   // Riders tab flow: rider -> bike type -> action
   const [riderForBikeFlow, setRiderForBikeFlow] = useState(null);
   const [selectedBikeType, setSelectedBikeType] = useState(null);
 
-  // Load saved theme preference
-  useEffect(() => {
-    const saved = localStorage.getItem("cfr_theme");
-    if (saved === "dark") {
-      document.documentElement.classList.add("dark");
-      setIsDark(true);
-    }
-  }, []);
-
-  // Toggle theme
-  const toggleTheme = () => {
-    const newIsDark = !isDark;
-    setIsDark(newIsDark);
-    if (newIsDark) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("cfr_theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("cfr_theme", "light");
-    }
-  };
-
   // Handle tab changes
   const handleTabChange = (tab) => {
+    if (tab === "dashboard") {
+      navigate("/v3/dashboard");
+      return;
+    }
     if (tab === "riders") {
       setIsRidersListOpen(true);
       return;
@@ -75,10 +67,8 @@ export default function LandingPlayground() {
 
   const handleSelectAction = (action) => {
     if (action === "spec") {
-      // Navigate to V3 Bike Spec page with direct bike type
       navigate(`/v3/spec?rider=${encodeURIComponent(riderForBikeFlow?.name)}&bike=${selectedBikeType}`);
     } else if (action === "jig") {
-      // Navigate to V3 JIG page with rider and bike type
       navigate(`/v3/jig?rider=${encodeURIComponent(riderForBikeFlow?.name)}&bike=${selectedBikeType}`);
     }
 
@@ -96,20 +86,8 @@ export default function LandingPlayground() {
   };
 
   return (
-    <div
-      className="min-h-screen text-foreground font-sans selection:bg-orange-500/30"
-      style={{ background: 'var(--background-gradient, var(--background))' }}
-    >
+    <div className="min-h-screen font-sans selection:bg-brand-orange/30">
       <Toaster position="top-center" />
-
-      {/* Theme Toggle - Top Right */}
-      <button
-        onClick={toggleTheme}
-        className="fixed top-6 right-6 z-50 p-3 rounded-full bg-foreground/5 border border-foreground/10 text-foreground/60 hover:bg-foreground/10 active:scale-95 transition-all"
-        aria-label="Toggle theme"
-      >
-        {isDark ? <Sun size={20} /> : <Moon size={20} />}
-      </button>
 
       {/* Main Content Area */}
       <main className="max-w-lg mx-auto px-6 pt-16 pb-32 min-h-screen flex flex-col">
@@ -118,7 +96,7 @@ export default function LandingPlayground() {
           <motion.img
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            src={isDark ? "/logos/cfr-logo-light.png" : "/logos/cfr-logo-dark.png"}
+            src="/logos/cfr-logo-light.png"
             alt="Cannondale Factory Racing"
             className="h-14 w-auto"
           />
@@ -177,11 +155,11 @@ export default function LandingPlayground() {
           {/* Instruction text */}
           <motion.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.4 }}
+            animate={{ opacity: 0.7 }}
             transition={{ delay: 1 }}
             className="text-center"
           >
-            <p className="text-[10px] uppercase font-bold tracking-[0.3em] text-foreground/40">
+            <p className="text-[10px] uppercase font-semibold tracking-[0.3em] text-text-muted">
               Tap Rider &rarr; MTB Setup
             </p>
           </motion.div>

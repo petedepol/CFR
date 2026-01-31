@@ -881,11 +881,9 @@ export default function JigPage() {
 
                       return (
                         <tr key={rowKey} className={`border-b ${colors.tableBorder} ${rowBg}`}>
-                          <td className={`px-4 py-3 align-top border-r ${colors.tableBorder}`}>
+                          <td className={`px-4 py-2 align-top border-r ${colors.tableBorder}`}>
                             <div className={`font-bold text-base ${colors.tableText}`}>{formatDateShort(row.timestamp)}</div>
-                            <div className={`text-[11px] mt-0.5 ${colors.tableSecondary}`}>{formatTime(row.timestamp)}</div>
-                            {row.location && <div className={`text-[11px] ${colors.tableSecondary}`}>{row.location}</div>}
-                            {row.mechanic && <div className={`text-[11px] ${colors.tableSecondary}`}>By {row.mechanic}</div>}
+                            {row.location && <div className={`text-[11px] mt-0.5 ${colors.tableSecondary}`}>{row.location}</div>}
                           </td>
 
                           <td className={`px-3 py-3 text-center align-middle border-r ${colors.tableBorder}`}>

@@ -618,7 +618,7 @@ export default function JigPage() {
 
   return (
     <div className="min-h-dvh font-sans" style={pageStyle}>
-      <div className="max-w-lg mx-auto px-4 pt-6 pb-24">
+      <div className="max-w-lg mx-auto px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-24">
         {/* Header */}
         <div className="mb-6">
           {/* Top row: Back button + Status */}

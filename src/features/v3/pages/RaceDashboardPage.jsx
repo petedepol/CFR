@@ -1368,7 +1368,7 @@ export default function RaceDashboardPage() {
       className="min-h-dvh font-sans"
       style={{ backgroundColor: "#121212" }}
     >
-      <div className="max-w-lg mx-auto px-4 pt-4 pb-24">
+      <div className="max-w-lg mx-auto px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-24">
 
         {/* Header */}
         <header className="flex items-center justify-between mb-4">

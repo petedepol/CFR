@@ -4,7 +4,7 @@ import { RouterProvider } from "react-router-dom";
 import "./styles/tokens.css";
 import "./index.css";
 
-import { router } from "./app/router.jsx";
+import { router, preloadRoutes } from "./app/router.jsx";
 import { AuthProvider } from "./features/auth/AuthProvider.jsx";
 import { ToastProvider } from "./components/ToastProvider.jsx";
 
@@ -17,3 +17,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     </AuthProvider>
   </React.StrictMode>
 );
+
+// Preload critical routes after initial render for faster navigation
+preloadRoutes();

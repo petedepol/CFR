@@ -18,7 +18,11 @@ const RIDERS = [
 ];
 
 function LoadingFallback() {
-  return <div className="min-h-dvh bg-app-bg" />;
+  return (
+    <div className="min-h-dvh bg-[#121f1e] flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-[#e94e1b]/30 border-t-[#e94e1b] rounded-full animate-spin" />
+    </div>
+  );
 }
 
 export default function V3Layout() {

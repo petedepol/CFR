@@ -394,8 +394,13 @@ export default function SetupPage() {
   }, [rider, eventContext, setup, dirty]);
 
   function setField(key, value) {
+    // Convert comma to dot for pressure fields (European decimal separator)
+    const isPressure = key.includes("pressure");
+    const normalizedValue = isPressure && typeof value === "string"
+      ? value.replace(/,/g, ".")
+      : value;
     setDirty(true);
-    setSetup((prev) => ({ ...prev, [key]: value }));
+    setSetup((prev) => ({ ...prev, [key]: normalizedValue }));
   }
 
   function setRefFor(key) {

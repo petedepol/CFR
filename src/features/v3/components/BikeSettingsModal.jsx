@@ -27,7 +27,12 @@ export function BikeSettingsModal({
   if (!rider) return null;
 
   const handleChange = (field, value) => {
-    setSettings((prev) => ({ ...prev, [field]: value }));
+    // Convert comma to dot for pressure fields (European decimal separator)
+    const isPressure = field.toLowerCase().includes("pressure");
+    const normalizedValue = isPressure && typeof value === "string"
+      ? value.replace(/,/g, ".")
+      : value;
+    setSettings((prev) => ({ ...prev, [field]: normalizedValue }));
   };
 
   return (

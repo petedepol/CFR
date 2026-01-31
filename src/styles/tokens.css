@@ -1,0 +1,40 @@
+:root {
+  /* Brand - 2026 CFR Livery */
+  --brand-orange: #e94e1b;
+  --brand-orange-hi: #f0714a;
+  --brand-orange-lo: #c43d13;
+
+  --brand-green: #1e3331;
+  --brand-green-hi: #2d524b;
+  --brand-green-lo: #121f1e;
+
+  /* Backgrounds - darker for better glass contrast */
+  --bg-app: #0e1c1b;
+  --bg-surface: #1e3331;
+  --bg-elevated: #28453f;
+
+  /* Text */
+  --text-primary: #F4F6F5;
+  --text-secondary: #B8C2BE;
+  --text-muted: #8A9A94;
+
+  /* Chrome */
+  --border-subtle: rgba(255,255,255,0.08);
+  --border-strong: rgba(255,255,255,0.14);
+
+  --overlay-hover: rgba(255,255,255,0.04);
+  --overlay-pressed: rgba(0,0,0,0.18);
+  --overlay-scrim: rgba(0,0,0,0.55);
+
+  /* Glass - double layer dock system */
+  --glass-rail: rgba(30,51,49,0.55);
+  --glass-tile: rgba(16,26,25,0.35);
+  --glass-border: rgba(255,255,255,0.10);
+  --glass-highlight: rgba(255,255,255,0.10);
+
+  /* Shadows */
+  --shadow-rail: 0 18px 50px rgba(0,0,0,0.45);
+
+  /* Active ring */
+  --ring-active: rgba(233,78,27,0.35);
+}

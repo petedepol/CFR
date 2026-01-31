@@ -1,0 +1,24 @@
+:root {
+  --brand-orange: #D24A1F;
+  --brand-orange-hi: #E56A3A;
+  --brand-orange-lo: #A63A17;
+
+  --brand-green: #1F3D36;
+  --brand-green-hi: #2E5A50;
+  --brand-green-lo: #132823;
+
+  --bg-primary: #132823;
+  --bg-surface: #1F3D36;
+  --bg-elevated: #2A4B43;
+
+  --text-primary: #F4F6F5;
+  --text-secondary: #B8C2BE;
+  --text-muted: #8A9A94;
+
+  --border-subtle: rgba(255,255,255,0.08);
+  --border-strong: rgba(255,255,255,0.14);
+
+  --overlay-hover: rgba(255,255,255,0.04);
+  --overlay-pressed: rgba(0,0,0,0.18);
+  --overlay-scrim: rgba(0,0,0,0.55);
+}

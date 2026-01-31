@@ -1,61 +1,144 @@
-// ActionPicker.jsx - Bottom sheet to select JIG or SPEC action
+// ActionPicker.jsx - CFR Foundation styled bottom sheet
+// Supports theme prop: "light" (2026 Livery) or "dark" (Kit Theme)
 
 import { Drawer } from "vaul";
-import { X, Ruler, FileText } from "lucide-react";
+import { Ruler, FileText, Wrench } from "lucide-react";
 
-const BIKE_TYPE_LABELS = {
-  training: "Training",
-  road: "Road",
-  ebike: "E-Bike",
-  cx: "CX",
-};
-
-export function ActionPicker({ rider, bikeType, isOpen, onClose, onSelectAction }) {
+export function ActionPicker({ rider, bikeType, isOpen, onClose, onSelectAction, theme = "light" }) {
   if (!rider || !bikeType) return null;
 
-  const bikeLabel = BIKE_TYPE_LABELS[bikeType] || bikeType;
+  const isDark = theme === "dark";
+
+  // Theme-specific colors
+  const colors = isDark
+    ? {
+        // Dark Kit Theme
+        overlay: "bg-black/60",
+        container: "bg-[#1e1e1e] border-[#2a2a2a]",
+        handle: "bg-[#444444]",
+        cardOuter: "bg-[#252525] border-b-2 border-b-[#ff6b2c]",
+        cardBorder: "border border-[#333333]",
+        cardRing: "ring-1 ring-[rgba(255,255,255,0.05)]",
+        cardActiveRing: "group-active:ring-[#ff6b2c] group-active:ring-2",
+        cardShadow: "shadow-[0_10px_28px_rgba(0,0,0,0.50)]",
+        iconColor: "text-[#ff6b2c]",
+        labelColor: "text-white",
+        labelHover: "group-hover:text-[#ff6b2c]",
+      }
+    : {
+        // Light 2026 Livery Theme
+        overlay: "bg-black/40",
+        container: "border-[rgba(0,0,0,0.08)]",
+        handle: "bg-[rgba(30,51,49,0.15)]",
+        cardOuter: "bg-[rgba(30,51,49,0.12)]",
+        cardBorder: "border border-[rgba(0,0,0,0.08)] group-hover:border-[rgba(0,0,0,0.15)]",
+        cardRing: "ring-1 ring-[rgba(30,51,49,0.20)]",
+        cardActiveRing: "group-active:ring-[rgba(233,78,27,0.50)]",
+        cardShadow: "shadow-[0_10px_28px_rgba(0,0,0,0.18)]",
+        iconColor: "text-[#e94e1b]",
+        labelColor: "text-[#1e3331]",
+        labelHover: "group-hover:text-[#e94e1b]",
+      };
+
+  // Container background style
+  const containerStyle = isDark
+    ? { background: "#1e1e1e" }
+    : {
+        background:
+          "radial-gradient(400px 300px at 50% 100%, rgba(30,51,49,0.15), transparent 70%)," +
+          "rgba(232,228,220,0.98)",
+      };
 
   return (
     <Drawer.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50" />
-        <Drawer.Content className="bg-background dark:bg-zinc-900 flex flex-col rounded-t-[32px] h-[45%] fixed bottom-0 left-0 right-0 z-50 outline-none">
+        <Drawer.Overlay className={`fixed inset-0 backdrop-blur-sm z-50 ${colors.overlay}`} />
+        <Drawer.Content
+          className={`flex flex-col rounded-t-[20px] fixed bottom-0 left-0 right-0 z-50 outline-none border-t ${colors.container}`}
+          style={containerStyle}
+        >
           {/* Header */}
-          <div className="p-4 bg-background dark:bg-zinc-900 border-b border-border dark:border-white/10 rounded-t-[32px] flex-none">
-            <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-foreground/10 dark:bg-white/20 mb-6" />
-            <div className="flex items-center justify-between px-2">
-              <div>
-                <h2 className="text-xl font-bold text-foreground dark:text-white">
-                  {rider.name} &middot; {bikeLabel}
-                </h2>
-              </div>
-              <button
-                onClick={onClose}
-                className="p-2 rounded-full bg-foreground/5 dark:bg-white/10 text-foreground/50 dark:text-white/60 active:scale-90 transition-transform"
-              >
-                <X size={20} />
-              </button>
-            </div>
+          <div className="p-4 rounded-t-[20px] flex-none">
+            <div className={`mx-auto w-12 h-1.5 flex-shrink-0 rounded-full ${colors.handle}`} />
           </div>
 
           {/* Action Buttons */}
-          <div className="flex-1 flex items-center justify-center p-6 gap-4">
+          <div className="px-4 py-6 flex justify-center gap-6">
             <button
               onClick={() => onSelectAction("jig")}
-              className="flex-1 flex flex-col items-center gap-3 p-8 rounded-2xl bg-foreground/5 dark:bg-white/10 active:bg-foreground/10 dark:active:bg-white/15 active:scale-[0.98] transition-all border-2 border-transparent hover:border-orange-500/30"
+              className="group flex flex-col items-center gap-2 transition-transform active:scale-95"
             >
-              <Ruler size={48} className="text-orange-500" />
-              <span className="text-xl font-bold text-foreground dark:text-white">JIG</span>
+              {/* Card container */}
+              <div className={`
+                relative p-[2px] rounded-2xl
+                ${colors.cardOuter}
+                backdrop-blur-sm
+                ${colors.cardBorder}
+                ${colors.cardRing}
+                ${colors.cardActiveRing}
+                ${colors.cardShadow}
+                transition-all
+              `}>
+                <div className="w-[100px] h-[100px] rounded-xl flex items-center justify-center">
+                  <Ruler size={48} className={colors.iconColor} />
+                </div>
+              </div>
+              <span className={`text-sm font-semibold transition-colors ${colors.labelColor} ${colors.labelHover}`}>
+                JIG
+              </span>
             </button>
 
             <button
               onClick={() => onSelectAction("spec")}
-              className="flex-1 flex flex-col items-center gap-3 p-8 rounded-2xl bg-foreground/5 dark:bg-white/10 active:bg-foreground/10 dark:active:bg-white/15 active:scale-[0.98] transition-all border-2 border-transparent hover:border-orange-500/30"
+              className="group flex flex-col items-center gap-2 transition-transform active:scale-95"
             >
-              <FileText size={48} className="text-orange-500" />
-              <span className="text-xl font-bold text-foreground dark:text-white">SPEC</span>
+              {/* Card container */}
+              <div className={`
+                relative p-[2px] rounded-2xl
+                ${colors.cardOuter}
+                backdrop-blur-sm
+                ${colors.cardBorder}
+                ${colors.cardRing}
+                ${colors.cardActiveRing}
+                ${colors.cardShadow}
+                transition-all
+              `}>
+                <div className="w-[100px] h-[100px] rounded-xl flex items-center justify-center">
+                  <FileText size={48} className={colors.iconColor} />
+                </div>
+              </div>
+              <span className={`text-sm font-semibold transition-colors ${colors.labelColor} ${colors.labelHover}`}>
+                SPEC
+              </span>
+            </button>
+
+            <button
+              onClick={() => onSelectAction("service")}
+              className="group flex flex-col items-center gap-2 transition-transform active:scale-95"
+            >
+              {/* Card container */}
+              <div className={`
+                relative p-[2px] rounded-2xl
+                ${colors.cardOuter}
+                backdrop-blur-sm
+                ${colors.cardBorder}
+                ${colors.cardRing}
+                ${colors.cardActiveRing}
+                ${colors.cardShadow}
+                transition-all
+              `}>
+                <div className="w-[100px] h-[100px] rounded-xl flex items-center justify-center">
+                  <Wrench size={48} className={colors.iconColor} />
+                </div>
+              </div>
+              <span className={`text-sm font-semibold transition-colors ${colors.labelColor} ${colors.labelHover}`}>
+                SERVICE
+              </span>
             </button>
           </div>
+
+          {/* Bottom safe area padding */}
+          <div className="h-[env(safe-area-inset-bottom)]" />
         </Drawer.Content>
       </Drawer.Portal>
     </Drawer.Root>

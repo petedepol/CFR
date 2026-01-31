@@ -12,7 +12,10 @@ export default function RequireAuth({ children }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center text-white/70">
+      <div
+        className="min-h-dvh flex items-center justify-center text-[#888888]"
+        style={{ background: "radial-gradient(ellipse at 50% 30%, #1a1a1a 0%, #0d0d0d 70%)" }}
+      >
         Loading…
       </div>
     );

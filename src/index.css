@@ -1,8 +1,74 @@
 @import "tailwindcss";
+@import "./styles/tokens.css";
 @import "./ui/v3Theme.css";
+
+/* Tailwind v4 theme - semantic color mappings */
+@theme {
+  --color-app-bg: var(--bg-app);
+  --color-app-surface: var(--bg-surface);
+  --color-app-elevated: var(--bg-elevated);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-orange-hi: var(--brand-orange-hi);
+  --color-brand-orange-lo: var(--brand-orange-lo);
+  --color-brand-green: var(--brand-green);
+  --color-brand-green-hi: var(--brand-green-hi);
+  --color-brand-green-lo: var(--brand-green-lo);
+
+  --color-overlay-hover: var(--overlay-hover);
+  --color-overlay-pressed: var(--overlay-pressed);
+  --color-overlay-scrim: var(--overlay-scrim);
+
+  --color-chrome-subtle: var(--border-subtle);
+  --color-chrome-strong: var(--border-strong);
+
+  /* Glass system */
+  --color-glass-rail: var(--glass-rail);
+  --color-glass-tile: var(--glass-tile);
+  --color-glass-border: var(--glass-border);
+  --color-glass-highlight: var(--glass-highlight);
+  --color-ring-active: var(--ring-active);
+
+  /* Shadows */
+  --shadow-rail: var(--shadow-rail);
+}
 
 html,
 body {
   height: 100%;
-  background: #000;
+  background: var(--bg-app);
+  /* iOS optimization */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Prevent iOS zoom on input focus (font-size < 16px triggers zoom) */
+input,
+textarea,
+select {
+  font-size: 16px;
+}
+
+/* Smooth momentum scrolling on iOS */
+.overflow-y-auto,
+.overflow-x-auto,
+.overflow-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent rubber-band scrolling on modals */
+[data-vaul-drawer] {
+  overscroll-behavior: contain;
+}
+
+/* Touch optimization - remove 300ms tap delay */
+button,
+a,
+[role="button"] {
+  touch-action: manipulation;
 }

@@ -1,9 +1,13 @@
-// BikeSettingsModal.jsx - Bottom sheet form for bike settings
+// BikeSettingsModal.jsx - CFR branded bottom sheet form for bike settings
 
 import { Drawer } from "vaul";
 import { X, Save } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
+
+// CFR Team Colors
+const CFR_LIME = '#4A9B7F';
+const CFR_LIME_LIGHT = '#5DB893';
 
 export function BikeSettingsModal({
   rider,
@@ -29,18 +33,18 @@ export function BikeSettingsModal({
   return (
     <Drawer.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50" />
-        <Drawer.Content className="bg-background dark:bg-zinc-900 flex flex-col rounded-t-[32px] h-[92%] mt-24 fixed bottom-0 left-0 right-0 z-50 outline-none">
+        <Drawer.Overlay className="fixed inset-0 bg-black/20 dark:bg-black/60 backdrop-blur-sm z-50" />
+        <Drawer.Content className="bg-[#fffefa] dark:bg-[rgba(12,12,10,0.96)] dark:backdrop-blur-xl flex flex-col rounded-t-[32px] max-h-[92dvh] mt-24 fixed bottom-0 left-0 right-0 z-50 outline-none border-t border-black/[0.06] dark:border-[#4A9B7F]/20">
           {/* Header */}
-          <div className="p-4 bg-background dark:bg-zinc-900 border-b border-border dark:border-white/10 rounded-t-[32px] flex-none">
-            <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-foreground/10 dark:bg-white/20 mb-6" />
+          <div className="p-4 border-b border-black/10 dark:border-white/[0.08] rounded-t-[32px] flex-none">
+            <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-black/10 dark:bg-white/20 mb-6" />
             <div className="flex items-center justify-between px-2">
-              <h2 className="text-xl font-bold text-foreground dark:text-white">
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
                 {rider.name}&apos;s Settings
               </h2>
               <button
                 onClick={onClose}
-                className="p-2 rounded-full bg-foreground/5 dark:bg-white/10 text-foreground/50 dark:text-white/60 active:scale-90 transition-transform"
+                className="p-2 rounded-full bg-black/5 dark:bg-white/10 text-zinc-500 dark:text-white/60 active:scale-90 transition-transform"
               >
                 <X size={20} />
               </button>
@@ -51,7 +55,7 @@ export function BikeSettingsModal({
           <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-32">
             {/* Dimensions Section */}
             <section className="space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-orange-500/80 px-1">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-orange-500 dark:text-[#5DB893] px-1">
                 Dimensions (mm)
               </h3>
               <div className="grid grid-cols-1 gap-4">
@@ -80,7 +84,7 @@ export function BikeSettingsModal({
 
             {/* Tires Section */}
             <section className="space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-orange-500/80 px-1">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-orange-500 dark:text-[#5DB893] px-1">
                 Tire Pressure (PSI)
               </h3>
               <div className="grid grid-cols-2 gap-4">
@@ -101,20 +105,20 @@ export function BikeSettingsModal({
 
             {/* Notes Section */}
             <section className="space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-orange-500/80 px-1">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-orange-500 dark:text-[#5DB893] px-1">
                 Notes
               </h3>
               <textarea
                 value={settings.notes}
                 onChange={(e) => handleChange("notes", e.target.value)}
                 placeholder="Specific race tweaks, weather considerations..."
-                className="w-full h-32 px-4 py-3 rounded-2xl bg-input-background dark:bg-white/[0.08] border border-border dark:border-white/[0.12] text-foreground dark:text-white placeholder:text-foreground/30 dark:placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-orange-500/50 resize-none"
+                className="w-full h-32 px-4 py-3 rounded-2xl bg-zinc-100 dark:bg-[rgba(25,25,22,0.6)] border border-black/10 dark:border-white/[0.1] text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-orange-500/50 dark:focus:ring-[#4A9B7F]/50 resize-none"
               />
             </section>
           </div>
 
           {/* Save Button */}
-          <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background dark:from-zinc-900 via-background dark:via-zinc-900 to-transparent pt-10">
+          <div className="absolute bottom-0 left-0 right-0 p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] bg-gradient-to-t from-[#fffefa] dark:from-[rgba(12,12,10,0.96)] via-[#fffefa] dark:via-[rgba(12,12,10,0.96)] to-transparent pt-10">
             <motion.button
               whileTap={{ scale: 0.96 }}
               onClick={() => onSave(settings)}
@@ -133,7 +137,7 @@ export function BikeSettingsModal({
 function InputGroup({ label, value, onChange, placeholder }) {
   return (
     <div className="space-y-2">
-      <label className="text-[13px] font-medium text-foreground/50 dark:text-white/50 ml-1">
+      <label className="text-[13px] font-medium text-zinc-500 dark:text-white/50 ml-1">
         {label}
       </label>
       <input
@@ -142,7 +146,7 @@ function InputGroup({ label, value, onChange, placeholder }) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-4 py-3 rounded-2xl bg-input-background dark:bg-white/[0.08] border border-border dark:border-white/[0.12] text-foreground dark:text-white placeholder:text-foreground/20 dark:placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-orange-500/50 transition-all"
+        className="w-full px-4 py-3 rounded-2xl bg-zinc-100 dark:bg-[rgba(25,25,22,0.6)] border border-black/10 dark:border-white/[0.1] text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-orange-500/50 dark:focus:ring-[#4A9B7F]/50 transition-all"
       />
     </div>
   );

@@ -1,65 +1,172 @@
-// RidersModal.jsx - Bottom sheet rider grid
+// RidersModal.jsx - CFR Foundation styled bottom sheet rider grid
+// Supports theme prop: "light" (2026 Livery) or "dark" (Kit Theme)
 
 import { Drawer } from "vaul";
-import { X } from "lucide-react";
 
-export function RidersModal({ riders, isOpen, onClose, onSelectRider }) {
+export function RidersModal({ riders, isOpen, onClose, onSelectRider, theme = "light" }) {
+  const isDark = theme === "dark";
+
+  // Split riders into pyramid rows
+  const topRow = riders.slice(0, 3);
+  const bottomRow = riders.slice(3);
+
+  // Theme-specific colors
+  const colors = isDark
+    ? {
+        // Dark Kit Theme
+        overlay: "bg-black/60",
+        container: "bg-[#1e1e1e] border-[#2a2a2a]",
+        handle: "bg-[#444444]",
+        headerText: "text-[#ff6b2c]",
+        cardOuter: "bg-[#252525] border-b-2 border-b-[#ff6b2c]",
+        cardRing: "ring-1 ring-[rgba(255,255,255,0.05)]",
+        cardActiveRing: "group-active:ring-[#ff6b2c] group-active:ring-2",
+        cardInner: "bg-[#1e1e1e] border-[rgba(255,255,255,0.08)]",
+        cardShadow: "shadow-[0_10px_28px_rgba(0,0,0,0.50)]",
+        nameColor: "text-white",
+        nameHover: "group-hover:text-[#ff6b2c]",
+      }
+    : {
+        // Light 2026 Livery Theme
+        overlay: "bg-black/40",
+        container: "border-[rgba(0,0,0,0.08)]",
+        handle: "bg-[rgba(30,51,49,0.15)]",
+        headerText: "text-[#5A7A70] opacity-70",
+        cardOuter: "bg-[rgba(30,51,49,0.12)]",
+        cardRing: "ring-1 ring-[rgba(30,51,49,0.20)]",
+        cardActiveRing: "group-active:ring-[rgba(233,78,27,0.50)]",
+        cardInner: "bg-[#1e3331] border-[rgba(255,255,255,0.1)]",
+        cardShadow: "shadow-[0_10px_28px_rgba(0,0,0,0.18)]",
+        nameColor: "text-[#1e3331]",
+        nameHover: "group-hover:text-[#e94e1b]",
+      };
+
+  // Container background style
+  const containerStyle = isDark
+    ? { background: "#1e1e1e" }
+    : {
+        background:
+          "radial-gradient(400px 300px at 50% 100%, rgba(30,51,49,0.15), transparent 70%)," +
+          "rgba(232,228,220,0.98)",
+      };
+
   return (
     <Drawer.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50" />
-        <Drawer.Content className="bg-background dark:bg-zinc-900 flex flex-col rounded-t-[32px] h-[50%] fixed bottom-0 left-0 right-0 z-50 outline-none">
+        <Drawer.Overlay className={`fixed inset-0 backdrop-blur-sm z-50 ${colors.overlay}`} />
+        <Drawer.Content
+          className={`flex flex-col rounded-t-[20px] fixed bottom-0 left-0 right-0 z-50 outline-none border-t ${colors.container}`}
+          style={containerStyle}
+        >
           {/* Header */}
-          <div className="p-4 bg-background dark:bg-zinc-900 border-b border-border dark:border-white/10 rounded-t-[32px] flex-none">
-            <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-foreground/10 dark:bg-white/20 mb-6" />
-            <div className="flex items-center justify-between px-2">
-              <h2 className="text-xl font-bold text-foreground dark:text-white">Team Riders</h2>
-              <button
-                onClick={onClose}
-                className="p-2 rounded-full bg-foreground/5 dark:bg-white/10 text-foreground/50 dark:text-white/60 active:scale-90 transition-transform"
-              >
-                <X size={20} />
-              </button>
-            </div>
+          <div className="p-4 rounded-t-[20px] flex-none">
+            <div className={`mx-auto w-12 h-1.5 flex-shrink-0 rounded-full ${colors.handle}`} />
           </div>
 
-          {/* Rider Grid */}
-          <div className="flex-1 overflow-y-auto p-4">
-            <div className="grid grid-cols-2 gap-2">
-              {riders.map((rider) => (
+          {/* Instruction text */}
+          <div className="text-center pb-4">
+            <p className={`text-[10px] uppercase font-semibold tracking-[0.3em] ${colors.headerText}`}>
+              Tap Rider &rarr; Choose Bike
+            </p>
+          </div>
+
+          {/* Rider Grid - Pyramid Layout */}
+          <div className="px-4 pb-6">
+            {/* Top row - 3 riders */}
+            <div className="flex justify-center gap-4 mb-4">
+              {topRow.map((rider) => (
                 <button
                   key={rider.id}
-                  onClick={() => {
-                    onSelectRider(rider);
-                    onClose();
-                  }}
-                  className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-foreground/5 dark:bg-white/10 active:bg-foreground/10 dark:active:bg-white/15 active:scale-[0.98] transition-all"
+                  onClick={() => onSelectRider(rider)}
+                  className="group flex flex-col items-center gap-2 transition-transform active:scale-95"
                 >
-                  {/* Rider avatar - image or initial fallback */}
-                  <div className="w-16 h-16 rounded-full overflow-hidden">
-                    {rider.image ? (
-                      <img
-                        src={rider.image}
-                        alt={rider.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full rounded-full bg-gradient-to-tr from-orange-500 to-amber-400 p-[2px]">
-                        <div className="w-full h-full rounded-full bg-background dark:bg-zinc-900 flex items-center justify-center">
-                          <span className="text-lg font-bold text-foreground dark:text-white">
+                  {/* Card container */}
+                  <div className={`
+                    relative p-[2px] rounded-2xl
+                    ${colors.cardOuter}
+                    backdrop-blur-sm
+                    border border-transparent
+                    ${colors.cardRing}
+                    ${colors.cardActiveRing}
+                    ${colors.cardShadow}
+                    transition-all
+                  `}>
+                    <div className={`w-[72px] h-[72px] rounded-xl overflow-hidden border ${colors.cardInner}`}>
+                      {rider.image ? (
+                        <img
+                          src={rider.image}
+                          alt={rider.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className={`w-full h-full flex items-center justify-center ${
+                          isDark
+                            ? "bg-[linear-gradient(180deg,#ff8a50_0%,#ff6b2c_100%)]"
+                            : "bg-[linear-gradient(180deg,#f0714a_0%,#e94e1b_100%)]"
+                        }`}>
+                          <span className="text-lg font-bold text-white">
                             {rider.initial}
                           </span>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
-                  <span className="text-lg font-semibold text-foreground dark:text-white">
+                  <span className={`text-sm font-semibold transition-colors ${colors.nameColor} ${colors.nameHover}`}>
+                    {rider.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Bottom row - 2 riders, centered */}
+            <div className="flex justify-center gap-4">
+              {bottomRow.map((rider) => (
+                <button
+                  key={rider.id}
+                  onClick={() => onSelectRider(rider)}
+                  className="group flex flex-col items-center gap-2 transition-transform active:scale-95"
+                >
+                  {/* Card container */}
+                  <div className={`
+                    relative p-[2px] rounded-2xl
+                    ${colors.cardOuter}
+                    backdrop-blur-sm
+                    border border-transparent
+                    ${colors.cardRing}
+                    ${colors.cardActiveRing}
+                    ${colors.cardShadow}
+                    transition-all
+                  `}>
+                    <div className={`w-[72px] h-[72px] rounded-xl overflow-hidden border ${colors.cardInner}`}>
+                      {rider.image ? (
+                        <img
+                          src={rider.image}
+                          alt={rider.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className={`w-full h-full flex items-center justify-center ${
+                          isDark
+                            ? "bg-[linear-gradient(180deg,#ff8a50_0%,#ff6b2c_100%)]"
+                            : "bg-[linear-gradient(180deg,#f0714a_0%,#e94e1b_100%)]"
+                        }`}>
+                          <span className="text-lg font-bold text-white">
+                            {rider.initial}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <span className={`text-sm font-semibold transition-colors ${colors.nameColor} ${colors.nameHover}`}>
                     {rider.name}
                   </span>
                 </button>
               ))}
             </div>
           </div>
+
+          {/* Bottom safe area padding */}
+          <div className="h-[env(safe-area-inset-bottom)]" />
         </Drawer.Content>
       </Drawer.Portal>
     </Drawer.Root>

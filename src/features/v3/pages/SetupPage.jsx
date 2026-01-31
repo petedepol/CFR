@@ -2,9 +2,10 @@
 // Race bike tire/suspension settings per rider with history
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useOutletContext } from "react-router-dom";
 import { ArrowLeft, Save, Wifi, WifiOff, Pencil, Trash2, Flag, ChevronDown, ChevronRight, X, Zap } from "lucide-react";
 import { Drawer } from "vaul";
+// eslint-disable-next-line no-unused-vars
 import { motion } from "motion/react";
 
 import { useAuth } from "../../auth/AuthProvider.jsx";
@@ -27,14 +28,15 @@ import { CachedDataBanner } from "../../../components/CachedDataBanner.jsx";
 
 import { SpecSection } from "../components/SpecSection.jsx";
 import { SpecField } from "../components/SpecField.jsx";
+import { Avatar } from "../components/Avatar.jsx";
 
 // Riders list (shared with other v3 pages)
 const RIDERS = [
-  { id: "ana", name: "Ana", image: "/riders/ana.jpeg" },
-  { id: "charlie", name: "Charlie", image: "/riders/charlie.jpeg" },
-  { id: "cole", name: "Cole", image: "/riders/cole.jpeg" },
-  { id: "luca", name: "Luca", image: "/riders/luca.jpeg" },
-  { id: "jolanda", name: "Jolanda", image: "/riders/jolanda.jpeg" },
+  { id: "ana", name: "Ana", image: "/riders/ana.png" },
+  { id: "charlie", name: "Charlie", image: "/riders/charlie.png" },
+  { id: "cole", name: "Cole", image: "/riders/cole.png" },
+  { id: "luca", name: "Luca", image: "/riders/luca.png" },
+  { id: "jolanda", name: "Jolanda", image: "/riders/jolanda.png" },
 ];
 
 const DEFAULT_SETUP = {
@@ -114,15 +116,6 @@ function formatTimestamp(iso) {
     minute: "2-digit",
     hour12: false,
   })}`;
-}
-
-function formatDateShort(iso) {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "2-digit" });
-  } catch {
-    return iso;
-  }
 }
 
 function normalizeSetup(incoming) {
@@ -230,6 +223,7 @@ export default function SetupPage() {
   const [params, setSearchParams] = useSearchParams();
   const { displayName, isAdmin } = useAuth();
   const toast = useToast();
+  const { isDark } = useOutletContext();
 
   const rider = params.get("rider") || "";
   const mechanic = displayName || "";
@@ -242,7 +236,6 @@ export default function SetupPage() {
   // Form state
   const [eventContext, setEventContext] = useState(readEventContextFallback());
   const [setup, setSetup] = useState(DEFAULT_SETUP);
-  const [showExpanded, setShowExpanded] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [dirty, setDirty] = useState(false);
@@ -257,7 +250,11 @@ export default function SetupPage() {
 
   // Admin edit state
   const [editingId, setEditingId] = useState(null);
+  const [saving, setSaving] = useState(false);
   const [savingAdmin, setSavingAdmin] = useState(false);
+
+  // Reset key to collapse sections after save
+  const [sectionResetKey, setSectionResetKey] = useState(0);
 
   // Offline cache state
   const [showingCached, setShowingCached] = useState(false);
@@ -288,7 +285,7 @@ export default function SetupPage() {
   }
 
   // Load data on mount
-  async function load({ silent = false, keepEdits = false, forceRefresh = false } = {}) {
+  async function load({ silent = false, keepEdits = false } = {}) {
     if (!rider) return;
     if (!silent) setLoading(true);
 
@@ -533,6 +530,10 @@ export default function SetupPage() {
       return;
     }
 
+    setSaving(true);
+    // Haptic feedback
+    if (navigator.vibrate) navigator.vibrate(50);
+
     try {
       if (editingId && isAdmin) {
         setSavingAdmin(true);
@@ -542,6 +543,7 @@ export default function SetupPage() {
         clearDraft(rider);
         setEditingId(null);
         toast.success("Updated");
+        setSectionResetKey((k) => k + 1);
         await load({ silent: true, keepEdits: true });
         await loadHistory({ silent: true });
         return;
@@ -560,14 +562,17 @@ export default function SetupPage() {
 
       if (res?.queued) {
         toast.success("Saved offline — will sync later");
+        setSectionResetKey((k) => k + 1);
       } else {
         toast.success("Saved");
+        setSectionResetKey((k) => k + 1);
         await load({ silent: true, keepEdits: true });
         await loadHistory({ silent: true });
       }
     } catch (e) {
       toast.error(`Save failed: ${e?.message || "unknown error"}`);
     } finally {
+      setSaving(false);
       setSavingAdmin(false);
     }
   }
@@ -612,10 +617,21 @@ export default function SetupPage() {
     ];
   }
 
+  // Theme-specific colors
+  const theme = isDark ? "dark" : "light";
+  const pageBackground = isDark ? "#121212" : "#e8e4dc";
+  const pageGradient = isDark
+    ? "none"
+    : "radial-gradient(520px 360px at 50% 0, rgba(30,51,49,0.30), rgba(30,51,49,0.12) 35%, transparent 70%)";
+
   return (
     <div
-      className="min-h-screen text-foreground font-sans selection:bg-orange-500/30"
-      style={{ background: "var(--background-gradient, var(--background))" }}
+      className="min-h-dvh font-sans selection:bg-[rgba(233,78,27,0.30)]"
+      style={{
+        backgroundColor: pageBackground,
+        backgroundImage: pageGradient,
+        backgroundAttachment: "fixed",
+      }}
     >
       <div className="max-w-lg mx-auto px-4 pt-6 pb-24">
         {/* Header */}
@@ -625,26 +641,36 @@ export default function SetupPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate("/v3")}
-                className="p-2 rounded-full bg-foreground/5 text-foreground/60 active:scale-95 transition"
+                className={`p-2 rounded-full active:scale-95 transition ${
+                  isDark
+                    ? "bg-[#1e1e1e] text-white"
+                    : "bg-[rgba(30,51,49,0.08)] text-[#5A7A70]"
+                }`}
               >
                 <ArrowLeft size={20} />
               </button>
-              <span className="text-xs font-semibold tracking-[0.15em] text-foreground/50 uppercase">MTB Setup</span>
+              <span className={`text-xs font-semibold tracking-[0.15em] uppercase ${
+                isDark ? "text-white" : "text-[#5A7A70]"
+              }`}>MTB Setup</span>
             </div>
 
             {/* Status indicator */}
             <div className="flex items-center gap-2">
               {offline ? (
-                <WifiOff size={16} className="text-foreground/40" />
+                <WifiOff size={16} className={isDark ? "text-[#888888]" : "text-[#8A9A94]"} />
               ) : (
-                <Wifi size={16} className="text-green-500" />
+                <Wifi size={16} className={isDark ? "text-[#ff6b2c]" : "text-green-600"} />
               )}
-              {dirty && <div className="w-2 h-2 rounded-full bg-orange-500" />}
+              {dirty && <div className="w-2 h-2 rounded-full bg-[#ff6b2c]" />}
             </div>
           </div>
 
           {/* Rider Row - Glass Surface */}
-          <div className="flex items-center justify-between rounded-[26px] p-3.5 bg-white/[0.62] dark:bg-white/[0.08] border border-black/10 dark:border-white/[0.10] backdrop-blur-[14px] shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
+          <div className={`flex items-center justify-between rounded-[26px] p-3.5 backdrop-blur-sm border ring-1 ${
+            isDark
+              ? "bg-[#1e1e1e] border-[#2a2a2a] ring-[rgba(255,255,255,0.05)] shadow-[0_10px_28px_rgba(0,0,0,0.40)]"
+              : "bg-[rgba(232,228,220,0.75)] border-[rgba(0,0,0,0.08)] ring-[rgba(30,51,49,0.12)] shadow-[0_10px_28px_rgba(0,0,0,0.10)]"
+          }`}>
             {/* Rider Selector */}
             {(() => {
               const currentRider = RIDERS.find((r) => r.name === rider);
@@ -653,34 +679,50 @@ export default function SetupPage() {
                   onClick={() => setRiderPickerOpen(true)}
                   className="flex items-center gap-3 active:scale-[0.98] transition"
                 >
-                  {/* Avatar with gradient ring */}
-                  <div className="w-[54px] h-[54px] rounded-full p-0.5 bg-gradient-to-br from-orange-400/70 to-blue-400/50 shadow-[0_10px_26px_rgba(0,0,0,0.12)]">
-                    <div className="w-full h-full rounded-full overflow-hidden">
+                  {/* Avatar with glass tile */}
+                  <div className={`relative p-[2px] rounded-2xl backdrop-blur-sm border ring-1 ${
+                    isDark
+                      ? "bg-[#252525] border-[#333333] border-b-2 border-b-[#ff6b2c] ring-[rgba(255,255,255,0.05)] shadow-[0_8px_20px_rgba(0,0,0,0.40)]"
+                      : "bg-[rgba(30,51,49,0.12)] border-[rgba(0,0,0,0.08)] ring-[rgba(30,51,49,0.20)] shadow-[0_8px_20px_rgba(0,0,0,0.12)]"
+                  }`}>
+                    <div className={`w-[50px] h-[50px] rounded-xl overflow-hidden border ${
+                      isDark
+                        ? "bg-[#1e1e1e] border-[rgba(255,255,255,0.05)]"
+                        : "bg-[#1e3331] border-[rgba(255,255,255,0.1)]"
+                    }`}>
                       {currentRider?.image ? (
                         <img src={currentRider.image} alt={rider} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full bg-gradient-to-tr from-orange-500 to-amber-400 flex items-center justify-center">
+                        <div className="w-full h-full bg-[linear-gradient(180deg,#f0714a_0%,#e94e1b_100%)] flex items-center justify-center">
                           <span className="text-sm font-bold text-white">{rider?.[0] || "?"}</span>
                         </div>
                       )}
                     </div>
                   </div>
                   {/* Rider name */}
-                  <span className="font-bold tracking-[0.10em] text-foreground/90">{rider?.toUpperCase()}</span>
+                  <span className={`font-bold tracking-[0.10em] ${isDark ? "text-white" : "text-[#1e3331]"}`}>{rider?.toUpperCase()}</span>
                 </button>
               );
             })()}
 
             {/* Race Bike Badge */}
-            <div className="px-3 py-1.5 rounded-xl bg-orange-500/10 border border-orange-500/20">
-              <span className="text-xs font-semibold text-orange-600 dark:text-orange-400">RACE BIKE</span>
+            <div className={`px-3 py-1.5 rounded-xl ${
+              isDark
+                ? "bg-[#ff6b2c] border border-[#ff6b2c]"
+                : "bg-[rgba(233,78,27,0.10)] border border-[rgba(233,78,27,0.20)]"
+            }`}>
+              <span className={`text-xs font-semibold ${isDark ? "text-white" : "text-[#e94e1b]"}`}>RACE BIKE</span>
             </div>
           </div>
         </div>
 
         {/* Status indicators */}
         {offline && (
-          <div className="mb-4 px-4 py-3 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-amber-600 dark:text-amber-400 text-sm flex items-center gap-2">
+          <div className={`mb-4 px-4 py-3 rounded-2xl text-sm flex items-center gap-2 ${
+            isDark
+              ? "bg-[rgba(245,158,11,0.15)] border border-[rgba(245,158,11,0.25)] text-amber-400"
+              : "bg-[rgba(245,158,11,0.08)] border border-[rgba(245,158,11,0.15)] text-amber-700"
+          }`}>
             <WifiOff size={16} /> Offline — saves will queue
           </div>
         )}
@@ -691,16 +733,20 @@ export default function SetupPage() {
             fetchedAt={getCachedSettingsMeta(rider)?.fetchedAt}
             onRefresh={() => {
               setShowingCached(false);
-              load({ forceRefresh: true });
+              load();
               loadHistory();
             }}
           />
         )}
 
         {editingId && (
-          <div className="mb-4 px-4 py-3 rounded-2xl bg-blue-500/5 border border-blue-500/10 text-blue-600 dark:text-blue-400 text-sm flex items-center justify-between">
+          <div className={`mb-4 px-4 py-3 rounded-2xl text-sm flex items-center justify-between ${
+            isDark
+              ? "bg-[rgba(59,130,246,0.15)] border border-[rgba(59,130,246,0.25)] text-blue-400"
+              : "bg-[rgba(59,130,246,0.08)] border border-[rgba(59,130,246,0.15)] text-blue-700"
+          }`}>
             <span>Editing history entry</span>
-            <button onClick={cancelEdit} className="text-xs font-semibold underline">
+            <button onClick={cancelEdit} className={`text-xs font-semibold underline ${isDark ? "text-blue-300" : ""}`}>
               Cancel
             </button>
           </div>
@@ -710,36 +756,35 @@ export default function SetupPage() {
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 bg-black/[0.02] dark:bg-white/[0.02] rounded-3xl animate-pulse" />
+              <div key={i} className={`h-16 rounded-3xl animate-pulse ${
+                isDark ? "bg-[#1e1e1e]" : "bg-[rgba(30,51,49,0.04)]"
+              }`} />
             ))}
           </div>
         ) : (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-3"
+            className="space-y-2"
           >
-            {/* Event Context */}
-            <div
-              className="rounded-2xl p-3"
-              style={{
-                backgroundColor: "rgba(255,255,255,0.45)",
-                border: "1px solid rgba(0,0,0,0.06)",
-                boxShadow: "0 2px 6px rgba(0,0,0,0.03)"
-              }}
-            >
-              <SpecField
-                label="Event / Context"
+            {/* Event/Context Section */}
+            <SpecSection key={`event-${sectionResetKey}`} title="EVENT / CONTEXT" defaultOpen={false} theme={theme}>
+              <input
+                type="text"
                 value={eventContext}
-                onChange={(v) => { setEventContext(v); setDirty(true); }}
+                onChange={(e) => { setEventContext(e.target.value); setDirty(true); }}
                 placeholder="e.g. Nove Mesto WC2 / Wet"
-                fullWidth
+                className={`w-full rounded-lg px-3 py-2 border transition-all duration-200 ${
+                  isDark
+                    ? "bg-[#252525] border-[#333333] text-white placeholder:text-[#555555] focus:border-[#ff6b2c] focus:ring-2 focus:ring-[rgba(255,107,44,0.25)]"
+                    : "bg-[rgba(255,255,255,0.55)] border-[rgba(0,0,0,0.08)] text-[#1e3331] placeholder:text-[#9AA8A2] focus:border-[rgba(233,78,27,0.5)] focus:ring-2 focus:ring-[rgba(233,78,27,0.18)]"
+                } focus:outline-none`}
               />
-            </div>
+            </SpecSection>
 
             {/* Tyres Section */}
-            <SpecSection title="TYRES" defaultOpen={true}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <SpecSection key={`tyres-${sectionResetKey}`} title="TYRES" defaultOpen={false} theme={theme}>
+              <div className="grid grid-cols-2 gap-2">
                 <FormField
                   label="Front Tyre"
                   value={setup.front_tyre}
@@ -747,6 +792,7 @@ export default function SetupPage() {
                   placeholder="e.g. Maxxis Assegai"
                   inputRef={setRefFor("front_tyre")}
                   onEnterNext={() => focusNextFrom("front_tyre")}
+                  isDark={isDark}
                 />
                 <FormField
                   label="Rear Tyre"
@@ -755,6 +801,7 @@ export default function SetupPage() {
                   placeholder="e.g. Maxxis Dissector"
                   inputRef={setRefFor("rear_tyre")}
                   onEnterNext={() => focusNextFrom("rear_tyre")}
+                  isDark={isDark}
                 />
                 <FormField
                   label="Front Pressure"
@@ -766,6 +813,7 @@ export default function SetupPage() {
                   pattern="[0-9]*[.,]?[0-9]*"
                   inputRef={setRefFor("front_pressure")}
                   onEnterNext={() => focusNextFrom("front_pressure")}
+                  isDark={isDark}
                 />
                 <FormField
                   label="Rear Pressure"
@@ -777,13 +825,14 @@ export default function SetupPage() {
                   pattern="[0-9]*[.,]?[0-9]*"
                   inputRef={setRefFor("rear_pressure")}
                   onEnterNext={() => focusNextFrom("rear_pressure")}
+                  isDark={isDark}
                 />
               </div>
             </SpecSection>
 
             {/* Suspension Section */}
-            <SpecSection title="SUSPENSION" defaultOpen={true}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <SpecSection key={`suspension-${sectionResetKey}`} title="SUSPENSION" defaultOpen={false} theme={theme}>
+              <div className="grid grid-cols-2 gap-2">
                 <FormField
                   label="Fork Pressure"
                   value={setup.fork_pressure}
@@ -794,6 +843,7 @@ export default function SetupPage() {
                   pattern="[0-9]*[.,]?[0-9]*"
                   inputRef={setRefFor("fork_pressure")}
                   onEnterNext={() => focusNextFrom("fork_pressure")}
+                  isDark={isDark}
                 />
                 <FormField
                   label="Shock Pressure"
@@ -805,6 +855,7 @@ export default function SetupPage() {
                   pattern="[0-9]*[.,]?[0-9]*"
                   inputRef={setRefFor("shock_pressure")}
                   onEnterNext={() => focusNextFrom("shock_pressure")}
+                  isDark={isDark}
                 />
                 <FormField
                   label="Fork Rebound"
@@ -816,6 +867,7 @@ export default function SetupPage() {
                   pattern="[0-9]*"
                   inputRef={setRefFor("fork_rebound")}
                   onEnterNext={() => focusNextFrom("fork_rebound")}
+                  isDark={isDark}
                 />
                 <FormField
                   label="Shock Rebound"
@@ -827,131 +879,135 @@ export default function SetupPage() {
                   pattern="[0-9]*"
                   inputRef={setRefFor("shock_rebound")}
                   onEnterNext={() => focusNextFrom("shock_rebound")}
+                  isDark={isDark}
                 />
               </div>
 
               {/* Neo Settings Button */}
               <button
                 onClick={() => navigate(`/v3/neo?rider=${encodeURIComponent(rider)}`)}
-                className="mt-4 w-full flex items-center justify-center gap-2 px-5 py-3 rounded-full transition-all active:scale-[0.97]"
-                style={{
-                  background: "#f97316",
-                  color: "#000",
-                }}
+                className="mt-4 w-full flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-[#ff6b2c] text-white shadow-[0_8px_20px_rgba(255,107,44,0.35)] transition-all active:scale-[0.97]"
               >
                 <Zap size={18} />
                 <span className="font-semibold">Neo Settings</span>
               </button>
             </SpecSection>
 
-            {/* Notes Section */}
-            <SpecSection title="NOTES" defaultOpen={true}>
-              <div
-                className="rounded-2xl p-3"
-                style={{
-                  backgroundColor: "rgba(255,255,255,0.45)",
-                  border: "1px solid rgba(0,0,0,0.06)",
-                  boxShadow: "0 2px 6px rgba(0,0,0,0.03)"
-                }}
-              >
-                <SpecField
-                  label="Notes"
-                  value={setup.notes}
-                  onChange={(v) => setField("notes", v)}
-                  placeholder="Any observations / changes..."
-                  textarea
-                  rows={3}
-                  fullWidth
-                  inputRef={setRefFor("notes")}
-                />
-              </div>
-            </SpecSection>
-
             {/* Advanced Section (collapsed by default) */}
-            <SpecSection title="ADVANCED" defaultOpen={false}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <SpecSection key={`advanced-${sectionResetKey}`} title="ADVANCED" defaultOpen={false} theme={theme}>
+              <div className="grid grid-cols-2 gap-2">
                 <FormField
                   label="Front Insert"
                   value={setup.front_insert}
                   onChange={(v) => setField("front_insert", v)}
                   placeholder="e.g. CushCore Pro"
+                  isDark={isDark}
                 />
                 <FormField
                   label="Rear Insert"
                   value={setup.rear_insert}
                   onChange={(v) => setField("rear_insert", v)}
                   placeholder="e.g. CushCore XC"
+                  isDark={isDark}
                 />
                 <FormField
                   label="Fork Spacers"
                   value={setup.fork_spacers}
                   onChange={(v) => setField("fork_spacers", v)}
                   placeholder="e.g. 2 x 5mm"
+                  isDark={isDark}
                 />
                 <FormField
                   label="Shock Spacers"
                   value={setup.shock_spacers}
                   onChange={(v) => setField("shock_spacers", v)}
                   placeholder="e.g. 1 x 5mm"
+                  isDark={isDark}
                 />
                 <FormField
                   label="Fork Compression"
                   value={setup.fork_compression}
                   onChange={(v) => setField("fork_compression", v)}
                   placeholder="e.g. LSC 8, HSC 2"
+                  isDark={isDark}
                 />
                 <FormField
                   label="Shock Compression"
                   value={setup.shock_compression}
                   onChange={(v) => setField("shock_compression", v)}
                   placeholder="e.g. LSC 6, HSC 1"
+                  isDark={isDark}
                 />
                 <FormField
                   label="Chainring"
                   value={setup.chainring}
                   onChange={(v) => setField("chainring", v)}
                   placeholder="e.g. 34T"
+                  isDark={isDark}
                 />
                 <FormField
                   label="Cassette"
                   value={setup.cassette}
                   onChange={(v) => setField("cassette", v)}
                   placeholder="e.g. 10-52"
+                  isDark={isDark}
                 />
-                <div className="md:col-span-2">
+                <div className="col-span-2">
                   <FormField
                     label="Wheelset"
                     value={setup.wheelset}
                     onChange={(v) => setField("wheelset", v)}
                     placeholder="e.g. Reserve 30"
                     fullWidth
+                    isDark={isDark}
                   />
                 </div>
               </div>
+            </SpecSection>
+
+            {/* Notes Section */}
+            <SpecSection key={`notes-${sectionResetKey}`} title="NOTES" defaultOpen={false} theme={theme}>
+              <textarea
+                ref={setRefFor("notes")}
+                value={setup.notes ?? ""}
+                onChange={(e) => setField("notes", e.target.value)}
+                placeholder="Any observations / changes..."
+                rows={2}
+                className={`w-full rounded-lg px-3 py-2 border resize-none transition-all duration-200 ${
+                  isDark
+                    ? "bg-[#252525] border-[#333333] text-white placeholder:text-[#555555] focus:border-[#ff6b2c] focus:ring-2 focus:ring-[rgba(255,107,44,0.25)]"
+                    : "bg-[rgba(255,255,255,0.55)] border-[rgba(0,0,0,0.08)] text-[#1e3331] placeholder:text-[#9AA8A2] focus:border-[rgba(233,78,27,0.5)] focus:ring-2 focus:ring-[rgba(233,78,27,0.18)]"
+                } focus:outline-none`}
+              />
             </SpecSection>
           </motion.div>
         )}
 
         {/* History Section */}
         <div className="mt-8">
-          <h2 className="text-xs font-semibold tracking-[0.15em] uppercase mb-4 font-sans dark:text-white/40" style={{ color: "#71717a" }}>
-            Setup History ({history.length}{history.length !== historyRaw.length ? ` / ${historyRaw.length}` : ""})
+          <h2 className={`text-xs font-semibold tracking-[0.15em] uppercase mb-4 font-sans ${
+            isDark ? "text-[#ff6b2c]" : "text-[#5A7A70]"
+          }`}>
+            <span className={isDark ? "text-[#ff6b2c]" : ""}>Setup History</span>
+            <span className={isDark ? "text-white" : ""}> ({history.length}{history.length !== historyRaw.length ? ` / ${historyRaw.length}` : ""})</span>
           </h2>
 
           {/* Filter Chips */}
           <div className="flex flex-wrap gap-2 mb-4">
-            <FilterChip active={range === "week"} onClick={() => setRange("week")}>This week</FilterChip>
-            <FilterChip active={range === "30d"} onClick={() => setRange("30d")}>30 days</FilterChip>
-            <FilterChip active={range === "all"} onClick={() => setRange("all")}>All</FilterChip>
-            <FilterChip active={raceOnly} onClick={() => setRaceOnly((v) => !v)}>
+            <FilterChip active={range === "week"} onClick={() => setRange("week")} isDark={isDark}>This week</FilterChip>
+            <FilterChip active={range === "30d"} onClick={() => setRange("30d")} isDark={isDark}>30 days</FilterChip>
+            <FilterChip active={range === "all"} onClick={() => setRange("all")} isDark={isDark}>All</FilterChip>
+            <FilterChip active={raceOnly} onClick={() => setRaceOnly((v) => !v)} isDark={isDark}>
               <Flag size={14} /> Race only
             </FilterChip>
           </div>
 
           {historyLoading ? (
-            <div className="h-32 bg-black/[0.02] dark:bg-white/[0.02] rounded-[26px] animate-pulse" />
+            <div className={`h-32 rounded-[26px] animate-pulse ${
+              isDark ? "bg-[#1e1e1e]" : "bg-[rgba(30,51,49,0.04)]"
+            }`} />
           ) : history.length ? (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {history.map((row, idx) => {
                 const isLatest = idx === 0;
                 const id = row.id || `${row.timestamp}-${idx}`;
@@ -973,18 +1029,27 @@ export default function SetupPage() {
 
                 const summaryItems = buildCollapsedSummary(cur, isLatest, changes);
 
-                // Border: race (yellow) > latest with changes (orange) > default
-                const borderStyle = isRace
-                  ? "rgba(250, 204, 21, 0.35)"
-                  : hasAnyChanges
-                  ? "rgba(251, 146, 60, 0.35)"
-                  : "rgba(0, 0, 0, 0.1)";
+                // Border classes for race/changes/default
+                const borderClass = isDark
+                  ? isRace
+                    ? "border-[rgba(234,179,8,0.50)]"
+                    : hasAnyChanges
+                    ? "border-[#ff6b2c]"
+                    : "border-[#2a2a2a]"
+                  : isRace
+                    ? "border-[rgba(234,179,8,0.35)]"
+                    : hasAnyChanges
+                    ? "border-[rgba(233,78,27,0.35)]"
+                    : "border-[rgba(0,0,0,0.08)]";
 
                 return (
                   <div
                     key={id}
-                    className="rounded-[26px] overflow-hidden bg-white/[0.62] dark:bg-white/[0.06] backdrop-blur-[14px] shadow-[0_10px_30px_rgba(0,0,0,0.08)] transition"
-                    style={{ border: `1px solid ${borderStyle}` }}
+                    className={`rounded-[26px] overflow-hidden backdrop-blur-sm ring-1 transition border ${borderClass} ${
+                      isDark
+                        ? "bg-[#1e1e1e] ring-[rgba(255,255,255,0.05)] shadow-[0_10px_28px_rgba(0,0,0,0.40)]"
+                        : "bg-[rgba(232,228,220,0.75)] ring-[rgba(30,51,49,0.10)] shadow-[0_10px_28px_rgba(0,0,0,0.10)]"
+                    }`}
                   >
                     {/* Header row - clickable to expand */}
                     <div
@@ -996,36 +1061,52 @@ export default function SetupPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 flex-1 min-w-0">
                           {isExpanded ? (
-                            <ChevronDown size={18} className="text-orange-500 mt-0.5 shrink-0" />
+                            <ChevronDown size={18} className={`mt-0.5 shrink-0 ${isDark ? "text-[#ff6b2c]" : "text-[#e94e1b]"}`} />
                           ) : (
-                            <ChevronRight size={18} className="dark:text-white/50 mt-0.5 shrink-0" style={{ color: "#71717a" }} />
+                            <ChevronRight size={18} className={`mt-0.5 shrink-0 ${isDark ? "text-[#888888]" : "text-[#8A9A94]"}`} />
                           )}
 
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold dark:text-white truncate" style={{ color: "#18181b" }}>{row.mechanic || "—"}</span>
-                              <span className="text-xs dark:text-white/50" style={{ color: "#71717a" }}>{formatTimestamp(row.timestamp)}</span>
+                              <span className={`font-bold truncate ${isDark ? "text-white" : "text-[#1e3331]"}`}>{row.mechanic || "—"}</span>
+                              <span className={`text-xs font-mono tabular-nums ${isDark ? "text-[#888888]" : "text-[#8A9A94]"}`}>{formatTimestamp(row.timestamp)}</span>
 
                               {!!fs?.event_context && (
-                                <span className="text-xs text-orange-600/80 dark:text-orange-300/80 px-2 py-0.5 bg-orange-500/10 rounded-2xl border border-orange-500/20">
+                                <span className={`text-xs px-2 py-0.5 rounded-2xl border ${
+                                  isDark
+                                    ? "text-[#ff6b2c] bg-[rgba(255,107,44,0.15)] border-[rgba(255,107,44,0.30)]"
+                                    : "text-[#e94e1b] bg-[rgba(233,78,27,0.10)] border-[rgba(233,78,27,0.20)]"
+                                }`}>
                                   {fs.event_context}
                                 </span>
                               )}
 
                               {isRace && (
-                                <span className="text-xs font-bold text-yellow-600 dark:text-yellow-200 px-2 py-0.5 bg-yellow-400/10 rounded-2xl border border-yellow-400/20 inline-flex items-center gap-1">
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded-2xl border inline-flex items-center gap-1 ${
+                                  isDark
+                                    ? "text-yellow-400 bg-[rgba(234,179,8,0.20)] border-[rgba(234,179,8,0.40)]"
+                                    : "text-yellow-700 bg-[rgba(234,179,8,0.12)] border-[rgba(234,179,8,0.25)]"
+                                }`}>
                                   <Flag size={12} /> Race
                                 </span>
                               )}
 
                               {hasExpandedOnlyChanges && (
-                                <span className="text-xs font-bold px-2 py-0.5 rounded-2xl" style={{ backgroundColor: "rgba(249, 115, 22, 0.1)", color: "#ea580c", border: "1px solid rgba(249, 115, 22, 0.2)" }}>
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded-2xl border ${
+                                  isDark
+                                    ? "bg-[rgba(255,107,44,0.15)] text-[#ff6b2c] border-[rgba(255,107,44,0.30)]"
+                                    : "bg-[rgba(210,74,31,0.10)] text-[#D24A1F] border-[rgba(210,74,31,0.20)]"
+                                }`}>
                                   Other changed
                                 </span>
                               )}
 
                               {isLatest && changes?.notesChanged && (
-                                <span className="text-xs font-bold px-2 py-0.5 rounded-2xl" style={{ backgroundColor: "rgba(249, 115, 22, 0.1)", color: "#ea580c", border: "1px solid rgba(249, 115, 22, 0.2)" }}>
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded-2xl border ${
+                                  isDark
+                                    ? "bg-[rgba(255,107,44,0.15)] text-[#ff6b2c] border-[rgba(255,107,44,0.30)]"
+                                    : "bg-[rgba(210,74,31,0.10)] text-[#D24A1F] border-[rgba(210,74,31,0.20)]"
+                                }`}>
                                   Notes changed
                                 </span>
                               )}
@@ -1038,14 +1119,19 @@ export default function SetupPage() {
                           <button
                             onClick={() => toggleRace(row, !isRace)}
                             disabled={offline || !row?.id}
-                            className="rounded-lg px-2.5 py-1.5 text-xs font-semibold border transition inline-flex items-center gap-1.5 active:scale-[0.97]"
-                            style={
+                            className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold border transition inline-flex items-center gap-1.5 active:scale-[0.97] ${
                               offline || !row?.id
-                                ? { backgroundColor: "rgba(0,0,0,0.02)", color: "#a1a1aa", borderColor: "rgba(0,0,0,0.05)", cursor: "not-allowed" }
+                                ? isDark
+                                  ? "bg-[#252525] text-[#666666] border-[#333333] cursor-not-allowed"
+                                  : "bg-[rgba(18,38,33,0.04)] text-[#8A9A94] border-[rgba(0,0,0,0.05)] cursor-not-allowed"
                                 : isRace
-                                ? { backgroundColor: "rgba(250, 204, 21, 0.15)", color: "#ca8a04", borderColor: "rgba(250, 204, 21, 0.25)" }
-                                : { backgroundColor: "rgba(255,255,255,0.6)", color: "#525252", borderColor: "rgba(0,0,0,0.1)" }
-                            }
+                                ? isDark
+                                  ? "bg-[rgba(234,179,8,0.20)] text-yellow-400 border-[rgba(234,179,8,0.40)]"
+                                  : "bg-[rgba(234,179,8,0.15)] text-yellow-700 border-[rgba(234,179,8,0.30)]"
+                                : isDark
+                                  ? "bg-[#252525] text-[#888888] border-[#333333]"
+                                  : "bg-[rgba(255,255,255,0.60)] text-[#5A7A70] border-[rgba(0,0,0,0.08)]"
+                            }`}
                             title={offline ? "Offline" : isRace ? "Unmark race" : "Mark as race"}
                           >
                             <Flag size={14} />
@@ -1057,12 +1143,15 @@ export default function SetupPage() {
                               <button
                                 onClick={() => startEditFromRow(row)}
                                 disabled={offline || !row?.id}
-                                className="rounded-lg p-1.5 border transition active:scale-[0.97]"
-                                style={
+                                className={`rounded-lg p-1.5 border transition active:scale-[0.97] ${
                                   offline || !row?.id
-                                    ? { backgroundColor: "rgba(0,0,0,0.02)", color: "#a1a1aa", borderColor: "rgba(0,0,0,0.05)", cursor: "not-allowed" }
-                                    : { backgroundColor: "rgba(249, 115, 22, 0.1)", color: "#f97316", borderColor: "rgba(249, 115, 22, 0.2)" }
-                                }
+                                    ? isDark
+                                      ? "bg-[#252525] text-[#666666] border-[#333333] cursor-not-allowed"
+                                      : "bg-[rgba(18,38,33,0.04)] text-[#8A9A94] border-[rgba(0,0,0,0.05)] cursor-not-allowed"
+                                    : isDark
+                                      ? "bg-[#252525] text-[#ff6b2c] border-[#333333] hover:bg-[#333333]"
+                                      : "bg-[rgba(210,74,31,0.10)] text-[#D24A1F] border-[rgba(210,74,31,0.25)]"
+                                }`}
                                 title="Edit (admin)"
                               >
                                 <Pencil size={14} />
@@ -1071,12 +1160,15 @@ export default function SetupPage() {
                               <button
                                 onClick={() => adminDeleteRow(row)}
                                 disabled={offline || !row?.id || savingAdmin}
-                                className="rounded-lg p-1.5 border transition active:scale-[0.97]"
-                                style={
+                                className={`rounded-lg p-1.5 border transition active:scale-[0.97] ${
                                   offline || !row?.id || savingAdmin
-                                    ? { backgroundColor: "rgba(0,0,0,0.02)", color: "#a1a1aa", borderColor: "rgba(0,0,0,0.05)", cursor: "not-allowed" }
-                                    : { backgroundColor: "rgba(239, 68, 68, 0.1)", color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.2)" }
-                                }
+                                    ? isDark
+                                      ? "bg-[#252525] text-[#666666] border-[#333333] cursor-not-allowed"
+                                      : "bg-[rgba(18,38,33,0.04)] text-[#8A9A94] border-[rgba(0,0,0,0.05)] cursor-not-allowed"
+                                    : isDark
+                                      ? "bg-[#252525] text-red-500 border-[#333333] hover:bg-[#333333]"
+                                      : "bg-[rgba(239,68,68,0.10)] text-red-600 border-[rgba(239,68,68,0.25)]"
+                                }`}
                                 title="Delete (admin)"
                               >
                                 <Trash2 size={14} />
@@ -1092,22 +1184,29 @@ export default function SetupPage() {
                       {summaryItems.map((it) => (
                         <div
                           key={it.label}
-                          className="p-2.5 rounded-xl"
-                          style={{
-                            backgroundColor: it.changed ? "rgba(251, 146, 60, 0.12)" : "rgba(255,255,255,0.45)",
-                            border: it.changed ? "1px solid rgba(251, 146, 60, 0.25)" : "1px solid rgba(0,0,0,0.06)",
-                            boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
-                          }}
+                          className={`p-2.5 rounded-xl ${
+                            isDark
+                              ? it.changed
+                                ? "bg-[rgba(255,107,44,0.15)] border border-[rgba(255,107,44,0.30)]"
+                                : "bg-[#252525] border border-[#333333]"
+                              : it.changed
+                                ? "bg-[rgba(210,74,31,0.10)] border border-[rgba(210,74,31,0.25)] shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
+                                : "bg-[rgba(255,255,255,0.45)] border border-[rgba(0,0,0,0.06)] shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
+                          }`}
                         >
-                          <div className="text-[11px] dark:text-white/50" style={{ color: it.changed ? "#ea580c" : "#71717a" }}>{it.label}</div>
-                          <div className="font-semibold dark:text-white truncate tabular-nums" style={{ color: "#18181b" }}>{it.value}</div>
+                          <div className={`text-[11px] ${
+                            isDark
+                              ? it.changed ? "text-[#ff6b2c]" : "text-[#888888]"
+                              : it.changed ? "text-[#D24A1F]" : "text-[#8A9A94]"
+                          }`}>{it.label}</div>
+                          <div className={`font-semibold truncate tabular-nums font-mono ${isDark ? "text-white" : "text-[#1F3D36]"}`}>{it.value}</div>
                         </div>
                       ))}
                     </div>
 
                     {/* Expanded content */}
                     {isExpanded && (
-                      <div className="px-4 pb-4 pt-2" style={{ borderTop: "1px solid rgba(0,0,0,0.05)" }}>
+                      <div className={`px-4 pb-4 pt-2 border-t ${isDark ? "border-[#2a2a2a]" : "border-[rgba(0,0,0,0.06)]"}`}>
                         <div className="grid grid-cols-2 gap-2 text-sm">
                           {EXPANDED_KEYS.map((k) => {
                             const v = cur?.[k];
@@ -1116,15 +1215,22 @@ export default function SetupPage() {
                             return (
                               <div
                                 key={k}
-                                className={`p-2.5 rounded-xl ${k === "wheelset" ? "col-span-2" : ""}`}
-                                style={{
-                                  backgroundColor: expandedChanged ? "rgba(251, 146, 60, 0.12)" : "rgba(255,255,255,0.45)",
-                                  border: expandedChanged ? "1px solid rgba(251, 146, 60, 0.25)" : "1px solid rgba(0,0,0,0.06)",
-                                  boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
-                                }}
+                                className={`p-2.5 rounded-xl ${k === "wheelset" ? "col-span-2" : ""} ${
+                                  isDark
+                                    ? expandedChanged
+                                      ? "bg-[rgba(255,107,44,0.15)] border border-[rgba(255,107,44,0.30)]"
+                                      : "bg-[#252525] border border-[#333333]"
+                                    : expandedChanged
+                                      ? "bg-[rgba(233,78,27,0.10)] border border-[rgba(233,78,27,0.25)] shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
+                                      : "bg-[rgba(255,255,255,0.45)] border border-[rgba(0,0,0,0.06)] shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
+                                }`}
                               >
-                                <div className="text-[11px] dark:text-white/50" style={{ color: expandedChanged ? "#ea580c" : "#71717a" }}>{labelize(k)}</div>
-                                <div className="font-semibold dark:text-white break-words" style={{ color: "#18181b" }}>{v}</div>
+                                <div className={`text-[11px] ${
+                                  isDark
+                                    ? expandedChanged ? "text-[#ff6b2c]" : "text-[#888888]"
+                                    : expandedChanged ? "text-[#e94e1b]" : "text-[#8A9A94]"
+                                }`}>{labelize(k)}</div>
+                                <div className={`font-semibold break-words ${isDark ? "text-white" : "text-[#1e3331]"}`}>{v}</div>
                               </div>
                             );
                           })}
@@ -1132,15 +1238,22 @@ export default function SetupPage() {
 
                         {!!cur?.notes && (
                           <div
-                            className="mt-3 p-2.5 rounded-xl"
-                            style={{
-                              backgroundColor: isLatest && changes?.notesChanged ? "rgba(251, 146, 60, 0.12)" : "rgba(255,255,255,0.45)",
-                              border: isLatest && changes?.notesChanged ? "1px solid rgba(251, 146, 60, 0.25)" : "1px solid rgba(0,0,0,0.06)",
-                              boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
-                            }}
+                            className={`mt-3 p-2.5 rounded-xl ${
+                              isDark
+                                ? isLatest && changes?.notesChanged
+                                  ? "bg-[rgba(255,107,44,0.15)] border border-[rgba(255,107,44,0.30)]"
+                                  : "bg-[#252525] border border-[#333333]"
+                                : isLatest && changes?.notesChanged
+                                  ? "bg-[rgba(233,78,27,0.10)] border border-[rgba(233,78,27,0.25)] shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
+                                  : "bg-[rgba(255,255,255,0.45)] border border-[rgba(0,0,0,0.06)] shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
+                            }`}
                           >
-                            <div className="text-[11px] dark:text-white/50" style={{ color: isLatest && changes?.notesChanged ? "#ea580c" : "#71717a" }}>Notes</div>
-                            <div className="dark:text-white/70 italic break-words" style={{ color: "#3f3f46" }}>"{cur.notes}"</div>
+                            <div className={`text-[11px] ${
+                              isDark
+                                ? isLatest && changes?.notesChanged ? "text-[#ff6b2c]" : "text-[#888888]"
+                                : isLatest && changes?.notesChanged ? "text-[#e94e1b]" : "text-[#8A9A94]"
+                            }`}>Notes</div>
+                            <div className={`italic break-words ${isDark ? "text-[#a0a0a0]" : "text-[#5A7A70]"}`}>"{cur.notes}"</div>
                           </div>
                         )}
                       </div>
@@ -1150,8 +1263,8 @@ export default function SetupPage() {
               })}
             </div>
           ) : (
-            <div className="text-sm dark:text-white/30 py-6 text-center" style={{ color: "#a1a1aa" }}>
-              No history for this filter. Try switching to <span className="font-bold text-foreground dark:text-white">All</span>.
+            <div className={`text-sm py-6 text-center ${isDark ? "text-[#888888]" : "text-[#8A9A94]"}`}>
+              No history for this filter. Try switching to <span className={`font-bold ${isDark ? "text-white" : "text-[#1e3331]"}`}>All</span>.
             </div>
           )}
         </div>
@@ -1159,65 +1272,76 @@ export default function SetupPage() {
 
       {/* Floating Save Button */}
       <button
-        disabled={!canSave}
+        disabled={!canSave || saving}
         onClick={handleSave}
-        className={`fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-lg ${
-          !canSave
-            ? "bg-foreground/10 text-foreground/30 cursor-not-allowed"
-            : "bg-orange-500 text-white active:scale-95 shadow-orange-500/30"
+        className={`fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6 z-30 rounded-full flex items-center justify-center transition-all duration-300 ${
+          saving
+            ? "w-20 h-20 bg-white text-[#e94e1b] shadow-[0_0_40px_rgba(233,78,27,0.60)] animate-pulse scale-110"
+            : !canSave
+              ? `w-14 h-14 ${isDark ? "bg-[#1e1e1e] text-[#666666]" : "bg-[rgba(30,51,49,0.10)] text-[#8A9A94]"} cursor-not-allowed`
+              : "w-14 h-14 bg-[#ff6b2c] text-white shadow-[0_8px_24px_rgba(255,107,44,0.40)] active:scale-95"
         }`}
       >
-        <Save size={22} />
+        <Save size={saving ? 28 : 22} className={saving ? "animate-spin" : ""} />
       </button>
 
       {/* Rider Picker Drawer */}
       <Drawer.Root open={riderPickerOpen} onOpenChange={setRiderPickerOpen}>
         <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 bg-black/10 z-40" />
-          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 outline-none">
-            <div className="bg-background dark:bg-zinc-900 rounded-t-3xl border-t border-black/[0.06] dark:border-white/10">
-              {/* Drag handle */}
-              <div className="flex justify-center pt-4 pb-2">
-                <div className="w-10 h-1 rounded-full bg-foreground/20 dark:bg-white/20" />
-              </div>
+          <Drawer.Overlay className={`fixed inset-0 backdrop-blur-sm z-50 ${isDark ? "bg-black/60" : "bg-black/40"}`} />
+          <Drawer.Content
+            className={`flex flex-col rounded-t-[32px] fixed bottom-0 left-0 right-0 z-50 outline-none border-t ${
+              isDark ? "border-[#2a2a2a]" : "border-[rgba(0,0,0,0.08)]"
+            }`}
+            style={{
+              background: isDark
+                ? "#1e1e1e"
+                : "radial-gradient(400px 300px at 50% 100%, rgba(30,51,49,0.15), transparent 70%)," +
+                  "rgba(232,228,220,0.98)",
+            }}
+          >
+            {/* Drag handle */}
+            <div className="p-4 rounded-t-[32px] flex-none">
+              <div className={`mx-auto w-12 h-1.5 flex-shrink-0 rounded-full ${
+                isDark ? "bg-[#444444]" : "bg-[rgba(30,51,49,0.15)]"
+              }`} />
+            </div>
 
-              {/* Title */}
-              <div className="px-6 pb-4">
-                <h3 className="text-xl font-bold text-foreground dark:text-white">Select Rider</h3>
-              </div>
-
-              {/* Rider list with avatars */}
-              <div className="px-4 pb-8 grid grid-cols-2 gap-3">
-                {RIDERS.map((r) => (
-                  <button
+            {/* Rider Grid - Pyramid Layout */}
+            <div className="px-4 py-6">
+              {/* Top row - 3 riders */}
+              <div className="flex justify-center gap-4 mb-6">
+                {RIDERS.slice(0, 3).map((r) => (
+                  <Avatar
                     key={r.id}
+                    name={r.name}
+                    initial={r.name[0]}
+                    image={r.image}
+                    selected={rider === r.name}
                     onClick={() => switchRider(r.name)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition active:scale-[0.98] ${
-                      rider === r.name
-                        ? "bg-orange-500/10 border-orange-500/20"
-                        : "bg-black/[0.02] dark:bg-white/[0.03] border-black/[0.03] dark:border-white/[0.05]"
-                    }`}
-                  >
-                    {/* Avatar */}
-                    <div className="w-8 h-8 rounded-full overflow-hidden">
-                      {r.image ? (
-                        <img src={r.image} alt={r.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-tr from-orange-500 to-amber-400 flex items-center justify-center">
-                          <span className="text-xs font-bold text-white">{r.name[0]}</span>
-                        </div>
-                      )}
-                    </div>
-                    <span
-                      className={`font-semibold ${rider === r.name ? "text-orange-600 dark:text-orange-400" : "dark:text-white"}`}
-                      style={rider === r.name ? {} : { color: "#18181b" }}
-                    >
-                      {r.name}
-                    </span>
-                  </button>
+                    theme={theme}
+                  />
+                ))}
+              </div>
+
+              {/* Bottom row - 2 riders, centered */}
+              <div className="flex justify-center gap-4">
+                {RIDERS.slice(3).map((r) => (
+                  <Avatar
+                    key={r.id}
+                    name={r.name}
+                    initial={r.name[0]}
+                    image={r.image}
+                    selected={rider === r.name}
+                    onClick={() => switchRider(r.name)}
+                    theme={theme}
+                  />
                 ))}
               </div>
             </div>
+
+            {/* Bottom safe area padding */}
+            <div className="h-[env(safe-area-inset-bottom)]" />
           </Drawer.Content>
         </Drawer.Portal>
       </Drawer.Root>
@@ -1227,20 +1351,26 @@ export default function SetupPage() {
 
 // ----- Subcomponents -----
 
-function FormField({ label, value, onChange, placeholder, unit, inputMode, pattern, inputRef, onEnterNext, fullWidth, textarea, rows }) {
+function FormField({ label, value, onChange, placeholder, unit, inputMode, pattern, inputRef, onEnterNext, fullWidth, textarea, rows, isDark }) {
+  // Check if this is a numeric measurement field
+  const isNumeric = inputMode === "decimal" || inputMode === "numeric";
+
   return (
     <div
-      className={`rounded-2xl p-3 ${fullWidth ? "col-span-full" : ""}`}
-      style={{
-        backgroundColor: "rgba(255,255,255,0.45)",
-        border: "1px solid rgba(0,0,0,0.06)",
-        boxShadow: "0 2px 6px rgba(0,0,0,0.03)"
-      }}
+      className={`rounded-xl p-2 border ${fullWidth ? "col-span-full" : ""} ${
+        isDark
+          ? "bg-[#1a1a1a] border-[#2a2a2a]"
+          : "bg-[rgba(255,255,255,0.45)] border-[rgba(0,0,0,0.06)] shadow-[0_2px_6px_rgba(0,0,0,0.03)]"
+      }`}
     >
       <div className="flex items-center justify-between mb-1">
-        <span className="text-xs font-medium dark:text-white/50" style={{ color: "#71717a" }}>{label}</span>
+        <span className={`text-xs font-medium ${isDark ? "text-[#888888]" : "text-[#5A7A70]"}`}>{label}</span>
         {unit && (
-          <span className="text-[10px] font-semibold dark:text-white/40 px-1.5 py-0.5 rounded bg-black/[0.02] dark:bg-white/[0.03]" style={{ color: "#a1a1aa" }}>
+          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+            isDark
+              ? "text-[#666666] bg-[#1e1e1e]"
+              : "text-[#8A9A94] bg-[rgba(30,51,49,0.04)]"
+          }`}>
             {unit}
           </span>
         )}
@@ -1252,8 +1382,11 @@ function FormField({ label, value, onChange, placeholder, unit, inputMode, patte
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           rows={rows || 3}
-          className="w-full bg-transparent dark:text-white placeholder:text-zinc-400 dark:placeholder:text-white/30 outline-none resize-none"
-          style={{ color: "#18181b" }}
+          className={`w-full bg-transparent outline-none resize-none ${
+            isDark
+              ? "text-white placeholder:text-[#666666]"
+              : "text-[#1e3331] placeholder:text-[#8A9A94]"
+          }`}
         />
       ) : (
         <input
@@ -1264,8 +1397,11 @@ function FormField({ label, value, onChange, placeholder, unit, inputMode, patte
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full bg-transparent dark:text-white placeholder:text-zinc-400 dark:placeholder:text-white/30 outline-none"
-          style={{ color: "#18181b" }}
+          className={`w-full bg-transparent outline-none ${
+            isDark
+              ? "text-white placeholder:text-[#666666]"
+              : "text-[#1e3331] placeholder:text-[#8A9A94]"
+          } ${isNumeric ? "font-mono text-lg tabular-nums" : ""}`}
           autoComplete="off"
           enterKeyHint={onEnterNext ? "next" : undefined}
           onKeyDown={(e) => {
@@ -1280,19 +1416,18 @@ function FormField({ label, value, onChange, placeholder, unit, inputMode, patte
   );
 }
 
-function FilterChip({ active, onClick, children }) {
-  const baseStyle = "px-3 py-2 rounded-2xl text-xs font-semibold border transition inline-flex items-center gap-1.5 active:scale-[0.97]";
+function FilterChip({ active, onClick, children, isDark }) {
+  const baseStyle = "px-3 py-2 rounded-full text-xs font-semibold border transition inline-flex items-center gap-1.5 active:scale-[0.97]";
 
   if (active) {
     return (
       <button
         onClick={onClick}
-        className={baseStyle}
-        style={{
-          backgroundColor: "rgba(249, 115, 22, 0.15)",
-          color: "#ea580c",
-          borderColor: "rgba(249, 115, 22, 0.3)",
-        }}
+        className={`${baseStyle} ${
+          isDark
+            ? "bg-[#ff6b2c] text-white border-[#ff6b2c]"
+            : "bg-[rgba(233,78,27,0.12)] text-[#e94e1b] border-[rgba(233,78,27,0.25)]"
+        }`}
       >
         {children}
       </button>
@@ -1302,12 +1437,11 @@ function FilterChip({ active, onClick, children }) {
   return (
     <button
       onClick={onClick}
-      className={`${baseStyle} hover:bg-white/80 dark:hover:bg-white/10`}
-      style={{
-        backgroundColor: "rgba(255, 255, 255, 0.6)",
-        color: "#525252",
-        borderColor: "rgba(0, 0, 0, 0.1)",
-      }}
+      className={`${baseStyle} ${
+        isDark
+          ? "bg-[#252525] text-[#888888] border-[#333333] hover:bg-[#333333]"
+          : "bg-[rgba(30,51,49,0.06)] text-[#5A7A70] border-[rgba(0,0,0,0.06)] hover:bg-[rgba(30,51,49,0.10)]"
+      }`}
     >
       {children}
     </button>

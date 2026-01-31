@@ -1,16 +1,39 @@
 // src/features/v3/LandingPlayground.jsx
-// V3 Landing Page - 2026 CFR Race Frame Design (Dark Only)
+// V3 Landing Page - Dark theme (CFR Kit colors)
+// Premium polish: staggered animations, subtle glows, depth effects
 
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, useOutletContext } from "react-router-dom";
 import { motion } from "motion/react";
 import { Toaster } from "sonner";
+import { Home, Users, Settings, LayoutDashboard } from "lucide-react";
 
 import { Avatar } from "./components/Avatar.jsx";
-import { BottomNav } from "./components/BottomNav.jsx";
-import { RidersModal } from "./components/RidersModal.jsx";
-import { BikeTypePicker } from "./components/BikeTypePicker.jsx";
-import { ActionPicker } from "./components/ActionPicker.jsx";
+
+// Card entrance animation variants
+const cardVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: (i) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: 0.3 + i * 0.07, // 70ms stagger
+      duration: 0.3,
+      ease: "easeOut",
+    },
+  }),
+};
+
+// Hint text pulse animation
+const pulseVariants = {
+  animate: {
+    opacity: [0.5, 1, 0.5],
+    transition: {
+      duration: 2.5,
+      repeat: Infinity,
+      ease: "easeInOut",
+    },
+  },
+};
 
 // Real CFR riders
 const RIDERS = [
@@ -21,176 +44,154 @@ const RIDERS = [
   { id: "jolanda", name: "Jolanda", initial: "J", image: "/riders/jolanda.png" },
 ];
 
-// CFR Foundation Colors (from docs/design/tokens.css)
-const CFR = {
-  bgPrimary: '#132823',
-  bgSurface: '#1F3D36',
-  bgElevated: '#2A4B43',
-  brandOrange: '#D24A1F',
-  brandOrangeHi: '#E56A3A',
-  textPrimary: '#F4F6F5',
-  textSecondary: '#B8C2BE',
-  textMuted: '#8A9A94',
-};
+// Dark theme nav tabs - matches light mode BottomNav
+const NAV_TABS = [
+  { id: "race", icon: LayoutDashboard, path: "/v3/race" },
+  { id: "home", icon: Home, path: "/v3" },
+  { id: "riders", icon: Users, path: "/v3/setup" },
+  { id: "admin", icon: Settings, path: "/v3/settings", disabled: false },
+];
 
 export default function LandingPlayground() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("home");
-  const [isRidersListOpen, setIsRidersListOpen] = useState(false);
+  const location = useLocation();
+  const { onNavTabChange } = useOutletContext();
 
-  // Riders tab flow: rider -> bike type -> action
-  const [riderForBikeFlow, setRiderForBikeFlow] = useState(null);
-  const [selectedBikeType, setSelectedBikeType] = useState(null);
+  // Dark theme background
+  const pageBackground = "radial-gradient(ellipse at 50% 30%, #1a1a1a 0%, #0d0d0d 70%)";
 
-  // Handle tab changes
-  const handleTabChange = (tab) => {
-    if (tab === "dashboard") {
-      navigate("/v3/dashboard");
-      return;
-    }
-    if (tab === "riders") {
-      setIsRidersListOpen(true);
-      return;
-    }
-    setActiveTab(tab);
-  };
-
-  // Riders tab flow handlers
-  const handleRiderForBikeFlow = (rider) => {
-    setIsRidersListOpen(false);
-    setRiderForBikeFlow(rider);
-  };
-
-  const handleSelectBikeType = (bikeType) => {
-    setSelectedBikeType(bikeType);
-  };
-
-  const handleSelectAction = (action) => {
-    if (action === "spec") {
-      navigate(`/v3/spec?rider=${encodeURIComponent(riderForBikeFlow?.name)}&bike=${selectedBikeType}`);
-    } else if (action === "jig") {
-      navigate(`/v3/jig?rider=${encodeURIComponent(riderForBikeFlow?.name)}&bike=${selectedBikeType}`);
-    }
-
-    // Reset the flow
-    setSelectedBikeType(null);
-    setRiderForBikeFlow(null);
-  };
-
-  const handleCloseBikeTypePicker = () => {
-    setRiderForBikeFlow(null);
-  };
-
-  const handleCloseActionPicker = () => {
-    setSelectedBikeType(null);
-  };
+  // Determine active tab from current path
+  const activeTab = NAV_TABS.find((tab) => location.pathname === tab.path)?.id || "home";
 
   return (
-    <div className="min-h-screen font-sans selection:bg-brand-orange/30">
+    <div
+      className="min-h-dvh font-sans selection:bg-brand-orange/30"
+      style={{ background: pageBackground }}
+    >
       <Toaster position="top-center" />
 
       {/* Main Content Area */}
-      <main className="max-w-lg mx-auto px-6 pt-16 pb-32 min-h-screen flex flex-col">
+      <main className="max-w-lg mx-auto px-6 pt-16 pb-32 min-h-dvh flex flex-col">
         {/* Logo Header */}
-        <section className="flex flex-col items-center pt-8 pb-6 mb-16">
+        <section className="flex flex-col items-center pt-0 pb-8 mb-14">
           <motion.img
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
             src="/logos/cfr-logo-light.png"
             alt="Cannondale Factory Racing"
-            className="h-14 w-auto"
+            className="h-[62px] w-auto brightness-0 invert drop-shadow-[0_4px_12px_rgba(255,255,255,0.10)]"
           />
         </section>
 
         {/* Rider Grid - Pyramid Layout */}
         <div className="flex-1 flex flex-col items-center">
           {/* Top row - 3 riders */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="flex justify-center gap-6 mb-10"
-          >
+          <div className="flex justify-center gap-6 mb-10">
             {RIDERS.slice(0, 3).map((rider, index) => (
               <motion.div
                 key={rider.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.1 * index + 0.4 }}
+                custom={index}
+                variants={cardVariants}
+                initial="hidden"
+                animate="visible"
               >
                 <Avatar
                   name={rider.name}
                   initial={rider.initial}
                   image={rider.image}
+                  theme="dark"
                   onClick={() => navigate(`/v3/setup?rider=${encodeURIComponent(rider.name)}`)}
                 />
               </motion.div>
             ))}
-          </motion.div>
+          </div>
 
           {/* Bottom row - 2 riders, centered */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.6 }}
-            className="flex justify-center gap-6 mb-12"
-          >
+          <div className="flex justify-center gap-6 mb-12">
             {RIDERS.slice(3).map((rider, index) => (
               <motion.div
                 key={rider.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.1 * index + 0.7 }}
+                custom={index + 3} // Continue stagger from top row
+                variants={cardVariants}
+                initial="hidden"
+                animate="visible"
               >
                 <Avatar
                   name={rider.name}
                   initial={rider.initial}
                   image={rider.image}
+                  theme="dark"
                   onClick={() => navigate(`/v3/setup?rider=${encodeURIComponent(rider.name)}`)}
                 />
               </motion.div>
             ))}
-          </motion.div>
+          </div>
 
-          {/* Instruction text */}
+          {/* Instruction text - pulsing animation */}
           <motion.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.7 }}
-            transition={{ delay: 1 }}
+            animate="animate"
+            variants={pulseVariants}
+            transition={{ delay: 0.8 }}
             className="text-center"
           >
-            <p className="text-[10px] uppercase font-semibold tracking-[0.3em] text-text-muted">
+            <p className="text-[10px] uppercase font-semibold tracking-[0.3em] text-[#ff6b2c]">
               Tap Rider &rarr; MTB Setup
             </p>
           </motion.div>
         </div>
       </main>
 
-      {/* Modals */}
-      <RidersModal
-        riders={RIDERS}
-        isOpen={isRidersListOpen}
-        onClose={() => setIsRidersListOpen(false)}
-        onSelectRider={handleRiderForBikeFlow}
-      />
+      {/* Bottom Navigation - floating icons */}
+      <nav
+          className="fixed bottom-6 left-0 right-0 z-50 pb-[env(safe-area-inset-bottom)]"
+          style={{
+            // Subtle top shadow for depth
+            boxShadow: "0 -8px 24px rgba(0, 0, 0, 0.25)",
+          }}
+        >
+          {/* Floating icons - no bar */}
+          <div className="flex items-center justify-center gap-8 max-w-md mx-auto">
+            {NAV_TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
 
-      <BikeTypePicker
-        rider={riderForBikeFlow}
-        isOpen={!!riderForBikeFlow}
-        onClose={handleCloseBikeTypePicker}
-        onSelectBike={handleSelectBikeType}
-      />
-
-      <ActionPicker
-        rider={riderForBikeFlow}
-        bikeType={selectedBikeType}
-        isOpen={!!selectedBikeType}
-        onClose={handleCloseActionPicker}
-        onSelectAction={handleSelectAction}
-      />
-
-      {/* Bottom Navigation */}
-      <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
+              return (
+                <motion.button
+                  key={tab.id}
+                  disabled={tab.disabled}
+                  onClick={() => !tab.disabled && onNavTabChange(tab.id)}
+                  whileTap={!tab.disabled ? { scale: 0.9 } : undefined}
+                  className={`
+                    relative flex flex-col items-center gap-1.5 p-2 transition-all
+                    ${tab.disabled ? "opacity-30 cursor-not-allowed" : ""}
+                  `}
+                >
+                  {/* Active glow behind icon */}
+                  {isActive && !tab.disabled && (
+                    <div
+                      className="absolute inset-0 rounded-full"
+                      style={{
+                        background: "radial-gradient(circle, rgba(255,107,44,0.25) 0%, transparent 70%)",
+                        filter: "blur(8px)",
+                      }}
+                    />
+                  )}
+                  <Icon
+                    size={24}
+                    strokeWidth={isActive ? 2.5 : 2}
+                    className={`relative z-10 ${isActive && !tab.disabled ? "text-[#ff6b2c]" : "text-[#666666]"}`}
+                  />
+                  {/* Active dot indicator */}
+                  {isActive && !tab.disabled && (
+                    <div className="relative z-10 w-1 h-1 rounded-full bg-[#ff6b2c]" />
+                  )}
+                </motion.button>
+              );
+            })}
+          </div>
+        </nav>
     </div>
   );
 }

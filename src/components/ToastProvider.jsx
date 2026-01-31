@@ -6,6 +6,14 @@ function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
+// Default TTLs per type
+const DEFAULT_TTL = {
+  info: 2200,
+  success: 2200,
+  warning: 3000,
+  error: 4000, // Longer for errors
+};
+
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const timersRef = useRef(new Map());
@@ -20,10 +28,10 @@ export function ToastProvider({ children }) {
   const push = useCallback(
     (type, message, opts = {}) => {
       const id = uid();
-      const ttl = typeof opts.ttl === "number" ? opts.ttl : 2200;
+      const ttl = typeof opts.ttl === "number" ? opts.ttl : DEFAULT_TTL[type] || 2200;
 
       setToasts((prev) => {
-        const next = [...prev, { id, type, message }];
+        const next = [...prev, { id, type, message, action: opts.action, actionLabel: opts.actionLabel }];
         return next.slice(-4);
       });
 
@@ -61,16 +69,34 @@ export function ToastProvider({ children }) {
               t.type === "success"
                 ? "bg-lime-400/10 border-lime-400/25 text-lime-100"
                 : t.type === "error"
-                ? "bg-red-500/10 border-red-400/25 text-red-100"
+                ? "bg-red-500/10 border-l-4 border-l-red-500 border-t-red-400/25 border-r-red-400/25 border-b-red-400/25 text-red-100"
                 : t.type === "warning"
                 ? "bg-yellow-400/10 border-yellow-300/25 text-yellow-100"
                 : "bg-white/10 border-white/15 text-white/90",
             ].join(" ")}
             role="status"
-            onClick={() => api.dismiss(t.id)}
           >
-            <div className="text-sm font-bold leading-snug flex-1">{t.message}</div>
-            <button className="text-xs text-white/60 hover:text-white/90 font-black px-2 -mr-2">×</button>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-bold leading-snug">{t.message}</div>
+              {t.action && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    t.action();
+                    api.dismiss(t.id);
+                  }}
+                  className="mt-2 text-xs font-semibold px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition"
+                >
+                  {t.actionLabel || "Retry"}
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => api.dismiss(t.id)}
+              className="text-xs text-white/60 hover:text-white/90 font-black px-2 -mr-2"
+            >
+              ×
+            </button>
           </div>
         ))}
       </div>

@@ -11,9 +11,9 @@ export default function LoginPage() {
   // This also supports object-shape { pathname, search } just in case.
   const from = useMemo(() => {
     const f = location.state?.from;
-    if (!f) return "/measurements";
+    if (!f) return "/v3";
     if (typeof f === "string") return f;
-    return (f.pathname || "/measurements") + (f.search || "");
+    return (f.pathname || "/v3") + (f.search || "");
   }, [location.state]);
 
   const [email, setEmail] = useState(() => {
@@ -89,6 +89,9 @@ export default function LoginPage() {
 
       setStatus({ kind: "ok", msg: "Signed in ✓" });
 
+      // Scroll to top before navigating (fixes mobile scroll position)
+      window.scrollTo(0, 0);
+
       // Go back to where user was trying to go
       navigate(from, { replace: true });
     } catch (e) {
@@ -108,23 +111,23 @@ export default function LoginPage() {
   const isLoading = status.kind === "loading";
 
   return (
-    <div className="min-h-screen w-full bg-[#070A0F] text-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 backdrop-blur p-8">
-          {/* subtle watermark */}
-          <div className="pointer-events-none absolute inset-0 opacity-[0.06]">
-            <div className="absolute -rotate-12 top-10 left-[-20%] text-[120px] font-black tracking-tight select-none">
-              CANNONDALE
-            </div>
-            <div className="absolute rotate-6 bottom-6 right-[-10%] text-[90px] font-black tracking-tight select-none">
-              CFR
-            </div>
-          </div>
+    <div
+      className="min-h-dvh w-full text-white flex flex-col items-center justify-center p-4"
+      style={{ background: "radial-gradient(ellipse at 50% 30%, #1a1a1a 0%, #0d0d0d 70%)" }}
+    >
+      {/* Logo */}
+      <img
+        src="/logos/cfr-logo-light.png"
+        alt="Cannondale Factory Racing"
+        className="h-12 w-auto brightness-0 invert mb-8 opacity-90"
+      />
 
+      <div className="w-full max-w-md">
+        <div className="relative overflow-hidden rounded-2xl border border-[#2a2a2a] bg-[#1e1e1e] p-8">
           <div className="relative">
-            <div className="text-sm text-white/60 uppercase tracking-widest">CFR Workshop</div>
-            <div className="text-3xl font-black mt-2 tracking-tight">Sign in</div>
-            <div className="text-white/50 mt-2">
+            <div className="text-[#ff6b2c] text-xs font-semibold uppercase tracking-widest">CFR Workshop</div>
+            <div className="text-2xl font-bold mt-2 tracking-tight text-white">Sign in</div>
+            <div className="text-[#888888] mt-2 text-sm">
               {phase === "email"
                 ? "Enter your email to receive a login code."
                 : "Enter the code we sent to your email."}
@@ -132,14 +135,15 @@ export default function LoginPage() {
 
             <form onSubmit={onSubmit} className="mt-6 space-y-4">
               <label className="block">
-                <div className="text-xs text-white/60 uppercase tracking-widest mb-2">Email</div>
+                <div className="text-[#888888] text-xs font-semibold uppercase tracking-wider mb-2">Email</div>
                 <input
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   type="email"
                   autoComplete="email"
                   inputMode="email"
-                  className="w-full rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
+                  className="w-full rounded-xl bg-[#252525] border border-[#333333] px-4 py-3 text-white placeholder:text-[#555555] focus:outline-none focus:border-[#ff6b2c] transition-colors"
+                  style={{ fontSize: "16px" }}
                   placeholder="you@team.com"
                   disabled={isLoading || phase === "otp"}
                 />
@@ -147,14 +151,15 @@ export default function LoginPage() {
 
               {phase === "otp" && (
                 <label className="block">
-                  <div className="text-xs text-white/60 uppercase tracking-widest mb-2">Code</div>
+                  <div className="text-[#888888] text-xs font-semibold uppercase tracking-wider mb-2">Code</div>
                   <input
                     value={otp}
                     onChange={(e) => setOtp(e.target.value)}
                     type="text"
                     inputMode="numeric"
                     autoComplete="one-time-code"
-                    className="w-full rounded-2xl bg-black/40 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-300/40"
+                    className="w-full rounded-xl bg-[#252525] border border-[#333333] px-4 py-3 text-white font-mono placeholder:text-[#555555] focus:outline-none focus:border-[#ff6b2c] transition-colors"
+                    style={{ fontSize: "16px" }}
                     placeholder="123456"
                     disabled={isLoading}
                   />
@@ -163,19 +168,19 @@ export default function LoginPage() {
 
               {status.kind !== "idle" && (
                 <div
-                  className={`rounded-2xl px-4 py-3 text-sm border ${
+                  className={`rounded-xl px-4 py-3 text-sm border ${
                     status.kind === "err"
-                      ? "border-red-400/30 bg-red-400/10 text-red-200"
+                      ? "border-[#4a3030] bg-[#2a2020] text-[#ff6b6b]"
                       : status.kind === "ok"
-                      ? "border-lime-300/30 bg-lime-300/10 text-lime-200"
-                      : "border-white/10 bg-white/5 text-white/70"
+                      ? "border-[#3a4a30] bg-[#202a20] text-[#6bff6b]"
+                      : "border-[#333333] bg-[#252525] text-[#888888]"
                   }`}
                 >
                   {status.msg}
                 </div>
               )}
 
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 {phase === "otp" && (
                   <button
                     type="button"
@@ -184,7 +189,7 @@ export default function LoginPage() {
                       setOtp("");
                       setStatus({ kind: "idle", msg: "" });
                     }}
-                    className="flex-1 rounded-2xl px-4 py-3 font-black border border-white/10 bg-white/5 hover:bg-white/10 text-white"
+                    className="flex-1 rounded-xl px-4 py-3 font-semibold border border-[#333333] bg-[#252525] hover:bg-[#2a2a2a] text-white transition-colors"
                     disabled={isLoading}
                   >
                     Back
@@ -193,7 +198,7 @@ export default function LoginPage() {
 
                 <button
                   type="submit"
-                  className="flex-1 rounded-2xl px-4 py-3 font-black bg-lime-300 text-black hover:bg-lime-200 disabled:opacity-50"
+                  className="flex-1 rounded-xl px-4 py-3 font-bold bg-[#ff6b2c] text-white hover:bg-[#ff8a50] disabled:opacity-50 transition-colors shadow-[0_4px_12px_rgba(255,107,44,0.3)]"
                   disabled={isLoading}
                 >
                   {phase === "email" ? (isLoading ? "Sending…" : "Send code") : isLoading ? "Verifying…" : "Sign in"}
@@ -204,7 +209,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={sendOtp}
-                  className="w-full rounded-2xl px-4 py-3 font-black border border-white/10 bg-white/5 hover:bg-white/10 text-white"
+                  className="w-full rounded-xl px-4 py-3 font-semibold border border-[#333333] bg-[#252525] hover:bg-[#2a2a2a] text-[#888888] transition-colors"
                   disabled={isLoading}
                 >
                   Resend code
@@ -212,7 +217,7 @@ export default function LoginPage() {
               )}
             </form>
 
-            <div className="mt-6 text-xs text-white/40">
+            <div className="mt-6 text-xs text-[#555555] text-center">
               Internal tool • CFR
             </div>
           </div>

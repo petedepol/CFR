@@ -1,60 +1,75 @@
-/* V3 Theme - Figma Generated (Light First) */
+/* V3 Theme - CFR Foundation (Dark Mode Default)
+   Source of truth: docs/design/00-foundation.md + tokens.css
+   2026 CFR Livery Colors */
 
 :root {
   --font-size: 16px;
-  --background: #ffffff;
-  --background-gradient:
-    radial-gradient(650px 520px at 12% 10%, rgba(255, 125, 50, 0.20), transparent 60%),
-    radial-gradient(780px 620px at 90% 55%, rgba(80, 160, 255, 0.14), transparent 62%),
-    radial-gradient(900px 700px at 60% 95%, rgba(110, 255, 200, 0.08), transparent 60%),
-    #fbfaf7;
-  --foreground: oklch(0.145 0 0);
-  --card: #ffffff;
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #030213;
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0.0058 264.53);
-  --secondary-foreground: #030213;
-  --muted: #ececf0;
-  --muted-foreground: #717182;
-  --accent: #e9ebef;
-  --accent-foreground: #030213;
-  --destructive: #d4183d;
-  --destructive-foreground: #ffffff;
-  --border: rgba(0, 0, 0, 0.1);
-  --input: transparent;
-  --input-background: #f3f3f5;
-  --switch-background: #cbced4;
-  --font-weight-medium: 500;
+  --radius: 0.75rem;
+  --font-weight-medium: 600;
   --font-weight-normal: 400;
-  --ring: oklch(0.708 0 0);
-  --radius: 0.625rem;
-}
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --background-gradient: linear-gradient(180deg, oklch(0.15 0.02 60) 0%, oklch(0.12 0.015 230) 100%);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
-  --input-background: oklch(0.2 0 0);
+  /* Brand Colors - 2026 CFR Livery */
+  --brand-orange: #e94e1b;
+  --brand-orange-hi: #f0714a;
+  --brand-orange-lo: #c43d13;
+
+  --brand-green: #1e3331;
+  --brand-green-hi: #2d524b;
+  --brand-green-lo: #121f1e;
+
+  /* Backgrounds / Surfaces */
+  --bg-primary: #121f1e;
+  --bg-surface: #1e3331;
+  --bg-elevated: #28453f;
+
+  /* Text */
+  --text-primary: #F4F6F5;
+  --text-secondary: #B8C2BE;
+  --text-muted: #8A9A94;
+
+  /* Borders */
+  --border-subtle: rgba(255,255,255,0.08);
+  --border-strong: rgba(255,255,255,0.14);
+
+  /* Overlays */
+  --overlay-hover: rgba(255,255,255,0.04);
+  --overlay-pressed: rgba(0,0,0,0.18);
+  --overlay-scrim: rgba(0,0,0,0.55);
+
+  /* Semantic mappings (for compatibility) */
+  --background: var(--bg-primary);
+  --foreground: var(--text-primary);
+  --muted-foreground: var(--text-muted);
+  --accent: var(--brand-orange);
+
+  /* Card styling */
+  --card: var(--bg-surface);
+  --card-foreground: var(--text-primary);
+  --card-border: var(--border-subtle);
+
+  /* Popover/modal */
+  --popover: var(--bg-elevated);
+  --popover-foreground: var(--text-primary);
+
+  /* Buttons */
+  --btn-primary-bg: linear-gradient(180deg, #f0714a 0%, #e94e1b 100%);
+  --btn-primary-text: #FFFFFF;
+  --btn-primary-border: rgba(0,0,0,0.25);
+  --btn-primary-highlight: inset 0 1px 0 rgba(255,255,255,0.16);
+
+  --btn-secondary-bg: #2d524b;
+  --btn-secondary-text: var(--text-primary);
+  --btn-secondary-border: rgba(255,255,255,0.10);
+
+  /* Destructive */
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  /* Borders and inputs */
+  --border: var(--border-subtle);
+  --input: var(--border-subtle);
+  --input-background: var(--bg-surface);
+  --ring: rgba(233, 78, 27, 0.35);
 }
 
 /* System font stack (SF Pro on iOS) */
@@ -81,15 +96,64 @@ body {
   padding-top: env(safe-area-inset-top);
 }
 
-/* Selection color */
+/* iOS bottom safe + nav clearance (80px nav + safe area) */
+.bottom-safe-nav {
+  bottom: calc(80px + env(safe-area-inset-bottom));
+}
+
+/* Prevent overscroll/rubber-band on modals */
+.overscroll-contain {
+  overscroll-behavior: contain;
+}
+
+/* Touch delay removal */
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+/* Selection color - CFR Orange */
 ::selection {
-  background: rgba(249, 115, 22, 0.3);
+  background: rgba(233, 78, 27, 0.3);
 }
 
 /* Tailwind color utilities for CSS vars */
 .bg-background { background-color: var(--background); }
 .text-foreground { color: var(--foreground); }
-.bg-muted { background-color: var(--muted); }
+.bg-muted { background-color: var(--bg-surface); }
 .text-muted-foreground { color: var(--muted-foreground); }
 .bg-input-background { background-color: var(--input-background); }
 .border-border { border-color: var(--border); }
+
+/* Custom scrollbar - Dark theme */
+.scrollbar-dark::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+.scrollbar-dark::-webkit-scrollbar-track {
+  background: #252525;
+  border-radius: 3px;
+}
+.scrollbar-dark::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 3px;
+}
+.scrollbar-dark::-webkit-scrollbar-thumb:hover {
+  background: #666;
+}
+
+/* Custom scrollbar - Light theme */
+.scrollbar-light::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+.scrollbar-light::-webkit-scrollbar-track {
+  background: #ddd;
+  border-radius: 3px;
+}
+.scrollbar-light::-webkit-scrollbar-thumb {
+  background: #aaa;
+  border-radius: 3px;
+}
+.scrollbar-light::-webkit-scrollbar-thumb:hover {
+  background: #888;
+}

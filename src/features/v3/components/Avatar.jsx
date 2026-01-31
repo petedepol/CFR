@@ -1,64 +1,74 @@
-// Avatar.jsx - CFR Foundation styled avatar
+// Avatar.jsx - CFR Foundation styled avatar (Dark theme)
 // Source: docs/design/00-foundation.md
 
 export function Avatar({ name, initial, image, selected = false, onClick }) {
+  // Dark theme colors
+  const colors = {
+    outerBg: selected ? "bg-[#2a2a2a]" : "bg-[#1e1e1e]",
+    outerBorder: "border-transparent border-b-2 border-b-[#ff6b2c]",
+    outerRing: selected ? "ring-1 ring-[#ff6b2c]" : "ring-0",
+    innerBg: "bg-[#1e1e1e]",
+    innerBorder: "border border-[rgba(255,255,255,0.05)]",
+    nameColor: selected ? "text-[#ff6b2c]" : "text-white",
+    focusRing: "focus-visible:ring-[#ff6b2c]",
+  };
+
+  // Shadow style
+  const cardShadowStyle = {
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.4)",
+  };
+
   return (
     <button
       onClick={onClick}
-      className="
-        group flex flex-col items-center gap-3
-        transition-transform active:scale-95
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(210,74,31,0.55)]
-        rounded-2xl
-      "
+      className={`
+        group flex flex-col items-center gap-3 w-[96px] flex-shrink-0
+        focus-visible:outline-none focus-visible:ring-2 ${colors.focusRing}
+      `}
     >
-      {/* Outer ring (glass) */}
+      {/* Outer container - with hover effects */}
       <div
+        style={cardShadowStyle}
         className={[
-          "relative p-1 rounded-full transition-all duration-200",
-          // glass surface
-          "bg-[rgba(18,38,33,0.55)] backdrop-blur-xl shadow-[0_18px_50px_rgba(0,0,0,0.35)]",
-          // border
-          "border border-[rgba(255,255,255,0.10)]",
-          "group-hover:border-[rgba(255,255,255,0.16)]",
-          selected ? "ring-1 ring-[rgba(210,74,31,0.45)]" : "",
+          "relative p-[2px] rounded-2xl",
+          "transition-all duration-200 ease-out",
+          "group-hover:scale-[1.03] group-active:scale-[0.97]",
+          "group-hover:shadow-[0_8px_24px_rgba(255,107,44,0.15)] group-hover:border-b-[#ff8a50]",
+          colors.outerBg,
+          "backdrop-blur-sm",
+          colors.outerBorder,
+          colors.outerRing,
         ].join(" ")}
       >
-        {/* Avatar circle */}
-        <div className="relative w-[72px] h-[72px] rounded-full overflow-hidden">
-          {/* Backing disc - bone glass */}
-          <div
-            className="
-              absolute inset-0 rounded-full
-              bg-[rgba(231,225,212,0.16)]
-              backdrop-blur-sm
-              border border-[rgba(255,255,255,0.18)]
-              shadow-[0_6px_20px_rgba(0,0,0,0.25)]
-              before:content-[''] before:absolute before:inset-x-1 before:top-1 before:h-px
-              before:bg-[rgba(255,255,255,0.35)]
-            "
-          />
-
+        {/* Inner image well */}
+        <div
+          className={`
+            w-[80px] h-[80px] rounded-xl overflow-hidden
+            ${colors.innerBg}
+            ${colors.innerBorder}
+          `}
+        >
           {image ? (
             <img
               src={image}
               alt={name}
-              className="relative w-full h-full object-cover object-[center_30%]"
+              className="w-full h-full object-cover object-[center_35%] translate-y-1"
             />
           ) : (
-            <div className="relative w-full h-full bg-[linear-gradient(180deg,#E56A3A_0%,#D24A1F_100%)] flex items-center justify-center">
+            <div className="w-full h-full flex items-center justify-center bg-[linear-gradient(180deg,#ff8a50_0%,#ff6b2c_100%)]">
               <span className="text-lg font-bold text-white">{initial}</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Name */}
+      {/* Name - with text shadow for depth */}
       <span
+        style={{ textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}
         className={[
-          "text-sm font-semibold transition-colors duration-200",
-          selected ? "text-[#F4F6F5]" : "text-[#B8C2BE]",
-          "group-hover:text-[#F4F6F5]",
+          "text-sm font-semibold transition-colors duration-200 truncate max-w-full",
+          colors.nameColor,
+          "group-hover:text-[#ff6b2c]",
         ].join(" ")}
       >
         {name}

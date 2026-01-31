@@ -1,9 +1,10 @@
 // JigPage.jsx - V3 Styled JIG Form
 // Quick jig measurements per rider + bike type with history
+// Supports dark theme via useOutletContext
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Save, Wifi, WifiOff, Pencil, Trash2, AlertTriangle, X } from "lucide-react";
+import { useNavigate, useSearchParams, useOutletContext } from "react-router-dom";
+import { ArrowLeft, Save, Wifi, WifiOff, Pencil, Trash2, AlertTriangle, X, Columns } from "lucide-react";
 import { Drawer } from "vaul";
 import { motion } from "motion/react";
 
@@ -19,22 +20,25 @@ import { CachedDataBanner } from "../../../components/CachedDataBanner.jsx";
 
 import { SpecSection } from "../components/SpecSection.jsx";
 import { SpecField } from "../components/SpecField.jsx";
+import { Avatar } from "../components/Avatar.jsx";
+import { EmptyStatePreset, SkeletonList } from "../../../components/ui/index.js";
+import { JigCompareModal } from "../components/JigCompareModal.jsx";
 
 // Riders list (shared with other v3 pages)
 const RIDERS = [
-  { id: "ana", name: "Ana", image: "/riders/ana.jpeg" },
-  { id: "charlie", name: "Charlie", image: "/riders/charlie.jpeg" },
-  { id: "cole", name: "Cole", image: "/riders/cole.jpeg" },
-  { id: "luca", name: "Luca", image: "/riders/luca.jpeg" },
-  { id: "jolanda", name: "Jolanda", image: "/riders/jolanda.jpeg" },
+  { id: "ana", name: "Ana", image: "/riders/ana.png" },
+  { id: "charlie", name: "Charlie", image: "/riders/charlie.png" },
+  { id: "cole", name: "Cole", image: "/riders/cole.png" },
+  { id: "luca", name: "Luca", image: "/riders/luca.png" },
+  { id: "jolanda", name: "Jolanda", image: "/riders/jolanda.png" },
 ];
 
 const BIKE_TYPES = [
-  { id: "race", label: "Race", apiType: "quick_race" },
-  { id: "training", label: "Train", apiType: "quick_training" },
-  { id: "ebike", label: "E-Bike", apiType: "quick_ebike" },
-  { id: "road", label: "Road", apiType: "quick_road" },
-  { id: "cx", label: "CX", apiType: "quick_cx" },
+  { id: "race", label: "Race", apiType: "quick_race", image: "/bikes/race.png" },
+  { id: "training", label: "Train", apiType: "quick_training", image: "/bikes/training.png" },
+  { id: "ebike", label: "E-Bike", apiType: "quick_ebike", image: "/bikes/ebike.png" },
+  { id: "road", label: "Road", apiType: "quick_road", image: "/bikes/road.png" },
+  { id: "cx", label: "CX", apiType: "quick_cx", image: "/bikes/cx.png" },
 ];
 
 const WARN_THRESHOLD_MM = 4;
@@ -60,15 +64,6 @@ function fmtSigned(n) {
 function diff(v, b) {
   if (v === null || b === null) return null;
   return +((v - b).toFixed(1));
-}
-
-function formatDateTime(iso) {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return String(iso);
-  }
 }
 
 function formatDateShort(iso) {
@@ -133,13 +128,13 @@ function writeDraft(rider, bikeType, form) {
   if (!rider) return;
   try {
     localStorage.setItem(draftKey(rider, bikeType), JSON.stringify({ at: Date.now(), form }));
-  } catch {}
+  } catch { /* ignore localStorage errors */ }
 }
 function clearDraft(rider, bikeType) {
   if (!rider) return;
   try {
     localStorage.removeItem(draftKey(rider, bikeType));
-  } catch {}
+  } catch { /* ignore localStorage errors */ }
 }
 
 // ----- Main Component -----
@@ -148,6 +143,11 @@ export default function JigPage() {
   const [params, setSearchParams] = useSearchParams();
   const { displayName, isAdmin } = useAuth();
   const toast = useToast();
+
+  // Get theme from V3Layout context
+  const context = useOutletContext();
+  const isDark = context?.isDark ?? false;
+  const theme = isDark ? "dark" : "light";
 
   const rider = params.get("rider") || "";
   const bikeType = (() => {
@@ -159,8 +159,10 @@ export default function JigPage() {
   // Get API bike type
   const apiBikeType = BIKE_TYPES.find((bt) => bt.id === bikeType)?.apiType || "quick_race";
 
-  // Rider picker state
+  // Picker states
   const [riderPickerOpen, setRiderPickerOpen] = useState(false);
+  const [bikePickerOpen, setBikePickerOpen] = useState(false);
+  const [compareModalOpen, setCompareModalOpen] = useState(false);
 
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;
 
@@ -178,7 +180,11 @@ export default function JigPage() {
   const [historyRows, setHistoryRows] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [saving, setSaving] = useState(false);
   const [savingAdmin, setSavingAdmin] = useState(false);
+
+  // Reset key to collapse sections after save
+  const [sectionResetKey, setSectionResetKey] = useState(0);
 
   // Offline cache state
   const [showingCached, setShowingCached] = useState(false);
@@ -197,7 +203,7 @@ export default function JigPage() {
   }, [dirty]);
 
   // Load data on mount
-  async function load(currentApiBikeType, { silent = false, keepEdits = false, forceRefresh = false } = {}) {
+  async function load(currentApiBikeType, { silent = false, keepEdits = false } = {}) {
     if (!rider) return;
     if (!silent) setLoading(true);
 
@@ -207,7 +213,7 @@ export default function JigPage() {
       const latestAt = latest?.timestamp ? new Date(latest.timestamp).getTime() : 0;
 
       lastLoadedRef.current = latest || null;
-      setShowingCached(false); // Fresh data from server
+      setShowingCached(false);
 
       if (keepEdits && dirtyRef.current) return;
 
@@ -233,11 +239,9 @@ export default function JigPage() {
         clearDraft(rider, bikeType);
       }
     } catch (e) {
-      // OFFLINE FALLBACK: Use cached data
       const isOffline = e?.code === "OFFLINE" || (typeof navigator !== "undefined" && navigator.onLine === false);
       if (isOffline) {
         const cachedLatest = getCachedJigLatest(rider, bikeType);
-
         if (cachedLatest && !dirtyRef.current) {
           lastLoadedRef.current = cachedLatest;
           setForm({
@@ -249,9 +253,7 @@ export default function JigPage() {
           });
           setDirty(false);
           setShowingCached(true);
-          // Don't show error toast - we have cached data
         } else if (!dirtyRef.current) {
-          // No cache, show error
           toast.error("Offline and no cached data available");
         }
       } else {
@@ -271,7 +273,6 @@ export default function JigPage() {
       const rows = await fetchQuickHistory(rider, currentApiBikeType, 20);
       setHistoryRows(Array.isArray(rows) ? rows : []);
     } catch (e) {
-      // OFFLINE FALLBACK: Use cached history
       const isOffline = e?.code === "OFFLINE" || (typeof navigator !== "undefined" && navigator.onLine === false);
       if (isOffline) {
         const cachedHistory = getCachedJigHistory(rider, bikeType);
@@ -279,7 +280,6 @@ export default function JigPage() {
           setHistoryRows(cachedHistory);
         }
       }
-      // History is non-critical, don't show error
     } finally {
       if (!silent) setHistoryLoading(false);
     }
@@ -310,7 +310,6 @@ export default function JigPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rider, bikeType, apiBikeType]);
 
-  // Auto-save draft
   useEffect(() => {
     if (!rider || !dirty) return;
     const t = setTimeout(() => writeDraft(rider, bikeType, form), 250);
@@ -423,6 +422,10 @@ export default function JigPage() {
       return;
     }
 
+    setSaving(true);
+    // Haptic feedback
+    if (navigator.vibrate) navigator.vibrate(50);
+
     try {
       if (editingId && isAdmin) {
         setSavingAdmin(true);
@@ -440,6 +443,7 @@ export default function JigPage() {
         clearDraft(rider, bikeType);
         setEditingId(null);
         toast.success("Updated");
+        setSectionResetKey((k) => k + 1);
         await load(apiBikeType, { silent: true, keepEdits: true });
         await loadHistory(apiBikeType, { silent: true });
         return;
@@ -462,14 +466,17 @@ export default function JigPage() {
 
       if (res?.queued) {
         toast.success("Saved offline — will sync later");
+        setSectionResetKey((k) => k + 1);
       } else {
         toast.success("Saved");
+        setSectionResetKey((k) => k + 1);
         await load(apiBikeType, { silent: true, keepEdits: true });
         await loadHistory(apiBikeType, { silent: true });
       }
     } catch (e) {
       toast.error(`Save failed: ${e?.message || "unknown error"}`);
     } finally {
+      setSaving(false);
       setSavingAdmin(false);
     }
   }
@@ -477,7 +484,6 @@ export default function JigPage() {
   async function handleSave() {
     const payload = { rider, mechanic, bikeType: apiBikeType, ...form };
 
-    // Check for significant deviations (skip if editing)
     if (!editingId) {
       const info = computeDeviationWarning(payload);
       if (info) {
@@ -505,9 +511,6 @@ export default function JigPage() {
     pendingPayloadRef.current = null;
   }
 
-  const bikeTypeLabel = BIKE_TYPES.find((bt) => bt.id === bikeType)?.label || bikeType;
-
-  // Handle switching rider
   function switchRider(newRiderName) {
     if (newRiderName === rider) {
       setRiderPickerOpen(false);
@@ -517,17 +520,104 @@ export default function JigPage() {
     setRiderPickerOpen(false);
   }
 
-  // Handle switching bike type
   function switchBikeType(newBikeType) {
     if (newBikeType === bikeType) return;
     setSearchParams({ rider, bike: newBikeType });
   }
 
+  // Theme-specific colors
+  const colors = isDark
+    ? {
+        pageBg: "#121212",
+        headerBg: "bg-[#1e1e1e]",
+        headerBorder: "border-[#2a2a2a]",
+        headerText: "text-white",
+        headerSubtext: "text-[#888888]",
+        backBtn: "bg-[#252525] text-white",
+        wifiOnline: "text-[#ff6b2c]",
+        wifiOffline: "text-[#666666]",
+        cardBg: "bg-[#1e1e1e]",
+        cardBorder: "border-[#2a2a2a]",
+        cardShadow: "shadow-[0_10px_28px_rgba(0,0,0,0.40)]",
+        riderName: "text-white",
+        pillBg: "bg-[#252525]",
+        pillBorder: "border-[#333333]",
+        pillActive: "bg-[#ff6b2c] text-white shadow-[0_6px_14px_rgba(255,107,44,0.30)]",
+        pillInactive: "text-[#888888]",
+        inputWrapBg: "bg-[#1a1a1a]",
+        inputWrapBorder: "border-[#2a2a2a]",
+        sectionHeader: "text-[#ff6b2c]",
+        tableHeaderBg: "bg-[#252525]",
+        tableHeaderText: "text-[#888888]",
+        tableRowOdd: "bg-[#1e1e1e]",
+        tableRowEven: "bg-[#1a1a1a]",
+        tableBorder: "border-[#2a2a2a]",
+        tableText: "text-white",
+        tableSecondary: "text-[#888888]",
+        notesText: "text-[#888888] italic",
+        emptyText: "text-[#666666]",
+        alertBg: "bg-[rgba(245,158,11,0.15)]",
+        alertBorder: "border-[rgba(245,158,11,0.30)]",
+        alertText: "text-amber-400",
+        editBannerBg: "bg-[rgba(59,130,246,0.15)]",
+        editBannerBorder: "border-[rgba(59,130,246,0.30)]",
+        editBannerText: "text-blue-400",
+        modalBg: "#1e1e1e",
+        modalBorder: "#2a2a2a",
+        modalHandle: "bg-[#444444]",
+        modalHeader: "text-[#ff6b2c]",
+      }
+    : {
+        pageBg: "#e8e4dc",
+        headerBg: "bg-transparent",
+        headerBorder: "border-transparent",
+        headerText: "text-[#1e3331]",
+        headerSubtext: "text-[#5A7A70]",
+        backBtn: "bg-[rgba(30,51,49,0.08)] text-[#5A7A70]",
+        wifiOnline: "text-green-600",
+        wifiOffline: "text-[#8A9A94]",
+        cardBg: "bg-[rgba(232,228,220,0.75)]",
+        cardBorder: "border-[rgba(0,0,0,0.08)]",
+        cardShadow: "shadow-[0_10px_28px_rgba(0,0,0,0.10)]",
+        riderName: "text-[#1e3331]",
+        pillBg: "bg-[rgba(255,255,255,0.50)]",
+        pillBorder: "border-[rgba(0,0,0,0.08)]",
+        pillActive: "bg-[linear-gradient(180deg,#f0714a_0%,#e94e1b_100%)] text-white shadow-[0_6px_14px_rgba(233,78,27,0.30)]",
+        pillInactive: "text-[#5A7A70]",
+        inputWrapBg: "bg-[rgba(255,255,255,0.45)]",
+        inputWrapBorder: "border-[rgba(0,0,0,0.06)]",
+        sectionHeader: "text-[#5A7A70]",
+        tableHeaderBg: "bg-[rgba(30,51,49,0.04)]",
+        tableHeaderText: "text-[#5A7A70]",
+        tableRowOdd: "",
+        tableRowEven: "",
+        tableBorder: "border-[rgba(0,0,0,0.08)]",
+        tableText: "text-[#1e3331]",
+        tableSecondary: "text-[#8A9A94]",
+        notesText: "text-[#5A7A70] italic",
+        emptyText: "text-[#8A9A94]",
+        alertBg: "bg-[rgba(245,158,11,0.08)]",
+        alertBorder: "border-[rgba(245,158,11,0.15)]",
+        alertText: "text-amber-700",
+        editBannerBg: "bg-[rgba(59,130,246,0.08)]",
+        editBannerBorder: "border-[rgba(59,130,246,0.15)]",
+        editBannerText: "text-blue-700",
+        modalBg: "rgba(232,228,220,0.98)",
+        modalBorder: "rgba(0,0,0,0.08)",
+        modalHandle: "bg-[rgba(30,51,49,0.15)]",
+        modalHeader: "text-[#5A7A70] opacity-70",
+      };
+
+  const pageStyle = isDark
+    ? { backgroundColor: colors.pageBg }
+    : {
+        backgroundColor: colors.pageBg,
+        backgroundImage: "radial-gradient(520px 360px at 50% 0, rgba(30,51,49,0.30), rgba(30,51,49,0.12) 35%, transparent 70%)",
+        backgroundAttachment: "fixed",
+      };
+
   return (
-    <div
-      className="min-h-screen text-foreground font-sans selection:bg-orange-500/30"
-      style={{ background: "var(--background-gradient, var(--background))" }}
-    >
+    <div className="min-h-dvh font-sans" style={pageStyle}>
       <div className="max-w-lg mx-auto px-4 pt-6 pb-24">
         {/* Header */}
         <div className="mb-6">
@@ -536,26 +626,45 @@ export default function JigPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate("/v3")}
-                className="p-2 rounded-full bg-foreground/5 text-foreground/60 active:scale-95 transition"
+                className={`p-2.5 rounded-full active:scale-95 transition ${colors.backBtn}`}
               >
-                <ArrowLeft size={20} />
+                <ArrowLeft size={24} strokeWidth={2.5} />
               </button>
-              <span className="text-xs font-semibold tracking-[0.15em] text-foreground/50 uppercase">JIG Update</span>
+              <span className={`text-xs font-semibold tracking-[0.15em] uppercase ${colors.headerSubtext}`}>
+                JIG Update
+              </span>
             </div>
 
-            {/* Status indicator */}
-            <div className="flex items-center gap-2">
-              {offline ? (
-                <WifiOff size={16} className="text-foreground/40" />
-              ) : (
-                <Wifi size={16} className="text-green-500" />
-              )}
-              {dirty && <div className="w-2 h-2 rounded-full bg-orange-500" />}
+            {/* Status indicator + Compare button */}
+            <div className="flex items-center gap-3">
+              {/* Compare button */}
+              <button
+                onClick={() => setCompareModalOpen(true)}
+                className={`p-2 rounded-full active:scale-95 transition ${colors.backBtn}`}
+                title="Compare JIG"
+              >
+                <Columns size={18} strokeWidth={2} />
+              </button>
+              <div className="flex items-center gap-2">
+                {offline ? (
+                  <WifiOff size={16} className={colors.wifiOffline} />
+                ) : (
+                  <Wifi size={16} className={colors.wifiOnline} />
+                )}
+                {dirty && <div className="w-2 h-2 rounded-full bg-[#ff6b2c]" />}
+              </div>
             </div>
           </div>
 
-          {/* Rider + Bike Type Row - Glass Surface */}
-          <div className="flex items-center justify-between rounded-[26px] p-3.5 bg-white/[0.62] dark:bg-white/[0.08] border border-black/10 dark:border-white/[0.10] backdrop-blur-[14px] shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
+          {/* Rider + Bike Type Row */}
+          <div
+            className={`flex items-center justify-between rounded-[26px] p-3.5 backdrop-blur-sm border ring-1 ${isDark ? "ring-[rgba(255,107,44,0.15)]" : "ring-[rgba(255,255,255,0.05)]"} ${colors.cardBg} ${colors.cardBorder} ${colors.cardShadow}`}
+            style={{
+              boxShadow: isDark
+                ? "0 10px 28px rgba(0, 0, 0, 0.40), 0 0 0 1px rgba(255, 107, 44, 0.08)"
+                : "0 10px 28px rgba(0, 0, 0, 0.10)",
+            }}
+          >
             {/* Rider Selector */}
             {(() => {
               const currentRider = RIDERS.find((r) => r.name === rider);
@@ -564,46 +673,63 @@ export default function JigPage() {
                   onClick={() => setRiderPickerOpen(true)}
                   className="flex items-center gap-3 active:scale-[0.98] transition"
                 >
-                  {/* Avatar with gradient ring */}
-                  <div className="w-[54px] h-[54px] rounded-full p-0.5 bg-gradient-to-br from-orange-400/70 to-blue-400/50 shadow-[0_10px_26px_rgba(0,0,0,0.12)]">
-                    <div className="w-full h-full rounded-full overflow-hidden">
+                  {/* Avatar */}
+                  <div className={`relative p-[2px] rounded-2xl backdrop-blur-sm border ${isDark ? "bg-[#252525] border-b-2 border-b-[#ff6b2c]" : "bg-[rgba(30,51,49,0.12)] border-[rgba(0,0,0,0.08)]"} ring-1 ${isDark ? "ring-[rgba(255,255,255,0.05)]" : "ring-[rgba(30,51,49,0.20)]"} shadow-[0_8px_20px_rgba(0,0,0,0.12)]`}>
+                    <div className={`w-[50px] h-[50px] rounded-xl overflow-hidden border ${isDark ? "bg-[#1e1e1e] border-[rgba(255,255,255,0.08)]" : "bg-[#1e3331] border-[rgba(255,255,255,0.1)]"}`}>
                       {currentRider?.image ? (
                         <img src={currentRider.image} alt={rider} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full bg-gradient-to-tr from-orange-500 to-amber-400 flex items-center justify-center">
+                        <div className={`w-full h-full flex items-center justify-center ${isDark ? "bg-[linear-gradient(180deg,#ff8a50_0%,#ff6b2c_100%)]" : "bg-[linear-gradient(180deg,#f0714a_0%,#e94e1b_100%)]"}`}>
                           <span className="text-sm font-bold text-white">{rider?.[0] || "?"}</span>
                         </div>
                       )}
                     </div>
                   </div>
                   {/* Rider name */}
-                  <span className="font-bold tracking-[0.10em] text-foreground/90">{rider?.toUpperCase()}</span>
+                  <span className={`font-bold tracking-[0.10em] ${colors.riderName}`}>{rider?.toUpperCase()}</span>
                 </button>
               );
             })()}
 
-            {/* Bike Type Segmented Control - Glass Pill */}
-            <div className="grid grid-flow-col gap-1 p-1 rounded-2xl bg-white/50 dark:bg-white/[0.06] border border-black/10 dark:border-white/[0.10]">
-              {BIKE_TYPES.map((bt) => (
+            {/* Bike Selector */}
+            {(() => {
+              const currentBike = BIKE_TYPES.find((b) => b.id === bikeType);
+              return (
                 <button
-                  key={bt.id}
-                  onClick={() => switchBikeType(bt.id)}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition ${
-                    bikeType === bt.id
-                      ? "bg-orange-500 text-white shadow-[0_8px_16px_rgba(255,106,0,0.25)]"
-                      : "text-foreground/55 hover:text-foreground/70"
-                  }`}
+                  onClick={() => setBikePickerOpen(true)}
+                  className="flex items-center gap-3 active:scale-[0.98] transition"
                 >
-                  {bt.label}
+                  {/* Bike name */}
+                  <span className={`font-bold tracking-[0.10em] ${isDark ? "text-white" : "text-[#1e3331]"}`}>{currentBike?.label?.toUpperCase()}</span>
+                  {/* Bike thumbnail with glass tile */}
+                  <div className={`relative p-[2px] rounded-2xl backdrop-blur-sm border ring-1 ${
+                    isDark
+                      ? "bg-[#252525] border-b-2 border-b-[#ff6b2c] ring-[rgba(255,255,255,0.05)] shadow-[0_8px_20px_rgba(0,0,0,0.12)]"
+                      : "bg-[rgba(30,51,49,0.12)] border-[rgba(0,0,0,0.08)] ring-[rgba(30,51,49,0.20)] shadow-[0_8px_20px_rgba(0,0,0,0.12)]"
+                  }`}>
+                    <div className={`w-[50px] h-[50px] rounded-xl overflow-hidden flex items-center justify-center border ${
+                      isDark
+                        ? "bg-[#1e1e1e] border-[rgba(255,255,255,0.05)]"
+                        : "bg-[rgba(255,255,255,0.70)] border-[rgba(0,0,0,0.06)]"
+                    }`}>
+                      {currentBike?.image ? (
+                        <img src={currentBike.image} alt={currentBike.label} className="w-[42px] h-[42px] object-contain" />
+                      ) : (
+                        <div className="w-full h-full bg-[linear-gradient(180deg,#f0714a_0%,#e94e1b_100%)] flex items-center justify-center">
+                          <span className="text-sm font-bold text-white">{currentBike?.label?.[0] || "?"}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </button>
-              ))}
-            </div>
+              );
+            })()}
           </div>
         </div>
 
         {/* Status indicators */}
         {offline && (
-          <div className="mb-4 px-4 py-3 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-amber-600 dark:text-amber-400 text-sm flex items-center gap-2">
+          <div className={`mb-4 px-4 py-3 rounded-2xl border text-sm flex items-center gap-2 ${colors.alertBg} ${colors.alertBorder} ${colors.alertText}`}>
             <WifiOff size={16} /> Offline — saves will queue
           </div>
         )}
@@ -621,7 +747,7 @@ export default function JigPage() {
         )}
 
         {editingId && (
-          <div className="mb-4 px-4 py-3 rounded-2xl bg-blue-500/5 border border-blue-500/10 text-blue-600 dark:text-blue-400 text-sm flex items-center justify-between">
+          <div className={`mb-4 px-4 py-3 rounded-2xl border text-sm flex items-center justify-between ${colors.editBannerBg} ${colors.editBannerBorder} ${colors.editBannerText}`}>
             <span>Editing history entry</span>
             <button onClick={cancelEdit} className="text-xs font-semibold underline">
               Cancel
@@ -633,25 +759,18 @@ export default function JigPage() {
         {loading ? (
           <div className="space-y-4">
             {[1, 2].map((i) => (
-              <div key={i} className="h-16 bg-black/[0.02] dark:bg-white/[0.02] rounded-3xl animate-pulse" />
+              <div key={i} className={`h-16 rounded-3xl animate-pulse ${isDark ? "bg-[#1e1e1e]" : "bg-[rgba(30,51,49,0.04)]"}`} />
             ))}
           </div>
         ) : (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-3"
+            className="space-y-2"
           >
-            <SpecSection title="MEASUREMENTS" defaultOpen={true}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div
-                  className="rounded-2xl p-3"
-                  style={{
-                    backgroundColor: "rgba(255,255,255,0.45)",
-                    border: "1px solid rgba(0,0,0,0.06)",
-                    boxShadow: "0 2px 6px rgba(0,0,0,0.03)"
-                  }}
-                >
+            <SpecSection key={`measurements-${sectionResetKey}`} title="MEASUREMENTS" defaultOpen={false} theme={theme}>
+              <div className="grid grid-cols-2 gap-2">
+                <div className={`rounded-xl p-2 border shadow-[0_2px_6px_rgba(0,0,0,0.03)] ${colors.inputWrapBg} ${colors.inputWrapBorder}`}>
                   <SpecField
                     label="Saddle Setback (mm)"
                     value={form.saddleSetback}
@@ -659,17 +778,11 @@ export default function JigPage() {
                     placeholder="e.g. 45"
                     inputMode="decimal"
                     pattern="[0-9]*[.,]?[0-9]*"
+                    theme={theme}
                   />
                 </div>
 
-                <div
-                  className="rounded-2xl p-3"
-                  style={{
-                    backgroundColor: "rgba(255,255,255,0.45)",
-                    border: "1px solid rgba(0,0,0,0.06)",
-                    boxShadow: "0 2px 6px rgba(0,0,0,0.03)"
-                  }}
-                >
+                <div className={`rounded-xl p-2 border shadow-[0_2px_6px_rgba(0,0,0,0.03)] ${colors.inputWrapBg} ${colors.inputWrapBorder}`}>
                   <SpecField
                     label="Height at 4cm (mm)"
                     value={form.height4cm}
@@ -677,17 +790,11 @@ export default function JigPage() {
                     placeholder="e.g. 745"
                     inputMode="decimal"
                     pattern="[0-9]*[.,]?[0-9]*"
+                    theme={theme}
                   />
                 </div>
 
-                <div
-                  className="rounded-2xl p-3"
-                  style={{
-                    backgroundColor: "rgba(255,255,255,0.45)",
-                    border: "1px solid rgba(0,0,0,0.06)",
-                    boxShadow: "0 2px 6px rgba(0,0,0,0.03)"
-                  }}
-                >
+                <div className={`rounded-xl p-2 border shadow-[0_2px_6px_rgba(0,0,0,0.03)] ${colors.inputWrapBg} ${colors.inputWrapBorder}`}>
                   <SpecField
                     label="Height at 15cm (mm)"
                     value={form.height15cm}
@@ -695,33 +802,21 @@ export default function JigPage() {
                     placeholder="e.g. 750"
                     inputMode="decimal"
                     pattern="[0-9]*[.,]?[0-9]*"
+                    theme={theme}
                   />
                 </div>
 
-                <div
-                  className="rounded-2xl p-3"
-                  style={{
-                    backgroundColor: "rgba(255,255,255,0.45)",
-                    border: "1px solid rgba(0,0,0,0.06)",
-                    boxShadow: "0 2px 6px rgba(0,0,0,0.03)"
-                  }}
-                >
+                <div className={`rounded-xl p-2 border shadow-[0_2px_6px_rgba(0,0,0,0.03)] ${colors.inputWrapBg} ${colors.inputWrapBorder}`}>
                   <SpecField
                     label="Location"
                     value={form.location}
                     onChange={(v) => setField("location", v)}
                     placeholder="e.g. Team truck / Hotel"
+                    theme={theme}
                   />
                 </div>
 
-                <div
-                  className="rounded-2xl p-3 md:col-span-2"
-                  style={{
-                    backgroundColor: "rgba(255,255,255,0.45)",
-                    border: "1px solid rgba(0,0,0,0.06)",
-                    boxShadow: "0 2px 6px rgba(0,0,0,0.03)"
-                  }}
-                >
+                <div className={`rounded-xl p-2 col-span-2 border shadow-[0_2px_6px_rgba(0,0,0,0.03)] ${colors.inputWrapBg} ${colors.inputWrapBorder}`}>
                   <SpecField
                     label="Notes"
                     value={form.notes}
@@ -730,6 +825,7 @@ export default function JigPage() {
                     textarea
                     rows={3}
                     fullWidth
+                    theme={theme}
                   />
                 </div>
               </div>
@@ -737,38 +833,42 @@ export default function JigPage() {
           </motion.div>
         )}
 
-        {/* History Section - Table Layout */}
+        {/* History Section */}
         <div className="mt-8">
-          <h2 className="text-xs font-semibold tracking-[0.15em] uppercase mb-4 font-sans dark:text-white/40" style={{ color: "#71717a" }}>
+          <h2 className={`text-xs font-semibold tracking-[0.15em] uppercase mb-4 ${colors.sectionHeader}`}>
             Jig History
           </h2>
 
           {historyLoading ? (
-            <div className="h-32 bg-black/[0.02] dark:bg-white/[0.02] rounded-[26px] animate-pulse" />
+            <div className={`p-4 rounded-[26px] ${isDark ? "bg-[#1e1e1e]" : "bg-[rgba(30,51,49,0.04)]"}`}>
+              <SkeletonList rows={3} />
+            </div>
           ) : historyRows.length ? (
-            <div
-              className="rounded-[26px] border border-black/10 dark:border-white/[0.10] bg-white/[0.62] dark:bg-white/[0.06] backdrop-blur-[14px] shadow-[0_10px_30px_rgba(0,0,0,0.08)] overflow-hidden"
-            >
-              <div className="overflow-x-auto font-sans">
+            <div className={`rounded-[26px] border backdrop-blur-sm ring-1 ${isDark ? "ring-[rgba(255,255,255,0.05)]" : "ring-[rgba(30,51,49,0.10)]"} ${colors.cardBg} ${colors.cardBorder} ${colors.cardShadow} overflow-hidden`}>
+              <div
+                className={`overflow-x-auto font-sans ${isDark ? "scrollbar-dark" : "scrollbar-light"}`}
+                style={{
+                  scrollbarWidth: "thin",
+                  scrollbarColor: isDark ? "#555 #252525" : "#bbb #e8e4dc",
+                }}
+              >
                 <table className="w-full min-w-[640px]" style={{ borderCollapse: "collapse" }}>
                   <thead>
-                    <tr style={{ borderBottom: "1px solid rgba(0,0,0,0.15)", backgroundColor: "rgba(0,0,0,0.02)" }}>
-                      <th className="text-left px-4 py-3 text-xs font-semibold dark:text-white/50" style={{ color: "#71717a", borderRight: "1px solid rgba(0,0,0,0.1)" }}>Date</th>
-                      <th className="text-center px-3 py-3 text-xs font-semibold dark:text-white/50" style={{ color: "#71717a", borderRight: "1px solid rgba(0,0,0,0.1)" }}>SB</th>
-                      <th className="text-center px-2 py-3 text-xs font-semibold dark:text-white/50" style={{ color: "#71717a", borderRight: "1px solid rgba(0,0,0,0.1)" }}>Δ</th>
-                      <th className="text-center px-3 py-3 text-xs font-semibold dark:text-white/50" style={{ color: "#71717a", borderRight: "1px solid rgba(0,0,0,0.1)" }}>4cm</th>
-                      <th className="text-center px-2 py-3 text-xs font-semibold dark:text-white/50" style={{ color: "#71717a", borderRight: "1px solid rgba(0,0,0,0.1)" }}>Δ</th>
-                      <th className="text-center px-3 py-3 text-xs font-semibold dark:text-white/50" style={{ color: "#71717a", borderRight: "1px solid rgba(0,0,0,0.1)" }}>15cm</th>
-                      <th className="text-center px-2 py-3 text-xs font-semibold dark:text-white/50" style={{ color: "#71717a", borderRight: "1px solid rgba(0,0,0,0.1)" }}>Δ</th>
-                      <th className="text-left px-3 py-3 text-xs font-semibold dark:text-white/50" style={{ color: "#71717a" }}>Notes</th>
-                      {isAdmin && <th className="px-2 py-3" style={{ borderLeft: "1px solid rgba(0,0,0,0.1)" }}></th>}
+                    <tr className={`border-b ${colors.tableBorder} ${colors.tableHeaderBg}`}>
+                      <th className={`text-left px-4 py-3 text-xs font-semibold border-r ${colors.tableBorder} ${colors.tableHeaderText}`}>Date</th>
+                      <th className={`text-center px-3 py-3 text-xs font-semibold border-r ${colors.tableBorder} ${colors.tableHeaderText}`}>SB</th>
+                      <th className={`text-center px-2 py-3 text-xs font-semibold border-r ${colors.tableBorder} ${colors.tableHeaderText}`}>Δ</th>
+                      <th className={`text-center px-3 py-3 text-xs font-semibold border-r ${colors.tableBorder} ${colors.tableHeaderText}`}>4cm</th>
+                      <th className={`text-center px-2 py-3 text-xs font-semibold border-r ${colors.tableBorder} ${colors.tableHeaderText}`}>Δ</th>
+                      <th className={`text-center px-3 py-3 text-xs font-semibold border-r ${colors.tableBorder} ${colors.tableHeaderText}`}>15cm</th>
+                      <th className={`text-center px-2 py-3 text-xs font-semibold border-r ${colors.tableBorder} ${colors.tableHeaderText}`}>Δ</th>
+                      <th className={`text-left px-3 py-3 text-xs font-semibold ${colors.tableHeaderText}`}>Notes</th>
+                      {isAdmin && <th className={`px-2 py-3 border-l ${colors.tableBorder}`}></th>}
                     </tr>
                   </thead>
                   <tbody>
                     {historyRows.map((row, idx) => {
                       const rowKey = row.id || row.timestamp;
-
-                      // Calculate deltas
                       const base = rollingBaselineForIndex(historyRows, idx);
                       const sb = toNum(row.saddle_setback);
                       const h4 = toNum(row.height_4cm);
@@ -777,66 +877,62 @@ export default function JigPage() {
                       const d4 = base ? diff(h4, base.h4) : null;
                       const d15 = base ? diff(h15, base.h15) : null;
 
+                      const rowBg = isDark ? (idx % 2 === 0 ? colors.tableRowOdd : colors.tableRowEven) : "";
+
                       return (
-                        <tr key={rowKey} style={{ borderBottom: idx < historyRows.length - 1 ? "1px solid rgba(0,0,0,0.1)" : "none" }}>
-                          {/* Date column */}
-                          <td className="px-4 py-3 align-top" style={{ borderRight: "1px solid rgba(0,0,0,0.1)" }}>
-                            <div className="font-bold text-sm dark:text-white" style={{ color: "#18181b" }}>{formatDateShort(row.timestamp)}</div>
-                            <div className="text-xs dark:text-white/50" style={{ color: "#71717a" }}>{formatTime(row.timestamp)}</div>
-                            {row.location && <div className="text-xs dark:text-white/40" style={{ color: "#71717a" }}>{row.location}</div>}
-                            {row.mechanic && <div className="text-xs dark:text-white/40" style={{ color: "#71717a" }}>By {row.mechanic}</div>}
+                        <tr key={rowKey} className={`border-b ${colors.tableBorder} ${rowBg}`}>
+                          <td className={`px-4 py-3 align-top border-r ${colors.tableBorder}`}>
+                            <div className={`font-bold text-base ${colors.tableText}`}>{formatDateShort(row.timestamp)}</div>
+                            <div className={`text-[11px] mt-0.5 ${colors.tableSecondary}`}>{formatTime(row.timestamp)}</div>
+                            {row.location && <div className={`text-[11px] ${colors.tableSecondary}`}>{row.location}</div>}
+                            {row.mechanic && <div className={`text-[11px] ${colors.tableSecondary}`}>By {row.mechanic}</div>}
                           </td>
 
-                          {/* SB + Delta */}
-                          <td className="px-3 py-3 text-center align-middle" style={{ borderRight: "1px solid rgba(0,0,0,0.1)" }}>
-                            <span className="font-bold dark:text-white tabular-nums" style={{ color: "#18181b" }}>{fmtNum(sb)}</span>
+                          <td className={`px-3 py-3 text-center align-middle border-r ${colors.tableBorder}`}>
+                            <span className={`font-bold font-mono tabular-nums ${colors.tableText}`}>{fmtNum(sb)}</span>
                           </td>
-                          <td className="px-2 py-3 text-center align-middle" style={{ borderRight: "1px solid rgba(0,0,0,0.1)" }}>
-                            <DeltaCell delta={dSB} />
-                          </td>
-
-                          {/* 4cm + Delta */}
-                          <td className="px-3 py-3 text-center align-middle" style={{ borderRight: "1px solid rgba(0,0,0,0.1)" }}>
-                            <span className="font-bold dark:text-white tabular-nums" style={{ color: "#18181b" }}>{fmtNum(h4)}</span>
-                          </td>
-                          <td className="px-2 py-3 text-center align-middle" style={{ borderRight: "1px solid rgba(0,0,0,0.1)" }}>
-                            <DeltaCell delta={d4} />
+                          <td className={`px-2 py-3 text-center align-middle border-r ${colors.tableBorder}`}>
+                            <DeltaCell delta={dSB} isDark={isDark} />
                           </td>
 
-                          {/* 15cm + Delta */}
-                          <td className="px-3 py-3 text-center align-middle" style={{ borderRight: "1px solid rgba(0,0,0,0.1)" }}>
-                            <span className="font-bold dark:text-white tabular-nums" style={{ color: "#18181b" }}>{fmtNum(h15)}</span>
+                          <td className={`px-3 py-3 text-center align-middle border-r ${colors.tableBorder}`}>
+                            <span className={`font-bold font-mono tabular-nums ${colors.tableText}`}>{fmtNum(h4)}</span>
                           </td>
-                          <td className="px-2 py-3 text-center align-middle" style={{ borderRight: "1px solid rgba(0,0,0,0.1)" }}>
-                            <DeltaCell delta={d15} />
+                          <td className={`px-2 py-3 text-center align-middle border-r ${colors.tableBorder}`}>
+                            <DeltaCell delta={d4} isDark={isDark} />
                           </td>
 
-                          {/* Notes */}
+                          <td className={`px-3 py-3 text-center align-middle border-r ${colors.tableBorder}`}>
+                            <span className={`font-bold font-mono tabular-nums ${colors.tableText}`}>{fmtNum(h15)}</span>
+                          </td>
+                          <td className={`px-2 py-3 text-center align-middle border-r ${colors.tableBorder}`}>
+                            <DeltaCell delta={d15} isDark={isDark} />
+                          </td>
+
                           <td className="px-3 py-3 align-middle max-w-[180px]">
                             {row.notes ? (
-                              <span className="text-sm dark:text-white/70 italic line-clamp-2" style={{ color: "#3f3f46" }}>"{row.notes}"</span>
+                              <span className={`text-sm line-clamp-2 ${colors.notesText}`}>"{row.notes}"</span>
                             ) : (
-                              <span className="dark:text-white/20" style={{ color: "#a1a1aa" }}>—</span>
+                              <span className={colors.emptyText}>—</span>
                             )}
                           </td>
 
-                          {/* Admin actions */}
                           {isAdmin && (
-                            <td className="px-2 py-3 align-middle" style={{ borderLeft: "1px solid rgba(0,0,0,0.1)" }}>
+                            <td className={`px-2 py-3 align-middle border-l ${colors.tableBorder}`}>
                               {row.id && (
                                 <div className="flex items-center gap-1">
                                   <button
                                     type="button"
                                     onClick={() => startEditFromRow(row)}
-                                    className="rounded-lg border border-orange-500/30 bg-orange-500/10 p-2 hover:bg-orange-500/20 transition"
+                                    className={`rounded-lg border p-2 transition ${isDark ? "border-[#ff6b2c]/30 bg-[#ff6b2c]/10 hover:bg-[#ff6b2c]/20" : "border-[rgba(233,78,27,0.25)] bg-[rgba(233,78,27,0.10)] hover:bg-[rgba(233,78,27,0.15)]"}`}
                                   >
-                                    <Pencil size={14} className="text-orange-500" />
+                                    <Pencil size={14} className="text-[#ff6b2c]" />
                                   </button>
                                   <button
                                     type="button"
                                     disabled={savingAdmin}
                                     onClick={() => adminDeleteRow(row)}
-                                    className="rounded-lg border border-red-500/30 bg-red-500/10 p-2 hover:bg-red-500/20 transition"
+                                    className="rounded-lg border border-[rgba(239,68,68,0.25)] bg-[rgba(239,68,68,0.10)] p-2 hover:bg-[rgba(239,68,68,0.15)] transition"
                                   >
                                     <Trash2 size={14} className="text-red-500" />
                                   </button>
@@ -852,62 +948,64 @@ export default function JigPage() {
               </div>
             </div>
           ) : (
-            <div className="text-sm dark:text-white/30 py-6 text-center" style={{ color: "#a1a1aa" }}>No history yet</div>
+            <EmptyStatePreset preset="jig" compact />
           )}
         </div>
       </div>
 
       {/* Floating Save Button */}
       <button
-        disabled={!canSave}
+        disabled={!canSave || saving}
         onClick={handleSave}
-        className={`fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-lg ${
-          !canSave
-            ? "bg-foreground/10 text-foreground/30 cursor-not-allowed"
-            : "bg-orange-500 text-white active:scale-95 shadow-orange-500/30"
+        className={`fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6 z-30 rounded-full flex items-center justify-center transition-all duration-300 ${
+          saving
+            ? "w-20 h-20 bg-white text-[#e94e1b] shadow-[0_0_40px_rgba(233,78,27,0.60)] animate-pulse scale-110"
+            : !canSave
+              ? `w-14 h-14 ${isDark ? "bg-[#252525] text-[#666666]" : "bg-[rgba(30,51,49,0.10)] text-[#8A9A94]"} cursor-not-allowed`
+              : "w-14 h-14 bg-[linear-gradient(180deg,#f0714a_0%,#e94e1b_100%)] text-white shadow-[0_8px_24px_rgba(233,78,27,0.40)] active:scale-95"
         }`}
       >
-        <Save size={22} />
+        <Save size={saving ? 28 : 22} className={saving ? "animate-spin" : ""} />
       </button>
 
       {/* Deviation Warning Modal */}
       {warnOpen && warnInfo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={cancelWarn} />
-          <div className="relative bg-background dark:bg-zinc-900 rounded-3xl border border-black/10 dark:border-white/10 shadow-2xl max-w-md w-full p-6">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={cancelWarn} />
+          <div className={`relative rounded-3xl border shadow-2xl max-w-md w-full p-6 ${isDark ? "bg-[#1e1e1e] border-[#2a2a2a]" : "bg-[rgba(232,228,220,0.98)] border-[rgba(0,0,0,0.08)]"}`}>
             <div className="flex items-start justify-between gap-3 mb-4">
               <div className="flex items-start gap-3">
-                <div className="rounded-2xl bg-red-500/10 border border-red-500/20 p-2">
+                <div className="rounded-2xl bg-[rgba(239,68,68,0.10)] border border-[rgba(239,68,68,0.20)] p-2">
                   <AlertTriangle className="text-red-500" size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-foreground dark:text-white">Significant change detected</h3>
-                  <p className="text-xs text-foreground/50 dark:text-white/50 mt-1">
+                  <h3 className={`text-lg font-bold ${isDark ? "text-white" : "text-[#1e3331]"}`}>Significant change detected</h3>
+                  <p className={`text-xs mt-1 ${isDark ? "text-[#888888]" : "text-[#5A7A70]"}`}>
                     Compared to the last saved jig update
                     {warnInfo.prevWhen ? ` (${warnInfo.prevWhen.toLocaleString()})` : ""}.
                     Threshold: <span className="font-bold">{warnInfo.threshold}mm</span>
                   </p>
                 </div>
               </div>
-              <button onClick={cancelWarn} className="p-2 rounded-full bg-foreground/5 dark:bg-white/10">
-                <X size={18} className="text-foreground/50 dark:text-white/50" />
+              <button onClick={cancelWarn} className={`p-2 rounded-full ${isDark ? "bg-[#252525]" : "bg-[rgba(30,51,49,0.08)]"}`}>
+                <X size={18} className={isDark ? "text-[#888888]" : "text-[#5A7A70]"} />
               </button>
             </div>
 
-            <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-4 mb-4">
+            <div className="rounded-2xl border border-[rgba(239,68,68,0.20)] bg-[rgba(239,68,68,0.05)] p-4 mb-4">
               <div className="space-y-2 text-sm">
                 {warnInfo.flagged.slice(0, 3).map((d) => (
                   <div key={d.key} className="flex items-center justify-between gap-3">
-                    <span className="text-foreground/70 dark:text-white/70">{d.label}</span>
+                    <span className={isDark ? "text-[#888888]" : "text-[#5A7A70]"}>{d.label}</span>
                     <div className="text-right">
-                      <span className="font-bold text-foreground dark:text-white tabular-nums">{fmtNum(d.next)}mm</span>
-                      <span className="text-foreground/40 dark:text-white/40"> (was {fmtNum(d.prev)}mm)</span>
-                      <span className="ml-2 font-bold text-red-500 tabular-nums">{fmtSigned(d.diff)}mm</span>
+                      <span className={`font-bold font-mono tabular-nums ${isDark ? "text-white" : "text-[#1e3331]"}`}>{fmtNum(d.next)}mm</span>
+                      <span className={isDark ? "text-[#666666]" : "text-[#8A9A94]"}> (was {fmtNum(d.prev)}mm)</span>
+                      <span className="ml-2 font-bold font-mono tabular-nums text-red-500">{fmtSigned(d.diff)}mm</span>
                     </div>
                   </div>
                 ))}
               </div>
-              <p className="mt-3 text-xs text-red-600/70 dark:text-red-400/70 italic">
+              <p className="mt-3 text-xs text-red-500/70 italic">
                 If this is intentional, continue. If not, cancel and re-check the jig.
               </p>
             </div>
@@ -915,13 +1013,13 @@ export default function JigPage() {
             <div className="flex gap-2">
               <button
                 onClick={cancelWarn}
-                className="flex-1 px-4 py-3 rounded-2xl bg-foreground/5 dark:bg-white/10 text-foreground dark:text-white font-semibold"
+                className={`flex-1 px-4 py-3 rounded-2xl font-semibold ${isDark ? "bg-[#252525] text-white" : "bg-[rgba(30,51,49,0.08)] text-[#1e3331]"}`}
               >
                 Cancel
               </button>
               <button
                 onClick={confirmSaveAnyway}
-                className="flex-1 px-4 py-3 rounded-2xl bg-orange-500 text-white font-semibold flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-3 rounded-2xl bg-[linear-gradient(180deg,#f0714a_0%,#e94e1b_100%)] text-white font-semibold flex items-center justify-center gap-2"
               >
                 <Save size={18} /> Save anyway
               </button>
@@ -933,66 +1031,199 @@ export default function JigPage() {
       {/* Rider Picker Drawer */}
       <Drawer.Root open={riderPickerOpen} onOpenChange={setRiderPickerOpen}>
         <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 bg-black/10 z-40" />
-          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 outline-none">
-            <div className="bg-background dark:bg-zinc-900 rounded-t-3xl border-t border-black/[0.06] dark:border-white/10">
-              {/* Drag handle */}
-              <div className="flex justify-center pt-4 pb-2">
-                <div className="w-10 h-1 rounded-full bg-foreground/20 dark:bg-white/20" />
-              </div>
+          <Drawer.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
+          <Drawer.Content
+            className={`flex flex-col rounded-t-[20px] fixed bottom-0 left-0 right-0 z-50 outline-none border-t`}
+            style={{
+              background: isDark ? colors.modalBg : `radial-gradient(400px 300px at 50% 100%, rgba(30,51,49,0.15), transparent 70%), ${colors.modalBg}`,
+              borderColor: colors.modalBorder,
+            }}
+          >
+            <div className="p-4 rounded-t-[20px] flex-none">
+              <div className={`mx-auto w-12 h-1.5 flex-shrink-0 rounded-full ${colors.modalHandle}`} />
+            </div>
 
-              {/* Title */}
-              <div className="px-6 pb-4">
-                <h3 className="text-xl font-bold text-foreground dark:text-white">Select Rider</h3>
-              </div>
+            <div className="text-center pb-4">
+              <p className={`text-[10px] uppercase font-semibold tracking-[0.3em] ${colors.modalHeader}`}>
+                Tap Rider &rarr; Switch
+              </p>
+            </div>
 
-              {/* Rider list with avatars */}
-              <div className="px-4 pb-8 grid grid-cols-2 gap-3">
-                {RIDERS.map((r) => (
-                  <button
+            <div className="px-4 pb-6">
+              <div className="flex justify-center gap-4 mb-6">
+                {RIDERS.slice(0, 3).map((r) => (
+                  <Avatar
                     key={r.id}
+                    name={r.name}
+                    initial={r.name[0]}
+                    image={r.image}
+                    selected={rider === r.name}
                     onClick={() => switchRider(r.name)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition active:scale-[0.98] ${
-                      rider === r.name
-                        ? "bg-orange-500/10 border-orange-500/20"
-                        : "bg-black/[0.02] dark:bg-white/[0.03] border-black/[0.03] dark:border-white/[0.05]"
-                    }`}
+                    theme={theme}
+                  />
+                ))}
+              </div>
+
+              <div className="flex justify-center gap-4">
+                {RIDERS.slice(3).map((r) => (
+                  <Avatar
+                    key={r.id}
+                    name={r.name}
+                    initial={r.name[0]}
+                    image={r.image}
+                    selected={rider === r.name}
+                    onClick={() => switchRider(r.name)}
+                    theme={theme}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="h-[env(safe-area-inset-bottom)]" />
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
+
+      {/* Bike Picker Drawer */}
+      <Drawer.Root open={bikePickerOpen} onOpenChange={setBikePickerOpen}>
+        <Drawer.Portal>
+          <Drawer.Overlay className={`fixed inset-0 backdrop-blur-sm z-50 ${isDark ? "bg-black/60" : "bg-black/40"}`} />
+          <Drawer.Content
+            className={`flex flex-col rounded-t-[32px] fixed bottom-0 left-0 right-0 z-50 outline-none border-t ${
+              isDark ? "border-[#2a2a2a]" : "border-[rgba(0,0,0,0.08)]"
+            }`}
+            style={{
+              background: isDark
+                ? "#1e1e1e"
+                : "radial-gradient(400px 300px at 50% 100%, rgba(30,51,49,0.15), transparent 70%)," +
+                  "rgba(232,228,220,0.98)",
+            }}
+          >
+            {/* Drag handle */}
+            <div className="p-4 rounded-t-[32px] flex-none">
+              <div className={`mx-auto w-12 h-1.5 flex-shrink-0 rounded-full ${
+                isDark ? "bg-[#444444]" : "bg-[rgba(30,51,49,0.15)]"
+              }`} />
+            </div>
+
+            {/* Instruction text */}
+            <div className="text-center pb-4">
+              <p className={`text-[10px] uppercase font-semibold tracking-[0.3em] ${
+                isDark ? "text-[#ff6b2c]" : "text-[#5A7A70] opacity-70"
+              }`}>
+                Tap Bike &rarr; Switch
+              </p>
+            </div>
+
+            {/* Bike Grid */}
+            <div className="px-4 pb-6">
+              <div className="flex justify-center gap-4 flex-wrap">
+                {BIKE_TYPES.map((b) => (
+                  <button
+                    key={b.id}
+                    onClick={() => {
+                      switchBikeType(b.id);
+                      setBikePickerOpen(false);
+                    }}
+                    className={`
+                      group flex flex-col items-center gap-3 w-[80px] flex-shrink-0
+                      focus-visible:outline-none focus-visible:ring-2 ${isDark ? "focus-visible:ring-[#ff6b2c]" : "focus-visible:ring-[rgba(233,78,27,0.55)]"}
+                    `}
                   >
-                    {/* Avatar */}
-                    <div className="w-8 h-8 rounded-full overflow-hidden">
-                      {r.image ? (
-                        <img src={r.image} alt={r.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-tr from-orange-500 to-amber-400 flex items-center justify-center">
-                          <span className="text-xs font-bold text-white">{r.name[0]}</span>
-                        </div>
-                      )}
+                    {/* Bike tile */}
+                    <div
+                      style={{
+                        boxShadow: isDark
+                          ? "0 4px 12px rgba(0, 0, 0, 0.4)"
+                          : "0 10px 28px rgba(0, 0, 0, 0.18)",
+                      }}
+                      className={[
+                        "relative p-[2px] rounded-2xl",
+                        "transition-all duration-200 ease-out",
+                        "group-hover:scale-[1.03] group-active:scale-[0.97]",
+                        isDark
+                          ? bikeType === b.id ? "bg-[#2a2a2a]" : "bg-[#1e1e1e]"
+                          : bikeType === b.id ? "bg-[rgba(30,51,49,0.18)]" : "bg-[rgba(30,51,49,0.12)]",
+                        "backdrop-blur-sm",
+                        isDark
+                          ? "border-transparent border-b-2 border-b-[#ff6b2c]"
+                          : "border border-[rgba(0,0,0,0.08)]",
+                        bikeType === b.id
+                          ? isDark ? "ring-1 ring-[#ff6b2c]" : "ring-1 ring-[rgba(233,78,27,0.50)]"
+                          : isDark ? "ring-0" : "ring-1 ring-[rgba(30,51,49,0.20)]",
+                        isDark
+                          ? "group-hover:shadow-[0_8px_24px_rgba(255,107,44,0.15)]"
+                          : "group-hover:shadow-[0_12px_32px_rgba(0,0,0,0.22)]",
+                      ].join(" ")}
+                    >
+                      <div
+                        className={`
+                          w-[70px] h-[70px] rounded-xl overflow-hidden flex items-center justify-center
+                          ${isDark ? "bg-[#1e1e1e] border border-[rgba(255,255,255,0.05)]" : "bg-[rgba(255,255,255,0.70)] border border-[rgba(0,0,0,0.06)]"}
+                        `}
+                      >
+                        {b.image ? (
+                          <img src={b.image} alt={b.label} className="w-[58px] h-[58px] object-contain" />
+                        ) : (
+                          <div className={`w-full h-full flex items-center justify-center ${
+                            isDark ? "bg-[#ff6b2c]" : "bg-[linear-gradient(180deg,#f0714a_0%,#e94e1b_100%)]"
+                          }`}>
+                            <span className="text-lg font-bold text-white">{b.label[0]}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <span className={`font-semibold ${rider === r.name ? "text-orange-600 dark:text-orange-400" : "text-foreground dark:text-white"}`}>
-                      {r.name}
+
+                    {/* Label */}
+                    <span
+                      style={{
+                        textShadow: isDark
+                          ? "0 1px 2px rgba(0,0,0,0.5)"
+                          : "0 1px 2px rgba(0,0,0,0.15)",
+                      }}
+                      className={[
+                        "text-sm font-semibold transition-colors duration-200 truncate max-w-full",
+                        bikeType === b.id
+                          ? isDark ? "text-[#ff6b2c]" : "text-[#e94e1b]"
+                          : isDark ? "text-white" : "text-[#1e3331]",
+                        isDark ? "group-hover:text-[#ff6b2c]" : "group-hover:text-[#e94e1b]",
+                      ].join(" ")}
+                    >
+                      {b.label}
                     </span>
                   </button>
                 ))}
               </div>
             </div>
+
+            {/* Bottom safe area padding */}
+            <div className="h-[env(safe-area-inset-bottom)]" />
           </Drawer.Content>
         </Drawer.Portal>
       </Drawer.Root>
+
+      {/* Compare Modal */}
+      <JigCompareModal
+        open={compareModalOpen}
+        onClose={() => setCompareModalOpen(false)}
+        defaultRider={rider}
+        defaultBike={bikeType}
+      />
     </div>
   );
 }
 
 // Delta cell component for history table
-function DeltaCell({ delta }) {
+function DeltaCell({ delta, isDark }) {
   if (delta === null || delta === undefined) {
-    return <span className="dark:text-white/20 tabular-nums" style={{ color: "#a1a1aa" }}>—</span>;
+    return <span className={`font-mono tabular-nums ${isDark ? "text-[#666666]" : "text-[#8A9A94]"}`}>—</span>;
   }
 
-  // Green for positive, red for negative, gray for zero
-  const colorStyle = delta > 0 ? "#22c55e" : delta < 0 ? "#ef4444" : "#a1a1aa";
+  // Green for positive, red for negative
+  const colorClass = delta > 0 ? "text-green-500" : delta < 0 ? "text-red-500" : (isDark ? "text-[#666666]" : "text-[#8A9A94]");
 
   return (
-    <span className="tabular-nums font-medium" style={{ color: colorStyle }}>
+    <span className={`font-mono tabular-nums font-medium ${colorClass}`}>
       {fmtSigned(delta)}
     </span>
   );

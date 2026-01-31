@@ -348,7 +348,7 @@ export default function SettingsPage() {
       style={{ backgroundColor: colors.pageBg }}
     >
       {/* Header */}
-      <header className="sticky top-0 z-40 backdrop-blur-sm border-b border-[#2a2a2a] bg-[rgba(18,18,18,0.85)]">
+      <header className="sticky top-0 z-40 backdrop-blur-sm border-b border-[#2a2a2a] bg-[rgba(18,18,18,0.85)] pt-[env(safe-area-inset-top)]">
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
           <button
             onClick={() => navigate(-1)}

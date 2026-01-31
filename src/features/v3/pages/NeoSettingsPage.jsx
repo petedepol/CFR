@@ -216,7 +216,7 @@ export default function NeoSettingsPage() {
         }}
       >
         {/* Header */}
-        <header className={`sticky top-0 z-40 px-4 py-3 flex items-center gap-3 backdrop-blur-sm border-b ${
+        <header className={`sticky top-0 z-40 px-4 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))] flex items-center gap-3 backdrop-blur-sm border-b ${
           isDark
             ? "bg-[rgba(18,18,18,0.85)] border-[#2a2a2a]"
             : "bg-[rgba(232,228,220,0.85)] border-[rgba(0,0,0,0.08)]"
@@ -287,7 +287,7 @@ export default function NeoSettingsPage() {
       }}
     >
       {/* Header */}
-      <header className={`sticky top-0 z-40 px-4 py-3 flex items-center justify-between backdrop-blur-sm border-b ${
+      <header className={`sticky top-0 z-40 px-4 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))] flex items-center justify-between backdrop-blur-sm border-b ${
         isDark
           ? "bg-[rgba(18,18,18,0.85)] border-[#2a2a2a]"
           : "bg-[rgba(232,228,220,0.85)] border-[rgba(0,0,0,0.08)]"

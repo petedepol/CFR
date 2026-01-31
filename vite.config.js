@@ -15,6 +15,18 @@ export default defineConfig({
         "icons/icon-512.png",
         "icons/apple-touch-icon.png",
         "icons/maskable-512.png",
+        // Rider avatars - precache for instant loading
+        "riders/ana.png",
+        "riders/charlie.png",
+        "riders/cole.png",
+        "riders/luca.png",
+        "riders/jolanda.png",
+        // Bike images
+        "bikes/race.png",
+        "bikes/training.png",
+        "bikes/ebike.png",
+        "bikes/road.png",
+        "bikes/cx.png",
       ],
       manifest: {
         name: "CFR Tools",

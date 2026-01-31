@@ -38,6 +38,13 @@ Quick saddle position checks using the team jig.
 - **Baseline comparison** shows deviation from rolling average
 - Yellow warning appears if measurements differ significantly (>4mm)
 
+### Compare Feature
+- Tap the **columns icon** in the header to compare JIG measurements
+- Select two rider/bike combinations
+- See side-by-side values with delta (difference) column
+- Green = Bike 2 higher, Red = Bike 2 lower
+- Use the **swap button** to flip the comparison
+
 ### Tips
 - Measurements auto-save as drafts while you type
 - If you go offline, drafts sync when back online
@@ -82,7 +89,7 @@ Race-day tire and suspension settings.
 
 **Tyres**
 - Front/Rear tyre model (e.g., "Maxxis Assegai")
-- Front/Rear pressure in PSI
+- Front/Rear pressure in PSI (comma auto-converts to decimal point)
 - Inserts (in Advanced section)
 
 **Suspension**
@@ -158,6 +165,32 @@ Track parts replaced and maintenance actions.
 
 ---
 
+## Settings
+
+Access settings via the **gear icon** in the bottom navigation.
+
+### Account
+- Shows logged-in user email
+- **Sign Out** button with confirmation dialog
+
+### Data Export (Admin Only)
+- Export JIG, Spec, Setup, or Service data
+- Filter by rider, bike type, and date range
+- Export as PDF or JSON
+
+### Digest (Admin Only)
+- Configure automated email summaries
+- Weekly or monthly frequency
+- Set recipients (coach, mechanic, rider emails)
+
+### App Info
+- Version number
+- Connection status
+- **Clear Local Cache** - removes offline data
+- **Send Feedback** link
+
+---
+
 ## Tips & Troubleshooting
 
 ### Offline Mode
@@ -191,6 +224,26 @@ Admins (based on your account) can:
 3. Use **notes** for anything unusual
 4. Check **history** before making changes to see baseline
 5. Log service actions **immediately** after completing work
+
+---
+
+---
+
+## Installing as App (iOS)
+
+For the best experience, add CFR Tools to your home screen:
+
+1. Open the app in **Safari** (not Chrome)
+2. Tap the **Share** button (square with arrow)
+3. Scroll down and tap **Add to Home Screen**
+4. Tap **Add** in the top right
+5. The app now works like a native app with full-screen mode
+
+### Benefits
+- Full-screen (no browser bar)
+- Works offline (cached data)
+- Faster loading
+- App icon on home screen
 
 ---
 

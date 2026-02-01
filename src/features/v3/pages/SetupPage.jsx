@@ -2,7 +2,7 @@
 // Race bike tire/suspension settings per rider with history
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams, useOutletContext } from "react-router-dom";
+import { useNavigate, useSearchParams, useOutletContext, useLocation } from "react-router-dom";
 import { ArrowLeft, Save, Wifi, WifiOff, Pencil, Trash2, Flag, ChevronDown, ChevronRight, X, Zap } from "lucide-react";
 import { Drawer } from "vaul";
 // eslint-disable-next-line no-unused-vars
@@ -230,6 +230,12 @@ export default function SetupPage() {
 
   // Rider picker state
   const [riderPickerOpen, setRiderPickerOpen] = useState(false);
+
+  // Close modals on navigation (fixes iOS swipe-back leaving modals open)
+  const location = useLocation();
+  useEffect(() => {
+    setRiderPickerOpen(false);
+  }, [location.pathname]);
 
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;
 

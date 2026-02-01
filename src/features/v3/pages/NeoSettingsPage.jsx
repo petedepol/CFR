@@ -2,7 +2,7 @@
 // Store screenshots of Neo settings per rider per bike type
 
 import { useEffect, useState, useRef } from "react";
-import { useNavigate, useSearchParams, useOutletContext } from "react-router-dom";
+import { useNavigate, useSearchParams, useOutletContext, useLocation } from "react-router-dom";
 import { ArrowLeft, Plus, X, Upload, ChevronDown, Loader2 } from "lucide-react";
 import { Drawer } from "vaul";
 // eslint-disable-next-line no-unused-vars
@@ -54,6 +54,16 @@ export default function NeoSettingsPage() {
   const [fullscreenImage, setFullscreenImage] = useState(null);
   const [editingTune, setEditingTune] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+  // Close modals on navigation (fixes iOS swipe-back leaving modals open)
+  const location = useLocation();
+  useEffect(() => {
+    setRiderPickerOpen(false);
+    setImportModalOpen(false);
+    setFullscreenImage(null);
+    setEditingTune(null);
+    setDeleteConfirm(null);
+  }, [location.pathname]);
 
   // Import form state
   const [importFile, setImportFile] = useState(null);

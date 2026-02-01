@@ -58,11 +58,20 @@ export default function NeoSettingsPage() {
   // Close modals on navigation (fixes iOS swipe-back leaving modals open)
   const location = useLocation();
   useEffect(() => {
-    setRiderPickerOpen(false);
-    setImportModalOpen(false);
-    setFullscreenImage(null);
-    setEditingTune(null);
-    setDeleteConfirm(null);
+    const closeAllModals = () => {
+      setRiderPickerOpen(false);
+      setImportModalOpen(false);
+      setFullscreenImage(null);
+      setEditingTune(null);
+      setDeleteConfirm(null);
+    };
+
+    // Close on route change
+    closeAllModals();
+
+    // Also listen to popstate for iOS swipe-back gesture
+    window.addEventListener('popstate', closeAllModals);
+    return () => window.removeEventListener('popstate', closeAllModals);
   }, [location.pathname]);
 
   // Import form state

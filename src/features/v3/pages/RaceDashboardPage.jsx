@@ -230,10 +230,13 @@ export default function RaceDashboardPage() {
   const [locationResult, setLocationResult] = useState(null);
   const locationInputRef = useRef(null);
 
-  // Close modals on navigation (fixes iOS swipe-back leaving modals open)
+  // Close location modal on navigation (fixes iOS swipe-back)
   const routeLocation = useLocation();
   useEffect(() => {
-    setLocationModalOpen(false);
+    const closeModal = () => setLocationModalOpen(false);
+    closeModal();
+    window.addEventListener('popstate', closeModal);
+    return () => window.removeEventListener('popstate', closeModal);
   }, [routeLocation.pathname]);
 
   // Auto-focus location input when modal opens
@@ -655,12 +658,18 @@ export default function RaceDashboardPage() {
 
   // Close modals on navigation (fixes iOS swipe-back leaving modals open)
   useEffect(() => {
-    setImportModalOpen(false);
-    setClearModalOpen(false);
-    setScheduleAddOpen(false);
-    setTodoAddOpen(false);
-    setNoteAddOpen(false);
-    setRiderDayModalOpen(false);
+    const closeAllModals = () => {
+      setImportModalOpen(false);
+      setClearModalOpen(false);
+      setScheduleAddOpen(false);
+      setTodoAddOpen(false);
+      setNoteAddOpen(false);
+      setRiderDayModalOpen(false);
+    };
+
+    closeAllModals();
+    window.addEventListener('popstate', closeAllModals);
+    return () => window.removeEventListener('popstate', closeAllModals);
   }, [routeLocation.pathname]);
 
   // Quick add form state

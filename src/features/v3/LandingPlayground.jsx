@@ -1,6 +1,6 @@
 // src/features/v3/LandingPlayground.jsx
 // V3 Landing Page - Dark theme (CFR Kit colors)
-// Premium polish: staggered animations, subtle glows, depth effects
+// Clean static layout without entrance animations for faster perceived load
 
 import { useNavigate, useLocation, useOutletContext } from "react-router-dom";
 import { motion } from "motion/react";
@@ -8,32 +8,6 @@ import { Toaster } from "sonner";
 import { Home, Users, Settings, LayoutDashboard } from "lucide-react";
 
 import { Avatar } from "./components/Avatar.jsx";
-
-// Card entrance animation variants
-const cardVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: (i) => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      delay: 0.3 + i * 0.07, // 70ms stagger
-      duration: 0.3,
-      ease: "easeOut",
-    },
-  }),
-};
-
-// Hint text pulse animation
-const pulseVariants = {
-  animate: {
-    opacity: [0.5, 1, 0.5],
-    transition: {
-      duration: 2.5,
-      repeat: Infinity,
-      ease: "easeInOut",
-    },
-  },
-};
 
 // Real CFR riders
 const RIDERS = [
@@ -74,10 +48,7 @@ export default function LandingPlayground() {
       <main className="max-w-lg mx-auto px-6 pt-16 pb-32 min-h-dvh flex flex-col">
         {/* Logo Header */}
         <section className="flex flex-col items-center pt-0 pb-8 mb-14">
-          <motion.img
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
+          <img
             src="/logos/cfr-logo-light.png"
             alt="Cannondale Factory Racing"
             className="h-[62px] w-auto brightness-0 invert drop-shadow-[0_4px_12px_rgba(255,255,255,0.10)]"
@@ -88,14 +59,8 @@ export default function LandingPlayground() {
         <div className="flex-1 flex flex-col items-center">
           {/* Top row - 3 riders */}
           <div className="flex justify-center gap-6 mb-10">
-            {RIDERS.slice(0, 3).map((rider, index) => (
-              <motion.div
-                key={rider.id}
-                custom={index}
-                variants={cardVariants}
-                initial="hidden"
-                animate="visible"
-              >
+            {RIDERS.slice(0, 3).map((rider) => (
+              <div key={rider.id}>
                 <Avatar
                   name={rider.name}
                   initial={rider.initial}
@@ -103,20 +68,14 @@ export default function LandingPlayground() {
                   theme="dark"
                   onClick={() => navigate(`/v3/setup?rider=${encodeURIComponent(rider.name)}`)}
                 />
-              </motion.div>
+              </div>
             ))}
           </div>
 
           {/* Bottom row - 2 riders, centered */}
           <div className="flex justify-center gap-6 mb-12">
-            {RIDERS.slice(3).map((rider, index) => (
-              <motion.div
-                key={rider.id}
-                custom={index + 3} // Continue stagger from top row
-                variants={cardVariants}
-                initial="hidden"
-                animate="visible"
-              >
+            {RIDERS.slice(3).map((rider) => (
+              <div key={rider.id}>
                 <Avatar
                   name={rider.name}
                   initial={rider.initial}
@@ -124,22 +83,16 @@ export default function LandingPlayground() {
                   theme="dark"
                   onClick={() => navigate(`/v3/setup?rider=${encodeURIComponent(rider.name)}`)}
                 />
-              </motion.div>
+              </div>
             ))}
           </div>
 
-          {/* Instruction text - pulsing animation */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate="animate"
-            variants={pulseVariants}
-            transition={{ delay: 0.8 }}
-            className="text-center"
-          >
-            <p className="text-[10px] uppercase font-semibold tracking-[0.3em] text-[#ff6b2c]">
+          {/* Instruction text */}
+          <div className="text-center">
+            <p className="text-[10px] uppercase font-semibold tracking-[0.3em] text-[#ff6b2c] opacity-80">
               Tap Rider &rarr; MTB Setup
             </p>
-          </motion.div>
+          </div>
         </div>
       </main>
 

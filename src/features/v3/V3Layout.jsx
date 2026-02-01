@@ -53,7 +53,7 @@ export default function V3Layout() {
 
   // Instantly hide modals on iOS swipe-back gesture via CSS
   useEffect(() => {
-    const handlePopState = () => {
+    const hideModals = () => {
       // Add class immediately to hide modals via CSS (faster than React state)
       document.body.classList.add('navigating-back');
       // Also close modal state
@@ -62,8 +62,33 @@ export default function V3Layout() {
       setSelectedBikeType(null);
     };
 
+    // Try multiple events to catch iOS swipe-back as early as possible
+    const handlePopState = () => hideModals();
+    const handlePageHide = () => hideModals();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') hideModals();
+    };
+
+    // iOS swipe-back starts from left edge - hide modals on edge touch
+    const handleTouchStart = (e) => {
+      const touch = e.touches[0];
+      // If touch starts within 20px of left edge, likely a swipe-back gesture
+      if (touch && touch.clientX < 20) {
+        hideModals();
+      }
+    };
+
     window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    window.addEventListener('pagehide', handlePageHide);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('pagehide', handlePageHide);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('touchstart', handleTouchStart);
+    };
   }, []);
 
   // Derive active tab from current path or modal state

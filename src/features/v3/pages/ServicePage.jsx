@@ -2,7 +2,7 @@
 // Track parts/actions per rider and bike with instant logging
 
 import { useEffect, useState, useMemo } from "react";
-import { useNavigate, useSearchParams, useOutletContext } from "react-router-dom";
+import { useNavigate, useSearchParams, useOutletContext, useLocation } from "react-router-dom";
 import { ArrowLeft, Wifi, WifiOff, History, Trophy, Trash2, ChevronDown } from "lucide-react";
 import { Drawer } from "vaul";
 
@@ -119,6 +119,15 @@ export default function ServicePage() {
   const [bikePickerOpen, setBikePickerOpen] = useState(false);
   const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
   const [leaderboardDrawerOpen, setLeaderboardDrawerOpen] = useState(false);
+
+  // Close modals on navigation (fixes iOS swipe-back leaving modals open)
+  const location = useLocation();
+  useEffect(() => {
+    setRiderPickerOpen(false);
+    setBikePickerOpen(false);
+    setHistoryDrawerOpen(false);
+    setLeaderboardDrawerOpen(false);
+  }, [location.pathname]);
 
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;
 

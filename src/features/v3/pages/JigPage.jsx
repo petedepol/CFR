@@ -3,7 +3,7 @@
 // Supports dark theme via useOutletContext
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams, useOutletContext } from "react-router-dom";
+import { useNavigate, useSearchParams, useOutletContext, useLocation } from "react-router-dom";
 import { ArrowLeft, Save, Wifi, WifiOff, Pencil, Trash2, AlertTriangle, X, Columns } from "lucide-react";
 import { Drawer } from "vaul";
 import { motion } from "motion/react";
@@ -163,6 +163,14 @@ export default function JigPage() {
   const [riderPickerOpen, setRiderPickerOpen] = useState(false);
   const [bikePickerOpen, setBikePickerOpen] = useState(false);
   const [compareModalOpen, setCompareModalOpen] = useState(false);
+
+  // Close modals on navigation (fixes iOS swipe-back leaving modals open)
+  const location = useLocation();
+  useEffect(() => {
+    setRiderPickerOpen(false);
+    setBikePickerOpen(false);
+    setCompareModalOpen(false);
+  }, [location.pathname]);
 
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;
 

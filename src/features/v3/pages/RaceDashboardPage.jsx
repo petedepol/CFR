@@ -3,7 +3,7 @@
 // Data persisted to Supabase with real-time sync across all mechanics
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext, useLocation } from "react-router-dom";
 import {
   ArrowLeft, ChevronLeft, ChevronRight, Cloud, Sun, CloudRain, Wind, Droplets,
   Plus, Check, Pin, Loader2, X, Trash2, StickyNote, MapPin,
@@ -229,6 +229,12 @@ export default function RaceDashboardPage() {
   const [locationSearching, setLocationSearching] = useState(false);
   const [locationResult, setLocationResult] = useState(null);
   const locationInputRef = useRef(null);
+
+  // Close modals on navigation (fixes iOS swipe-back leaving modals open)
+  const routeLocation = useLocation();
+  useEffect(() => {
+    setLocationModalOpen(false);
+  }, [routeLocation.pathname]);
 
   // Auto-focus location input when modal opens
   useEffect(() => {
@@ -646,6 +652,16 @@ export default function RaceDashboardPage() {
   // Rider day view modal
   const [riderDayModalOpen, setRiderDayModalOpen] = useState(false);
   const [selectedRider, setSelectedRider] = useState(null);
+
+  // Close modals on navigation (fixes iOS swipe-back leaving modals open)
+  useEffect(() => {
+    setImportModalOpen(false);
+    setClearModalOpen(false);
+    setScheduleAddOpen(false);
+    setTodoAddOpen(false);
+    setNoteAddOpen(false);
+    setRiderDayModalOpen(false);
+  }, [routeLocation.pathname]);
 
   // Quick add form state
   const [newScheduleTime, setNewScheduleTime] = useState("");

@@ -47,7 +47,24 @@ export default function V3Layout() {
     setIsRidersModalOpen(false);
     setRiderForBikeFlow(null);
     setSelectedBikeType(null);
+    // Remove navigating class after route change completes
+    document.body.classList.remove('navigating-back');
   }, [location.pathname]);
+
+  // Instantly hide modals on iOS swipe-back gesture via CSS
+  useEffect(() => {
+    const handlePopState = () => {
+      // Add class immediately to hide modals via CSS (faster than React state)
+      document.body.classList.add('navigating-back');
+      // Also close modal state
+      setIsRidersModalOpen(false);
+      setRiderForBikeFlow(null);
+      setSelectedBikeType(null);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Derive active tab from current path or modal state
   const getActiveTab = () => {

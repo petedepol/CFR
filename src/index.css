@@ -66,6 +66,15 @@ select {
   overscroll-behavior: contain;
 }
 
+/* Instantly hide vaul modals during iOS swipe-back navigation */
+body.navigating-back [data-vaul-drawer],
+body.navigating-back [data-vaul-overlay] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 /* Touch optimization - remove 300ms tap delay */
 button,
 a,

@@ -234,7 +234,16 @@ export default function SetupPage() {
   // Close modals on navigation (fixes iOS swipe-back leaving modals open)
   const location = useLocation();
   useEffect(() => {
-    setRiderPickerOpen(false);
+    const closeAllModals = () => {
+      setRiderPickerOpen(false);
+    };
+
+    // Close on route change
+    closeAllModals();
+
+    // Also listen to popstate for iOS swipe-back gesture
+    window.addEventListener('popstate', closeAllModals);
+    return () => window.removeEventListener('popstate', closeAllModals);
   }, [location.pathname]);
 
   const offline = typeof navigator !== "undefined" && navigator.onLine === false;

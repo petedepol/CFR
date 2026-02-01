@@ -40,8 +40,13 @@ export default function V3Layout() {
   const [selectedBikeType, setSelectedBikeType] = useState(null);
 
   // Scroll to top on route change (fixes mobile scroll position after login)
+  // Also close all modals to prevent hanging during swipe-back navigation
   useEffect(() => {
     window.scrollTo(0, 0);
+    // Close all modals when route changes
+    setIsRidersModalOpen(false);
+    setRiderForBikeFlow(null);
+    setSelectedBikeType(null);
   }, [location.pathname]);
 
   // Derive active tab from current path or modal state

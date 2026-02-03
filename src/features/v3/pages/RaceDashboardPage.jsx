@@ -17,6 +17,15 @@ import { supabase } from "../../../lib/supabaseClient";
 // Rider names for smart parsing
 const RIDER_NAMES = ["Ana", "Charlie", "Cole", "Luca", "Jolanda"];
 
+// Rider data with photos for selection bar
+const RIDERS_DATA = [
+  { id: "Ana", name: "Ana", image: "/riders/ana.png" },
+  { id: "Charlie", name: "Charlie", image: "/riders/charlie.png" },
+  { id: "Cole", name: "Cole", image: "/riders/cole.png" },
+  { id: "Luca", name: "Luca", image: "/riders/luca.png" },
+  { id: "Jolanda", name: "Jolanda", image: "/riders/jolanda.png" },
+];
+
 // Weather icons map
 const WEATHER_ICONS = {
   sunny: Sun,
@@ -253,6 +262,74 @@ export default function RaceDashboardPage() {
   const [weatherError, setWeatherError] = useState(null);
   const [weatherExpanded, setWeatherExpanded] = useState(false);
 
+  // Active riders state - which riders are at this race (per date)
+  const [activeRiders, setActiveRiders] = useState(RIDER_NAMES); // Default: all riders
+
+  // Load active riders from Supabase when date changes
+  useEffect(() => {
+    async function loadActiveRiders() {
+      const dateStr = formatDateForDB(selectedDate);
+      const { data, error } = await supabase
+        .from("race_day_settings")
+        .select("active_riders")
+        .eq("id", `riders-${dateStr}`)
+        .single();
+
+      if (!error && data?.active_riders) {
+        setActiveRiders(data.active_riders);
+      } else {
+        // Default to all riders if no setting for this date
+        setActiveRiders(RIDER_NAMES);
+      }
+    }
+    loadActiveRiders();
+
+    // Subscribe to active riders changes from other devices
+    const dateStr = formatDateForDB(selectedDate);
+    const channel = supabase
+      .channel(`race_day_riders_${dateStr}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "race_day_settings", filter: `id=eq.riders-${dateStr}` },
+        (payload) => {
+          if (payload.new?.active_riders) {
+            setActiveRiders(payload.new.active_riders);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, [selectedDate]);
+
+  // Toggle a rider's active status
+  async function toggleRiderActive(riderName) {
+    const newActiveRiders = activeRiders.includes(riderName)
+      ? activeRiders.filter(r => r !== riderName)
+      : [...activeRiders, riderName];
+
+    // Don't allow deselecting all riders
+    if (newActiveRiders.length === 0) return;
+
+    // Optimistic update
+    setActiveRiders(newActiveRiders);
+
+    // Persist to Supabase
+    const dateStr = formatDateForDB(selectedDate);
+    const { error } = await supabase
+      .from("race_day_settings")
+      .upsert({
+        id: `riders-${dateStr}`,
+        active_riders: newActiveRiders,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (error) {
+      // Revert on error
+      setActiveRiders(activeRiders);
+    }
+  }
+
   // Load location from Supabase on mount
   useEffect(() => {
     async function loadLocation() {
@@ -296,7 +373,9 @@ export default function RaceDashboardPage() {
   // Fetch weather when location changes or date changes
   useEffect(() => {
     if (!location) return;
-    fetchWeather(location.lat, location.lon);
+    const abortController = new AbortController();
+    fetchWeather(location.lat, location.lon, abortController.signal);
+    return () => abortController.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location, selectedDate]);
 
@@ -383,7 +462,6 @@ export default function RaceDashboardPage() {
         "postgres_changes",
         { event: "*", schema: "public", table: "race_day_schedule", filter: `race_date=eq.${dateStr}` },
         (payload) => {
-          console.log("[realtime] Schedule change:", payload);
           if (payload.eventType === "INSERT") {
             const incomingRiders = Array.isArray(payload.new.riders) ? payload.new.riders : [];
             const newItem = {
@@ -438,7 +516,6 @@ export default function RaceDashboardPage() {
         "postgres_changes",
         { event: "*", schema: "public", table: "race_day_todos", filter: `race_date=eq.${dateStr}` },
         (payload) => {
-          console.log("[realtime] Todos change:", payload);
           if (payload.eventType === "INSERT") {
             const incomingRiders = Array.isArray(payload.new.riders) ? payload.new.riders : [];
             const newItem = {
@@ -487,7 +564,6 @@ export default function RaceDashboardPage() {
         "postgres_changes",
         { event: "*", schema: "public", table: "race_day_notes", filter: `race_date=eq.${dateStr}` },
         (payload) => {
-          console.log("[realtime] Notes change:", payload);
           if (payload.eventType === "INSERT") {
             const newItem = { id: payload.new.id, text: payload.new.text };
             setNoteItems(prev => [...prev.filter(n => n.id !== newItem.id), newItem]);
@@ -570,16 +646,14 @@ export default function RaceDashboardPage() {
   }
 
   // Fetch weather from Open-Meteo
-  async function fetchWeather(lat, lon) {
+  async function fetchWeather(lat, lon, signal) {
     setWeatherLoading(true);
     setWeatherError(null);
 
     try {
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation_probability,weathercode,windspeed_10m&timezone=auto&forecast_days=3`;
-      console.log("[fetchWeather] Fetching:", url);
-      const response = await fetch(url);
+      const response = await fetch(url, { signal });
       const data = await response.json();
-      console.log("[fetchWeather] Response:", data);
 
       if (!data.hourly) {
         throw new Error("Invalid weather data");
@@ -590,7 +664,6 @@ export default function RaceDashboardPage() {
       const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
       const day = String(selectedDate.getDate()).padStart(2, '0');
       const targetDateStr = `${year}-${month}-${day}`;
-      console.log("[fetchWeather] Target date:", targetDateStr);
 
       const hourly = [];
 
@@ -609,8 +682,6 @@ export default function RaceDashboardPage() {
         }
       });
 
-      console.log("[fetchWeather] Parsed hourly data:", hourly.length, "hours");
-
       // Get current hour data
       const currentHour = new Date().getHours();
       const currentData = hourly.find(h => h.hour === currentHour) || hourly[0];
@@ -628,9 +699,10 @@ export default function RaceDashboardPage() {
         hourly,
         fetchedAt: Date.now(),
       };
-      console.log("[fetchWeather] Setting weather state:", weatherState);
       setWeather(weatherState);
     } catch (err) {
+      // Ignore abort errors (happens when component unmounts or location/date changes)
+      if (err.name === 'AbortError') return;
       console.error("[fetchWeather] Error:", err);
       setWeatherError("Failed to load weather");
     } finally {
@@ -702,11 +774,16 @@ export default function RaceDashboardPage() {
 
   const nextUpItem = useMemo(() => {
     const now = currentTime.getTime();
+    // Filter to items for active riders (or no riders assigned)
     const upcoming = scheduleItems
-      .filter(item => item.time && item.time.getTime() > now)
+      .filter(item => {
+        if (!item.time || item.time.getTime() <= now) return false;
+        if (!item.riders || item.riders.length === 0) return true;
+        return item.riders.some(r => activeRiders.includes(r));
+      })
       .sort((a, b) => a.time.getTime() - b.time.getTime());
     return upcoming[0] || null;
-  }, [scheduleItems, currentTime]);
+  }, [scheduleItems, currentTime, activeRiders]);
 
   const pinnedItems = useMemo(() => {
     const pinned = [
@@ -720,6 +797,38 @@ export default function RaceDashboardPage() {
     const completed = todoItems.filter(t => t.completed).length;
     return { completed, total: todoItems.length };
   }, [todoItems]);
+
+  // Filter schedule items based on active riders
+  // Show items that: have no riders assigned OR have at least one active rider
+  const filteredScheduleItems = useMemo(() => {
+    return scheduleItems.filter(item => {
+      if (!item.riders || item.riders.length === 0) return true; // No riders = show to all
+      return item.riders.some(r => activeRiders.includes(r));
+    });
+  }, [scheduleItems, activeRiders]);
+
+  // Filter todo items based on active riders
+  const filteredTodoItems = useMemo(() => {
+    return todoItems.filter(item => {
+      if (!item.riders || item.riders.length === 0) return true; // No riders = show to all
+      return item.riders.some(r => activeRiders.includes(r));
+    });
+  }, [todoItems, activeRiders]);
+
+  // Filtered pinned items
+  const filteredPinnedItems = useMemo(() => {
+    const pinned = [
+      ...filteredScheduleItems.filter(s => s.pinned).map(s => ({ ...s, type: "schedule" })),
+      ...filteredTodoItems.filter(t => t.pinned && !t.completed).map(t => ({ ...t, type: "todo" })),
+    ];
+    return pinned;
+  }, [filteredScheduleItems, filteredTodoItems]);
+
+  // Filtered todo stats
+  const filteredTodoStats = useMemo(() => {
+    const completed = filteredTodoItems.filter(t => t.completed).length;
+    return { completed, total: filteredTodoItems.length };
+  }, [filteredTodoItems]);
 
   // Handlers
   function navigateDay(delta) {
@@ -889,14 +998,10 @@ export default function RaceDashboardPage() {
       // Format date for the edge function
       const dateStr = selectedDate.toISOString().split("T")[0];
 
-      console.log("[processImport] Calling edge function with:", { textLength: importText.length, date: dateStr });
-
       // Call Supabase edge function
       const { data, error } = await supabase.functions.invoke("parse-plan", {
         body: { text: importText, date: dateStr },
       });
-
-      console.log("[processImport] Edge function response:", { data, error });
 
       if (error) {
         console.error("[processImport] Edge function error:", error);
@@ -904,31 +1009,30 @@ export default function RaceDashboardPage() {
         const parsed = parseImportText(importText, selectedDate);
         setImportPreview(parsed);
       } else {
-        console.log("[processImport] AI parsed schedule items:", data.schedule);
-        console.log("[processImport] AI parsed todos:", data.todos);
-        console.log("[processImport] AI parsed notes:", data.notes);
-
         // Convert edge function response to internal format
         const scheduleItems = (data.schedule || []).map((item, i) => {
           const time = item.time ? parseTimeForDay(item.time, selectedDate) : null;
-          // Handle riders array (filter to valid rider names)
-          const riders = Array.isArray(item.riders)
+          // Handle riders array (filter to valid rider names AND active riders)
+          const allRiders = Array.isArray(item.riders)
             ? item.riders.filter(r => RIDER_NAMES.includes(r))
             : (item.rider && RIDER_NAMES.includes(item.rider) ? [item.rider] : []);
-          console.log("[processImport] Converting schedule item:", item, "→ time:", time, "riders:", riders);
+          // Only include riders that are active (at this race)
+          const riders = allRiders.filter(r => activeRiders.includes(r));
           return {
             id: `s-${Date.now()}-${i}`,
             time,
             description: item.event,
-            riders, // array of riders
+            riders, // array of active riders only
             selected: true,
           };
         });
 
         const todoItems = (data.todos || []).map((item, i) => {
-          const riders = Array.isArray(item.riders)
+          const allRiders = Array.isArray(item.riders)
             ? item.riders.filter(r => RIDER_NAMES.includes(r))
             : (item.rider && RIDER_NAMES.includes(item.rider) ? [item.rider] : []);
+          // Only include riders that are active (at this race)
+          const riders = allRiders.filter(r => activeRiders.includes(r));
           return {
             id: `t-${Date.now()}-${i}`,
             description: item.task,
@@ -946,7 +1050,6 @@ export default function RaceDashboardPage() {
         // Sort schedule by time
         scheduleItems.sort((a, b) => (a.time?.getTime() || 0) - (b.time?.getTime() || 0));
 
-        console.log("[processImport] Final preview:", { scheduleItems, todoItems, noteItems });
         setImportPreview({ scheduleItems, todoItems, noteItems });
       }
     } catch (err) {
@@ -1460,6 +1563,49 @@ export default function RaceDashboardPage() {
           </span>
         </button>
 
+        {/* Riders at Race Selection */}
+        <div className="mb-6">
+          <div className="text-[#666666] text-[10px] font-semibold tracking-wider mb-2 flex items-center gap-2">
+            <User size={10} />
+            RIDERS AT RACE
+          </div>
+          <div className="flex justify-center gap-2">
+            {RIDERS_DATA.map(rider => {
+              const isActive = activeRiders.includes(rider.id);
+              return (
+                <button
+                  key={rider.id}
+                  onClick={() => toggleRiderActive(rider.id)}
+                  className={`relative flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
+                    isActive
+                      ? "bg-[#1e1e1e] ring-2 ring-[#ff6b2c]"
+                      : "bg-[#1e1e1e] opacity-40"
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-[#252525]">
+                    <img
+                      src={rider.image}
+                      alt={rider.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                  <span className={`text-[10px] font-medium ${isActive ? "text-white" : "text-[#666666]"}`}>
+                    {rider.name}
+                  </span>
+                  {isActive && (
+                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#ff6b2c] rounded-full flex items-center justify-center">
+                      <Check size={10} className="text-white" />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Large Clock */}
         <div className="text-center mb-8">
           <div className="text-white font-bold text-[56px] leading-none tracking-tight font-mono tabular-nums">
@@ -1577,10 +1723,10 @@ export default function RaceDashboardPage() {
         </AnimatePresence>
 
         {/* Pinned Countdowns */}
-        {pinnedItems.length > 0 && (
+        {filteredPinnedItems.length > 0 && (
           <div className="mb-6">
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-dark">
-              {pinnedItems.map(item => (
+              {filteredPinnedItems.map(item => (
                 <div
                   key={item.id}
                   className="flex-shrink-0 bg-[#252525] rounded-xl px-3 py-2 border-l-2 border-[#ff6b2c]"
@@ -1620,11 +1766,11 @@ export default function RaceDashboardPage() {
             </button>
           </div>
 
-          {scheduleItems.length === 0 ? (
+          {filteredScheduleItems.length === 0 ? (
             <div className="text-[#555555] text-sm py-4 text-center">No events scheduled</div>
           ) : (
             <div className="space-y-2">
-              {scheduleItems.map(item => {
+              {filteredScheduleItems.map(item => {
                 const hourWeather = weather?.hourly ? getWeatherForHour(weather.hourly, item.time) : null;
                 // Highlight row with blue tint when rain probability > 50%
                 // This alerts the team to potential weather issues for that time slot
@@ -1739,15 +1885,15 @@ export default function RaceDashboardPage() {
               </button>
             </div>
             <div className="text-[#555555] text-xs font-mono">
-              {todoStats.completed}/{todoStats.total}
+              {filteredTodoStats.completed}/{filteredTodoStats.total}
             </div>
           </div>
 
-          {todoItems.length === 0 ? (
+          {filteredTodoItems.length === 0 ? (
             <div className="text-[#555555] text-sm py-4 text-center">No todos</div>
           ) : (
             <div className="space-y-2">
-              {todoItems.map(item => (
+              {filteredTodoItems.map(item => (
                 <div
                   key={item.id}
                   className={`bg-[#1e1e1e] rounded-xl px-4 py-3 flex items-center gap-3 transition ${
@@ -2337,7 +2483,7 @@ export default function RaceDashboardPage() {
                     style={{ fontSize: "16px" }}
                   >
                     <option value="">None</option>
-                    {RIDER_NAMES.map(rider => (
+                    {activeRiders.map(rider => (
                       <option key={rider} value={rider}>{rider}</option>
                     ))}
                   </select>
@@ -2430,7 +2576,7 @@ export default function RaceDashboardPage() {
                     style={{ fontSize: "16px" }}
                   >
                     <option value="">None</option>
-                    {RIDER_NAMES.map(rider => (
+                    {activeRiders.map(rider => (
                       <option key={rider} value={rider}>{rider}</option>
                     ))}
                   </select>

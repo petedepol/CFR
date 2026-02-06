@@ -491,8 +491,8 @@ export default function BikeSpecPage() {
   // Theme-specific colors
   const theme = isDark ? "dark" : "light";
   const pageBackground = isDark
-    ? "#121212"
-    : "#e8e4dc";
+    ? "var(--bg-app)"
+    : "var(--light-bg)";
   const pageGradient = isDark
     ? "none"
     : "radial-gradient(520px 360px at 50% 0, rgba(30,51,49,0.30), rgba(30,51,49,0.12) 35%, transparent 70%)";
@@ -516,27 +516,27 @@ export default function BikeSpecPage() {
                 onClick={() => navigate("/v3")}
                 className={`p-2 rounded-full active:scale-95 transition ${
                   isDark
-                    ? "bg-[#1e1e1e] text-white"
-                    : "bg-[rgba(30,51,49,0.08)] text-[#5A7A70]"
+                    ? "bg-app-surface text-white"
+                    : "bg-[rgba(30,51,49,0.08)] text-text-accent-light"
                 }`}
               >
                 <ArrowLeft size={20} />
               </button>
               <span className={`text-xs font-semibold tracking-[0.15em] uppercase ${
-                isDark ? "text-white" : "text-[#5A7A70]"
+                isDark ? "text-white" : "text-text-accent-light"
               }`}>Bike Spec</span>
             </div>
 
             {/* Status indicator */}
             <div className="flex items-center gap-2">
               {offline ? (
-                <WifiOff size={16} className={isDark ? "text-[#888888]" : "text-[#8A9A94]"} />
+                <WifiOff size={16} className={isDark ? "text-text-muted" : "text-text-muted"} />
               ) : (
-                <Wifi size={16} className={isDark ? "text-[#ff6b2c]" : "text-green-600"} />
+                <Wifi size={16} className={isDark ? "text-brand-orange" : "text-green-600"} />
               )}
               {dirty && (
                 <div
-                  className="w-2 h-2 rounded-full bg-[#ff6b2c] animate-pulse"
+                  className="w-2 h-2 rounded-full bg-brand-orange animate-pulse"
                   style={{ animationDuration: "1.5s" }}
                 />
               )}
@@ -546,7 +546,7 @@ export default function BikeSpecPage() {
           {/* Rider + Bike Type Row - Glass Surface */}
           <div className={`flex items-center justify-between rounded-[26px] p-3.5 backdrop-blur-sm border ring-1 ${
             isDark
-              ? "bg-[#1e1e1e] border-[#2a2a2a] ring-[rgba(255,255,255,0.05)] shadow-[0_10px_28px_rgba(0,0,0,0.40)]"
+              ? "bg-app-surface border-chrome-strong ring-[rgba(255,255,255,0.05)] shadow-[0_10px_28px_rgba(0,0,0,0.40)]"
               : "bg-[rgba(232,228,220,0.75)] border-[rgba(0,0,0,0.08)] ring-[rgba(30,51,49,0.12)] shadow-[0_10px_28px_rgba(0,0,0,0.10)]"
           }`}>
             {/* Rider Selector */}
@@ -560,13 +560,13 @@ export default function BikeSpecPage() {
                   {/* Avatar with glass tile */}
                   <div className={`relative p-[2px] rounded-2xl backdrop-blur-sm border ring-1 ${
                     isDark
-                      ? "bg-[#252525] border-[#333333] border-b-2 border-b-[#ff6b2c] ring-[rgba(255,255,255,0.05)] shadow-[0_8px_20px_rgba(0,0,0,0.40)]"
+                      ? "bg-app-elevated border-chrome-strong border-b-2 border-b-brand-orange ring-[rgba(255,255,255,0.05)] shadow-[0_8px_20px_rgba(0,0,0,0.40)]"
                       : "bg-[rgba(30,51,49,0.12)] border-[rgba(0,0,0,0.08)] ring-[rgba(30,51,49,0.20)] shadow-[0_8px_20px_rgba(0,0,0,0.12)]"
                   }`}>
                     <div className={`w-[50px] h-[50px] rounded-xl overflow-hidden border ${
                       isDark
-                        ? "bg-[#1e1e1e] border-[rgba(255,255,255,0.05)]"
-                        : "bg-[#1e3331] border-[rgba(255,255,255,0.1)]"
+                        ? "bg-app-surface border-[rgba(255,255,255,0.05)]"
+                        : "bg-brand-green border-[rgba(255,255,255,0.1)]"
                     }`}>
                       {currentRider?.image ? (
                         <img src={currentRider.image} alt={rider} className="w-full h-full object-cover" />
@@ -578,7 +578,7 @@ export default function BikeSpecPage() {
                     </div>
                   </div>
                   {/* Rider name */}
-                  <span className={`font-bold tracking-[0.10em] ${isDark ? "text-white" : "text-[#1e3331]"}`}>{rider?.toUpperCase()}</span>
+                  <span className={`font-bold tracking-[0.10em] ${isDark ? "text-white" : "text-brand-green"}`}>{rider?.toUpperCase()}</span>
                 </button>
               );
             })()}
@@ -592,16 +592,16 @@ export default function BikeSpecPage() {
                   className="flex items-center gap-3 active:scale-[0.98] transition"
                 >
                   {/* Bike name */}
-                  <span className={`font-bold tracking-[0.10em] ${isDark ? "text-white" : "text-[#1e3331]"}`}>{currentBike?.label?.toUpperCase()}</span>
+                  <span className={`font-bold tracking-[0.10em] ${isDark ? "text-white" : "text-brand-green"}`}>{currentBike?.label?.toUpperCase()}</span>
                   {/* Bike thumbnail with glass tile */}
                   <div className={`relative p-[2px] rounded-2xl backdrop-blur-sm border ring-1 ${
                     isDark
-                      ? "bg-[#252525] border-[#333333] border-b-2 border-b-[#ff6b2c] ring-[rgba(255,255,255,0.05)] shadow-[0_8px_20px_rgba(0,0,0,0.40)]"
+                      ? "bg-app-elevated border-chrome-strong border-b-2 border-b-brand-orange ring-[rgba(255,255,255,0.05)] shadow-[0_8px_20px_rgba(0,0,0,0.40)]"
                       : "bg-[rgba(30,51,49,0.12)] border-[rgba(0,0,0,0.08)] ring-[rgba(30,51,49,0.20)] shadow-[0_8px_20px_rgba(0,0,0,0.12)]"
                   }`}>
                     <div className={`w-[50px] h-[50px] rounded-xl overflow-hidden border flex items-center justify-center ${
                       isDark
-                        ? "bg-[#1e1e1e] border-[rgba(255,255,255,0.05)]"
+                        ? "bg-app-surface border-[rgba(255,255,255,0.05)]"
                         : "bg-[rgba(255,255,255,0.70)] border-[rgba(0,0,0,0.06)]"
                     }`}>
                       {currentBike?.image ? (
@@ -660,7 +660,7 @@ export default function BikeSpecPage() {
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
               <div key={i} className={`h-16 rounded-3xl animate-pulse ${
-                isDark ? "bg-[#1e1e1e]" : "bg-[rgba(30,51,49,0.04)]"
+                isDark ? "bg-app-surface" : "bg-[rgba(30,51,49,0.04)]"
               }`} />
             ))}
           </div>
@@ -685,7 +685,7 @@ export default function BikeSpecPage() {
                         key={key}
                         className={`rounded-xl p-2 border shadow-[0_2px_6px_rgba(0,0,0,0.03)] ${meta.fullWidth ? "col-span-2" : ""} ${
                           isDark
-                            ? "bg-[#1a1a1a] border-[#2a2a2a]"
+                            ? "bg-app-bg border-chrome-strong"
                             : "bg-[rgba(255,255,255,0.45)] border-[rgba(0,0,0,0.06)]"
                         }`}
                       >
@@ -713,17 +713,17 @@ export default function BikeSpecPage() {
         {/* History Section */}
         <div className="mt-8">
           <h2 className={`text-xs font-semibold tracking-[0.15em] uppercase mb-4 flex items-center justify-between ${
-            isDark ? "text-[#ff6b2c]" : "text-[#5A7A70]"
+            isDark ? "text-brand-orange" : "text-text-accent-light"
           }`}>
             <span>History</span>
-            <span className={`text-[10px] tracking-normal normal-case ${isDark ? "text-[#888888]" : "text-[#8A9A94]"}`}>{bikeTypeLabel}</span>
+            <span className={`text-[10px] tracking-normal normal-case ${isDark ? "text-text-muted" : "text-text-muted"}`}>{bikeTypeLabel}</span>
           </h2>
 
           {historyLoading ? (
             <div className="space-y-2">
               {[1, 2].map((i) => (
                 <div key={i} className={`h-14 rounded-2xl animate-pulse ${
-                  isDark ? "bg-[#1e1e1e]" : "bg-[rgba(30,51,49,0.04)]"
+                  isDark ? "bg-app-surface" : "bg-[rgba(30,51,49,0.04)]"
                 }`} />
               ))}
             </div>
@@ -739,7 +739,7 @@ export default function BikeSpecPage() {
                     key={rowKey}
                     className={`rounded-[26px] border backdrop-blur-sm ring-1 overflow-hidden ${
                       isDark
-                        ? "border-[#2a2a2a] bg-[#1e1e1e] ring-[rgba(255,255,255,0.05)] shadow-[0_10px_28px_rgba(0,0,0,0.40)]"
+                        ? "border-chrome-strong bg-app-surface ring-[rgba(255,255,255,0.05)] shadow-[0_10px_28px_rgba(0,0,0,0.40)]"
                         : "border-[rgba(0,0,0,0.08)] bg-[rgba(232,228,220,0.75)] ring-[rgba(30,51,49,0.10)] shadow-[0_10px_28px_rgba(0,0,0,0.10)]"
                     }`}
                   >
@@ -750,10 +750,10 @@ export default function BikeSpecPage() {
                         onClick={() => setExpandedHistoryId(open ? null : rowKey)}
                         className="flex-1 min-w-0 text-left"
                       >
-                        <div className={`font-semibold text-sm font-mono tabular-nums ${isDark ? "text-white" : "text-[#1e3331]"}`}>
+                        <div className={`font-semibold text-sm font-mono tabular-nums ${isDark ? "text-white" : "text-brand-green"}`}>
                           {formatDateTime(row.timestamp)}
                         </div>
-                        <div className={`text-xs mt-0.5 ${isDark ? "text-[#888888]" : "text-[#8A9A94]"}`}>
+                        <div className={`text-xs mt-0.5 ${isDark ? "text-text-muted" : "text-text-muted"}`}>
                           {row.mechanic ? `By ${row.mechanic}` : ""}
                         </div>
                       </button>
@@ -763,7 +763,7 @@ export default function BikeSpecPage() {
                         <button
                           type="button"
                           onClick={() => setExpandedHistoryId(open ? null : rowKey)}
-                          className={isDark ? "text-[#888888]" : "text-[#8A9A94]"}
+                          className={isDark ? "text-text-muted" : "text-text-muted"}
                         >
                           {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                         </button>
@@ -774,11 +774,11 @@ export default function BikeSpecPage() {
                               onClick={() => startEditFromRow(row)}
                               className={`rounded-lg border p-2 ${
                                 isDark
-                                  ? "border-[#333333] bg-[#252525] hover:bg-[#333333]"
+                                  ? "border-chrome-strong bg-app-elevated hover:bg-chrome-strong"
                                   : "border-[rgba(233,78,27,0.25)] bg-[rgba(233,78,27,0.10)]"
                               }`}
                             >
-                              <Pencil size={14} className={isDark ? "text-[#ff6b2c]" : "text-[#e94e1b]"} />
+                              <Pencil size={14} className={isDark ? "text-brand-orange" : "text-[#e94e1b]"} />
                             </button>
                             <button
                               type="button"
@@ -786,7 +786,7 @@ export default function BikeSpecPage() {
                               onClick={() => adminDeleteRow(row)}
                               className={`rounded-lg border p-2 ${
                                 isDark
-                                  ? "border-[#333333] bg-[#252525] hover:bg-[#333333]"
+                                  ? "border-chrome-strong bg-app-elevated hover:bg-chrome-strong"
                                   : "border-[rgba(239,68,68,0.25)] bg-[rgba(239,68,68,0.10)]"
                               }`}
                             >
@@ -798,7 +798,7 @@ export default function BikeSpecPage() {
                     </div>
 
                     {open && specObj && (
-                      <div className={`px-4 pb-4 border-t ${isDark ? "border-[#2a2a2a]" : "border-[rgba(0,0,0,0.06)]"}`}>
+                      <div className={`px-4 pb-4 border-t ${isDark ? "border-chrome-strong" : "border-[rgba(0,0,0,0.06)]"}`}>
                         <div className="space-y-3 mt-3">
                           {Object.keys(specObj).map((sectionKey) => {
                             const sec = specObj[sectionKey];
@@ -811,11 +811,11 @@ export default function BikeSpecPage() {
                                 key={sectionKey}
                                 className={`rounded-xl border p-3 ${
                                   isDark
-                                    ? "border-[#333333] bg-[#252525]"
+                                    ? "border-chrome-strong bg-app-elevated"
                                     : "border-[rgba(0,0,0,0.06)] bg-[rgba(30,51,49,0.03)]"
                                 }`}
                               >
-                                <div className={`font-bold text-xs mb-2 ${isDark ? "text-white" : "text-[#1e3331]"}`}>
+                                <div className={`font-bold text-xs mb-2 ${isDark ? "text-white" : "text-brand-green"}`}>
                                   {labelForSection(sectionKey)}
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -826,15 +826,15 @@ export default function BikeSpecPage() {
                                         key={k}
                                         className={`rounded-xl px-3 py-2 border ${
                                           isDark
-                                            ? "bg-[#1e1e1e] border-[#333333]"
+                                            ? "bg-app-surface border-chrome-strong"
                                             : "bg-[rgba(255,255,255,0.45)] border-[rgba(0,0,0,0.06)]"
                                         }`}
                                       >
-                                        <div className={`text-[10px] font-semibold ${isDark ? "text-[#888888]" : "text-[#8A9A94]"}`}>
+                                        <div className={`text-[10px] font-semibold ${isDark ? "text-text-muted" : "text-text-muted"}`}>
                                           {labelForField(k)}
                                         </div>
                                         <div className={`text-sm mt-0.5 whitespace-pre-wrap ${
-                                          isDark ? "text-white" : "text-[#1e3331]"
+                                          isDark ? "text-white" : "text-brand-green"
                                         } ${isNumericValue ? "font-mono tabular-nums" : ""}`}>
                                           {String(v)}
                                         </div>
@@ -866,8 +866,8 @@ export default function BikeSpecPage() {
           saving
             ? "w-20 h-20 bg-white text-[#e94e1b] shadow-[0_0_40px_rgba(233,78,27,0.60)] animate-pulse scale-110"
             : !canSave
-              ? `w-14 h-14 ${isDark ? "bg-[#1e1e1e] text-[#666666]" : "bg-[rgba(30,51,49,0.10)] text-[#8A9A94]"} cursor-not-allowed`
-              : "w-14 h-14 bg-[#ff6b2c] text-white shadow-[0_8px_24px_rgba(255,107,44,0.40)] active:scale-95"
+              ? `w-14 h-14 ${isDark ? "bg-app-surface text-text-muted" : "bg-[rgba(30,51,49,0.10)] text-text-muted"} cursor-not-allowed`
+              : "w-14 h-14 bg-brand-orange text-white shadow-[0_8px_24px_rgba(233,78,27,0.40)] active:scale-95"
         }`}
       >
         <Save size={saving ? 28 : 22} className={saving ? "animate-spin" : ""} />
@@ -879,11 +879,11 @@ export default function BikeSpecPage() {
           <Drawer.Overlay className={`fixed inset-0 backdrop-blur-sm z-50 ${isDark ? "bg-black/60" : "bg-black/40"}`} />
           <Drawer.Content
             className={`flex flex-col rounded-t-[32px] fixed bottom-0 left-0 right-0 z-50 outline-none border-t ${
-              isDark ? "border-[#2a2a2a]" : "border-[rgba(0,0,0,0.08)]"
+              isDark ? "border-chrome-strong" : "border-[rgba(0,0,0,0.08)]"
             }`}
             style={{
               background: isDark
-                ? "#1e1e1e"
+                ? "var(--bg-surface)"
                 : "radial-gradient(400px 300px at 50% 100%, rgba(30,51,49,0.15), transparent 70%)," +
                   "rgba(232,228,220,0.98)",
             }}
@@ -891,14 +891,14 @@ export default function BikeSpecPage() {
             {/* Drag handle */}
             <div className="p-4 rounded-t-[32px] flex-none">
               <div className={`mx-auto w-12 h-1.5 flex-shrink-0 rounded-full ${
-                isDark ? "bg-[#444444]" : "bg-[rgba(30,51,49,0.15)]"
+                isDark ? "bg-text-muted" : "bg-[rgba(30,51,49,0.15)]"
               }`} />
             </div>
 
             {/* Instruction text */}
             <div className="text-center pb-4">
               <p className={`text-[10px] uppercase font-semibold tracking-[0.3em] ${
-                isDark ? "text-[#ff6b2c]" : "text-[#5A7A70] opacity-70"
+                isDark ? "text-brand-orange" : "text-text-accent-light opacity-70"
               }`}>
                 Tap Rider &rarr; Switch
               </p>
@@ -949,11 +949,11 @@ export default function BikeSpecPage() {
           <Drawer.Overlay className={`fixed inset-0 backdrop-blur-sm z-50 ${isDark ? "bg-black/60" : "bg-black/40"}`} />
           <Drawer.Content
             className={`flex flex-col rounded-t-[32px] fixed bottom-0 left-0 right-0 z-50 outline-none border-t ${
-              isDark ? "border-[#2a2a2a]" : "border-[rgba(0,0,0,0.08)]"
+              isDark ? "border-chrome-strong" : "border-[rgba(0,0,0,0.08)]"
             }`}
             style={{
               background: isDark
-                ? "#1e1e1e"
+                ? "var(--bg-surface)"
                 : "radial-gradient(400px 300px at 50% 100%, rgba(30,51,49,0.15), transparent 70%)," +
                   "rgba(232,228,220,0.98)",
             }}
@@ -961,14 +961,14 @@ export default function BikeSpecPage() {
             {/* Drag handle */}
             <div className="p-4 rounded-t-[32px] flex-none">
               <div className={`mx-auto w-12 h-1.5 flex-shrink-0 rounded-full ${
-                isDark ? "bg-[#444444]" : "bg-[rgba(30,51,49,0.15)]"
+                isDark ? "bg-text-muted" : "bg-[rgba(30,51,49,0.15)]"
               }`} />
             </div>
 
             {/* Instruction text */}
             <div className="text-center pb-4">
               <p className={`text-[10px] uppercase font-semibold tracking-[0.3em] ${
-                isDark ? "text-[#ff6b2c]" : "text-[#5A7A70] opacity-70"
+                isDark ? "text-brand-orange" : "text-text-accent-light opacity-70"
               }`}>
                 Tap Bike &rarr; Switch
               </p>
@@ -986,7 +986,7 @@ export default function BikeSpecPage() {
                     }}
                     className={`
                       group flex flex-col items-center gap-3 w-[80px] flex-shrink-0
-                      focus-visible:outline-none focus-visible:ring-2 ${isDark ? "focus-visible:ring-[#ff6b2c]" : "focus-visible:ring-[rgba(233,78,27,0.55)]"}
+                      focus-visible:outline-none focus-visible:ring-2 ${isDark ? "focus-visible:ring-brand-orange" : "focus-visible:ring-[rgba(233,78,27,0.55)]"}
                     `}
                   >
                     {/* Bike tile */}
@@ -1001,31 +1001,31 @@ export default function BikeSpecPage() {
                         "transition-all duration-200 ease-out",
                         "group-hover:scale-[1.03] group-active:scale-[0.97]",
                         isDark
-                          ? bikeType === b.id ? "bg-[#2a2a2a]" : "bg-[#1e1e1e]"
+                          ? bikeType === b.id ? "bg-chrome-strong" : "bg-app-surface"
                           : bikeType === b.id ? "bg-[rgba(30,51,49,0.18)]" : "bg-[rgba(30,51,49,0.12)]",
                         "backdrop-blur-sm",
                         isDark
-                          ? "border-transparent border-b-2 border-b-[#ff6b2c]"
+                          ? "border-transparent border-b-2 border-b-brand-orange"
                           : "border border-[rgba(0,0,0,0.08)]",
                         bikeType === b.id
-                          ? isDark ? "ring-1 ring-[#ff6b2c]" : "ring-1 ring-[rgba(233,78,27,0.50)]"
+                          ? isDark ? "ring-1 ring-brand-orange" : "ring-1 ring-[rgba(233,78,27,0.50)]"
                           : isDark ? "ring-0" : "ring-1 ring-[rgba(30,51,49,0.20)]",
                         isDark
-                          ? "group-hover:shadow-[0_8px_24px_rgba(255,107,44,0.15)]"
+                          ? "group-hover:shadow-[0_8px_24px_rgba(233,78,27,0.15)]"
                           : "group-hover:shadow-[0_12px_32px_rgba(0,0,0,0.22)]",
                       ].join(" ")}
                     >
                       <div
                         className={`
                           w-[70px] h-[70px] rounded-xl overflow-hidden flex items-center justify-center
-                          ${isDark ? "bg-[#1e1e1e] border border-[rgba(255,255,255,0.05)]" : "bg-[rgba(255,255,255,0.70)] border border-[rgba(0,0,0,0.06)]"}
+                          ${isDark ? "bg-app-surface border border-[rgba(255,255,255,0.05)]" : "bg-[rgba(255,255,255,0.70)] border border-[rgba(0,0,0,0.06)]"}
                         `}
                       >
                         {b.image ? (
                           <img src={b.image} alt={b.label} className="w-[58px] h-[58px] object-contain" />
                         ) : (
                           <div className={`w-full h-full flex items-center justify-center ${
-                            isDark ? "bg-[#ff6b2c]" : "bg-[linear-gradient(180deg,#f0714a_0%,#e94e1b_100%)]"
+                            isDark ? "bg-brand-orange" : "bg-[linear-gradient(180deg,#f0714a_0%,#e94e1b_100%)]"
                           }`}>
                             <span className="text-lg font-bold text-white">{b.label[0]}</span>
                           </div>
@@ -1043,9 +1043,9 @@ export default function BikeSpecPage() {
                       className={[
                         "text-sm font-semibold transition-colors duration-200 truncate max-w-full",
                         bikeType === b.id
-                          ? isDark ? "text-[#ff6b2c]" : "text-[#e94e1b]"
-                          : isDark ? "text-white" : "text-[#1e3331]",
-                        isDark ? "group-hover:text-[#ff6b2c]" : "group-hover:text-[#e94e1b]",
+                          ? isDark ? "text-brand-orange" : "text-[#e94e1b]"
+                          : isDark ? "text-white" : "text-brand-green",
+                        isDark ? "group-hover:text-brand-orange" : "group-hover:text-[#e94e1b]",
                       ].join(" ")}
                     >
                       {b.label}

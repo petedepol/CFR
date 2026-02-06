@@ -32,7 +32,7 @@ export default function LandingPlayground() {
   const { onNavTabChange } = useOutletContext();
 
   // Dark theme background
-  const pageBackground = "radial-gradient(ellipse at 50% 30%, #1a1a1a 0%, #0d0d0d 70%)";
+  const pageBackground = "radial-gradient(ellipse at 50% 30%, var(--bg-app) 0%, #0d0d0d 70%)";
 
   // Determine active tab from current path
   const activeTab = NAV_TABS.find((tab) => location.pathname === tab.path)?.id || "home";
@@ -89,7 +89,7 @@ export default function LandingPlayground() {
 
           {/* Instruction text */}
           <div className="text-center">
-            <p className="text-[10px] uppercase font-semibold tracking-[0.3em] text-[#ff6b2c] opacity-80">
+            <p className="text-[10px] uppercase font-semibold tracking-[0.3em] text-brand-orange opacity-80">
               Tap Rider &rarr; MTB Setup
             </p>
           </div>
@@ -126,7 +126,7 @@ export default function LandingPlayground() {
                     <div
                       className="absolute inset-0 rounded-full"
                       style={{
-                        background: "radial-gradient(circle, rgba(255,107,44,0.25) 0%, transparent 70%)",
+                        background: "radial-gradient(circle, rgba(233,78,27,0.25) 0%, transparent 70%)",
                         filter: "blur(8px)",
                       }}
                     />
@@ -134,11 +134,11 @@ export default function LandingPlayground() {
                   <Icon
                     size={24}
                     strokeWidth={isActive ? 2.5 : 2}
-                    className={`relative z-10 ${isActive && !tab.disabled ? "text-[#ff6b2c]" : "text-[#666666]"}`}
+                    className={`relative z-10 ${isActive && !tab.disabled ? "text-brand-orange" : "text-text-muted"}`}
                   />
                   {/* Active dot indicator */}
                   {isActive && !tab.disabled && (
-                    <div className="relative z-10 w-1 h-1 rounded-full bg-[#ff6b2c]" />
+                    <div className="relative z-10 w-1 h-1 rounded-full bg-brand-orange" />
                   )}
                 </motion.button>
               );

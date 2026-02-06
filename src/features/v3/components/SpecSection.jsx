@@ -9,35 +9,35 @@ export function SpecSection({ title, defaultOpen = false, children, theme = "lig
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const isDark = theme === "dark";
 
-  // Theme-specific colors
+  // Theme-specific colors — mapped to tokens.css values
   const colors = isDark
     ? {
-        container: "bg-[#1e1e1e] border-[#2a2a2a] ring-[rgba(255,255,255,0.05)]",
+        container: "bg-app-surface border-chrome-strong ring-chrome-subtle",
         shadow: "shadow-[0_10px_28px_rgba(0,0,0,0.40)]",
-        headerActive: "active:bg-[rgba(255,255,255,0.03)]",
-        title: "text-[#ff6b2c]",
-        chevron: "text-[#666666]",
-        contentBg: "bg-[rgba(255,255,255,0.02)]",
+        headerActive: "active:bg-overlay-hover",
+        title: "text-brand-orange",
+        chevron: "text-text-muted",
+        contentBg: "bg-overlay-hover",
       }
     : {
-        container: "bg-[rgba(232,228,220,0.75)] border-[rgba(0,0,0,0.08)] ring-[rgba(30,51,49,0.12)]",
+        container: "bg-light-surface border-[rgba(0,0,0,0.08)] ring-[rgba(30,51,49,0.12)]",
         shadow: "shadow-[0_10px_28px_rgba(0,0,0,0.10)]",
         headerActive: "active:bg-[rgba(30,51,49,0.04)]",
-        title: "text-[#5A7A70]",
-        chevron: "text-[#8A9A94]",
+        title: "text-text-accent-light",
+        chevron: "text-text-muted",
         contentBg: "bg-[rgba(30,51,49,0.03)]",
       };
 
   return (
     <div
       className={`
-        rounded-[26px] overflow-hidden
+        rounded-2xl overflow-hidden
         backdrop-blur-sm border ring-1
         ${colors.container}
         ${colors.shadow}
       `}
       style={{
-        borderLeft: isOpen ? (isDark ? "3px solid #ff6b2c" : "3px solid #e94e1b") : undefined,
+        borderLeft: isOpen ? `3px solid var(--brand-orange)` : undefined,
       }}
     >
       {/* Header - tap to toggle */}
@@ -51,7 +51,7 @@ export function SpecSection({ title, defaultOpen = false, children, theme = "lig
         </span>
         <ChevronDown
           size={16}
-          className={isOpen ? (isDark ? "text-[#ff6b2c] rotate-180" : "text-[#e94e1b] rotate-180") : colors.chevron}
+          className={isOpen ? "text-brand-orange rotate-180" : colors.chevron}
         />
       </button>
 

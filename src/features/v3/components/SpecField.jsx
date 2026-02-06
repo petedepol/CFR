@@ -27,24 +27,24 @@ export function SpecField({
   // Check if this is a numeric measurement field
   const isNumeric = inputMode === "decimal" || inputMode === "numeric";
 
-  // Theme-specific colors
+  // Theme-specific colors — mapped to tokens.css values
   const colors = isDark
     ? {
-        label: "text-[#888888]",
-        inputBg: "bg-[#252525]",
-        inputBorder: "border-[#333333]",
-        inputText: "text-white",
-        placeholder: "placeholder:text-[#555555]",
+        label: "text-text-muted",
+        inputBg: "bg-app-elevated",
+        inputBorder: "border-chrome-strong",
+        inputText: "text-text-primary",
+        placeholder: "placeholder:text-text-placeholder",
         inputShadow: "shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
-        focusBorder: "focus:border-[#ff6b2c]",
-        focusRing: "focus:ring-[rgba(255,107,44,0.25)]",
+        focusBorder: "focus:border-brand-orange",
+        focusRing: "focus:ring-ring-active",
       }
     : {
-        label: "text-[#5A7A70]",
-        inputBg: "bg-[rgba(255,255,255,0.55)]",
+        label: "text-text-accent-light",
+        inputBg: "bg-light-elevated",
         inputBorder: "border-[rgba(0,0,0,0.08)]",
-        inputText: "text-[#1e3331]",
-        placeholder: "placeholder:text-[#9AA8A2]",
+        inputText: "text-brand-green",
+        placeholder: "placeholder:text-text-placeholder",
         inputShadow: "shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]",
         focusBorder: "focus:border-[rgba(233,78,27,0.5)]",
         focusRing: "focus:ring-[rgba(233,78,27,0.18)]",

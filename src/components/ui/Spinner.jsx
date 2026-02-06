@@ -9,7 +9,7 @@ const sizes = {
   lg: 40,
 };
 
-export function Spinner({ size = "md", className = "", color = "#ff6b2c" }) {
+export function Spinner({ size = "md", className = "", color = "var(--brand-orange)" }) {
   const pixelSize = sizes[size] || sizes.md;
 
   return (
@@ -27,7 +27,7 @@ export function SpinnerOverlay({ size = "lg", message }) {
     <div className="flex flex-col items-center justify-center py-12 gap-3">
       <Spinner size={size} />
       {message && (
-        <span className="text-sm text-[#888]">{message}</span>
+        <span className="text-sm text-text-muted">{message}</span>
       )}
     </div>
   );

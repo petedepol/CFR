@@ -9,40 +9,38 @@ export function ActionPicker({ rider, bikeType, isOpen, onClose, onSelectAction,
 
   const isDark = theme === "dark";
 
-  // Theme-specific colors
+  // Theme-specific colors — mapped to tokens.css values
   const colors = isDark
     ? {
-        // Dark Kit Theme
-        overlay: "bg-black/60",
-        container: "bg-[#1e1e1e] border-[#2a2a2a]",
-        handle: "bg-[#444444]",
-        cardOuter: "bg-[#252525] border-b-2 border-b-[#ff6b2c]",
-        cardBorder: "border border-[#333333]",
-        cardRing: "ring-1 ring-[rgba(255,255,255,0.05)]",
-        cardActiveRing: "group-active:ring-[#ff6b2c] group-active:ring-2",
+        overlay: "bg-overlay-scrim",
+        container: "bg-app-surface border-chrome-strong",
+        handle: "bg-text-muted",
+        cardOuter: "bg-app-elevated border-b-2 border-b-brand-orange",
+        cardBorder: "border border-chrome-strong",
+        cardRing: "ring-1 ring-chrome-subtle",
+        cardActiveRing: "group-active:ring-brand-orange group-active:ring-2",
         cardShadow: "shadow-[0_10px_28px_rgba(0,0,0,0.50)]",
-        iconColor: "text-[#ff6b2c]",
-        labelColor: "text-white",
-        labelHover: "group-hover:text-[#ff6b2c]",
+        iconColor: "text-brand-orange",
+        labelColor: "text-text-primary",
+        labelHover: "group-hover:text-brand-orange",
       }
     : {
-        // Light 2026 Livery Theme
         overlay: "bg-black/40",
         container: "border-[rgba(0,0,0,0.08)]",
         handle: "bg-[rgba(30,51,49,0.15)]",
         cardOuter: "bg-[rgba(30,51,49,0.12)]",
         cardBorder: "border border-[rgba(0,0,0,0.08)] group-hover:border-[rgba(0,0,0,0.15)]",
         cardRing: "ring-1 ring-[rgba(30,51,49,0.20)]",
-        cardActiveRing: "group-active:ring-[rgba(233,78,27,0.50)]",
+        cardActiveRing: "group-active:ring-ring-active",
         cardShadow: "shadow-[0_10px_28px_rgba(0,0,0,0.18)]",
-        iconColor: "text-[#e94e1b]",
-        labelColor: "text-[#1e3331]",
-        labelHover: "group-hover:text-[#e94e1b]",
+        iconColor: "text-brand-orange",
+        labelColor: "text-brand-green",
+        labelHover: "group-hover:text-brand-orange",
       };
 
   // Container background style
   const containerStyle = isDark
-    ? { background: "#1e1e1e" }
+    ? { background: "var(--bg-surface)" }
     : {
         background:
           "radial-gradient(400px 300px at 50% 100%, rgba(30,51,49,0.15), transparent 70%)," +

@@ -641,7 +641,7 @@ export default function SetupPage() {
 
   // Theme-specific colors
   const theme = isDark ? "dark" : "light";
-  const pageBackground = isDark ? "#121212" : "#e8e4dc";
+  const pageBackground = isDark ? "var(--bg-app)" : "var(--light-bg)";
   const pageGradient = isDark
     ? "none"
     : "radial-gradient(520px 360px at 50% 0, rgba(30,51,49,0.30), rgba(30,51,49,0.12) 35%, transparent 70%)";
@@ -665,32 +665,32 @@ export default function SetupPage() {
                 onClick={() => navigate("/v3")}
                 className={`p-2 rounded-full active:scale-95 transition ${
                   isDark
-                    ? "bg-[#1e1e1e] text-white"
-                    : "bg-[rgba(30,51,49,0.08)] text-[#5A7A70]"
+                    ? "bg-app-surface text-white"
+                    : "bg-[rgba(30,51,49,0.08)] text-text-accent-light"
                 }`}
               >
                 <ArrowLeft size={20} />
               </button>
               <span className={`text-xs font-semibold tracking-[0.15em] uppercase ${
-                isDark ? "text-white" : "text-[#5A7A70]"
+                isDark ? "text-white" : "text-text-accent-light"
               }`}>MTB Setup</span>
             </div>
 
             {/* Status indicator */}
             <div className="flex items-center gap-2">
               {offline ? (
-                <WifiOff size={16} className={isDark ? "text-[#888888]" : "text-[#8A9A94]"} />
+                <WifiOff size={16} className={isDark ? "text-text-muted" : "text-text-muted"} />
               ) : (
-                <Wifi size={16} className={isDark ? "text-[#ff6b2c]" : "text-green-600"} />
+                <Wifi size={16} className={isDark ? "text-brand-orange" : "text-green-600"} />
               )}
-              {dirty && <div className="w-2 h-2 rounded-full bg-[#ff6b2c]" />}
+              {dirty && <div className="w-2 h-2 rounded-full bg-brand-orange" />}
             </div>
           </div>
 
           {/* Rider Row - Glass Surface */}
           <div className={`flex items-center justify-between rounded-[26px] p-3.5 backdrop-blur-sm border ring-1 ${
             isDark
-              ? "bg-[#1e1e1e] border-[#2a2a2a] ring-[rgba(255,255,255,0.05)] shadow-[0_10px_28px_rgba(0,0,0,0.40)]"
+              ? "bg-app-surface border-chrome-strong ring-[rgba(255,255,255,0.05)] shadow-[0_10px_28px_rgba(0,0,0,0.40)]"
               : "bg-[rgba(232,228,220,0.75)] border-[rgba(0,0,0,0.08)] ring-[rgba(30,51,49,0.12)] shadow-[0_10px_28px_rgba(0,0,0,0.10)]"
           }`}>
             {/* Rider Selector */}
@@ -704,13 +704,13 @@ export default function SetupPage() {
                   {/* Avatar with glass tile */}
                   <div className={`relative p-[2px] rounded-2xl backdrop-blur-sm border ring-1 ${
                     isDark
-                      ? "bg-[#252525] border-[#333333] border-b-2 border-b-[#ff6b2c] ring-[rgba(255,255,255,0.05)] shadow-[0_8px_20px_rgba(0,0,0,0.40)]"
+                      ? "bg-app-elevated border-chrome-strong border-b-2 border-b-brand-orange ring-[rgba(255,255,255,0.05)] shadow-[0_8px_20px_rgba(0,0,0,0.40)]"
                       : "bg-[rgba(30,51,49,0.12)] border-[rgba(0,0,0,0.08)] ring-[rgba(30,51,49,0.20)] shadow-[0_8px_20px_rgba(0,0,0,0.12)]"
                   }`}>
                     <div className={`w-[50px] h-[50px] rounded-xl overflow-hidden border ${
                       isDark
-                        ? "bg-[#1e1e1e] border-[rgba(255,255,255,0.05)]"
-                        : "bg-[#1e3331] border-[rgba(255,255,255,0.1)]"
+                        ? "bg-app-surface border-[rgba(255,255,255,0.05)]"
+                        : "bg-brand-green border-[rgba(255,255,255,0.1)]"
                     }`}>
                       {currentRider?.image ? (
                         <img src={currentRider.image} alt={rider} className="w-full h-full object-cover" />
@@ -722,7 +722,7 @@ export default function SetupPage() {
                     </div>
                   </div>
                   {/* Rider name */}
-                  <span className={`font-bold tracking-[0.10em] ${isDark ? "text-white" : "text-[#1e3331]"}`}>{rider?.toUpperCase()}</span>
+                  <span className={`font-bold tracking-[0.10em] ${isDark ? "text-white" : "text-brand-green"}`}>{rider?.toUpperCase()}</span>
                 </button>
               );
             })()}
@@ -730,7 +730,7 @@ export default function SetupPage() {
             {/* Race Bike Badge */}
             <div className={`px-3 py-1.5 rounded-xl ${
               isDark
-                ? "bg-[#ff6b2c] border border-[#ff6b2c]"
+                ? "bg-brand-orange border border-brand-orange"
                 : "bg-[rgba(233,78,27,0.10)] border border-[rgba(233,78,27,0.20)]"
             }`}>
               <span className={`text-xs font-semibold ${isDark ? "text-white" : "text-[#e94e1b]"}`}>RACE BIKE</span>
@@ -779,7 +779,7 @@ export default function SetupPage() {
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
               <div key={i} className={`h-16 rounded-3xl animate-pulse ${
-                isDark ? "bg-[#1e1e1e]" : "bg-[rgba(30,51,49,0.04)]"
+                isDark ? "bg-app-surface" : "bg-[rgba(30,51,49,0.04)]"
               }`} />
             ))}
           </div>
@@ -798,8 +798,8 @@ export default function SetupPage() {
                 placeholder="e.g. Nove Mesto WC2 / Wet"
                 className={`w-full rounded-lg px-3 py-2 border transition-all duration-200 ${
                   isDark
-                    ? "bg-[#252525] border-[#333333] text-white placeholder:text-[#555555] focus:border-[#ff6b2c] focus:ring-2 focus:ring-[rgba(255,107,44,0.25)]"
-                    : "bg-[rgba(255,255,255,0.55)] border-[rgba(0,0,0,0.08)] text-[#1e3331] placeholder:text-[#9AA8A2] focus:border-[rgba(233,78,27,0.5)] focus:ring-2 focus:ring-[rgba(233,78,27,0.18)]"
+                    ? "bg-app-elevated border-chrome-strong text-white placeholder:text-text-muted focus:border-brand-orange focus:ring-2 focus:ring-[rgba(233,78,27,0.25)]"
+                    : "bg-[rgba(255,255,255,0.55)] border-[rgba(0,0,0,0.08)] text-brand-green placeholder:text-text-placeholder focus:border-[rgba(233,78,27,0.5)] focus:ring-2 focus:ring-[rgba(233,78,27,0.18)]"
                 } focus:outline-none`}
               />
             </SpecSection>
@@ -908,7 +908,7 @@ export default function SetupPage() {
               {/* Neo Settings Button */}
               <button
                 onClick={() => navigate(`/v3/neo?rider=${encodeURIComponent(rider)}`)}
-                className="mt-4 w-full flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-[#ff6b2c] text-white shadow-[0_8px_20px_rgba(255,107,44,0.35)] transition-all active:scale-[0.97]"
+                className="mt-4 w-full flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-brand-orange text-white shadow-[0_8px_20px_rgba(233,78,27,0.35)] transition-all active:scale-[0.97]"
               >
                 <Zap size={18} />
                 <span className="font-semibold">Neo Settings</span>
@@ -997,8 +997,8 @@ export default function SetupPage() {
                 rows={2}
                 className={`w-full rounded-lg px-3 py-2 border resize-none transition-all duration-200 ${
                   isDark
-                    ? "bg-[#252525] border-[#333333] text-white placeholder:text-[#555555] focus:border-[#ff6b2c] focus:ring-2 focus:ring-[rgba(255,107,44,0.25)]"
-                    : "bg-[rgba(255,255,255,0.55)] border-[rgba(0,0,0,0.08)] text-[#1e3331] placeholder:text-[#9AA8A2] focus:border-[rgba(233,78,27,0.5)] focus:ring-2 focus:ring-[rgba(233,78,27,0.18)]"
+                    ? "bg-app-elevated border-chrome-strong text-white placeholder:text-text-muted focus:border-brand-orange focus:ring-2 focus:ring-[rgba(233,78,27,0.25)]"
+                    : "bg-[rgba(255,255,255,0.55)] border-[rgba(0,0,0,0.08)] text-brand-green placeholder:text-text-placeholder focus:border-[rgba(233,78,27,0.5)] focus:ring-2 focus:ring-[rgba(233,78,27,0.18)]"
                 } focus:outline-none`}
               />
             </SpecSection>
@@ -1008,9 +1008,9 @@ export default function SetupPage() {
         {/* History Section */}
         <div className="mt-8">
           <h2 className={`text-xs font-semibold tracking-[0.15em] uppercase mb-4 font-sans ${
-            isDark ? "text-[#ff6b2c]" : "text-[#5A7A70]"
+            isDark ? "text-brand-orange" : "text-text-accent-light"
           }`}>
-            <span className={isDark ? "text-[#ff6b2c]" : ""}>Setup History</span>
+            <span className={isDark ? "text-brand-orange" : ""}>Setup History</span>
             <span className={isDark ? "text-white" : ""}> ({history.length}{history.length !== historyRaw.length ? ` / ${historyRaw.length}` : ""})</span>
           </h2>
 
@@ -1026,7 +1026,7 @@ export default function SetupPage() {
 
           {historyLoading ? (
             <div className={`h-32 rounded-[26px] animate-pulse ${
-              isDark ? "bg-[#1e1e1e]" : "bg-[rgba(30,51,49,0.04)]"
+              isDark ? "bg-app-surface" : "bg-[rgba(30,51,49,0.04)]"
             }`} />
           ) : history.length ? (
             <div className="space-y-2">
@@ -1056,8 +1056,8 @@ export default function SetupPage() {
                   ? isRace
                     ? "border-[rgba(234,179,8,0.50)]"
                     : hasAnyChanges
-                    ? "border-[#ff6b2c]"
-                    : "border-[#2a2a2a]"
+                    ? "border-brand-orange"
+                    : "border-chrome-strong"
                   : isRace
                     ? "border-[rgba(234,179,8,0.35)]"
                     : hasAnyChanges
@@ -1069,7 +1069,7 @@ export default function SetupPage() {
                     key={id}
                     className={`rounded-[26px] overflow-hidden backdrop-blur-sm ring-1 transition border ${borderClass} ${
                       isDark
-                        ? "bg-[#1e1e1e] ring-[rgba(255,255,255,0.05)] shadow-[0_10px_28px_rgba(0,0,0,0.40)]"
+                        ? "bg-app-surface ring-[rgba(255,255,255,0.05)] shadow-[0_10px_28px_rgba(0,0,0,0.40)]"
                         : "bg-[rgba(232,228,220,0.75)] ring-[rgba(30,51,49,0.10)] shadow-[0_10px_28px_rgba(0,0,0,0.10)]"
                     }`}
                   >
@@ -1083,20 +1083,20 @@ export default function SetupPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 flex-1 min-w-0">
                           {isExpanded ? (
-                            <ChevronDown size={18} className={`mt-0.5 shrink-0 ${isDark ? "text-[#ff6b2c]" : "text-[#e94e1b]"}`} />
+                            <ChevronDown size={18} className={`mt-0.5 shrink-0 ${isDark ? "text-brand-orange" : "text-[#e94e1b]"}`} />
                           ) : (
-                            <ChevronRight size={18} className={`mt-0.5 shrink-0 ${isDark ? "text-[#888888]" : "text-[#8A9A94]"}`} />
+                            <ChevronRight size={18} className={`mt-0.5 shrink-0 ${isDark ? "text-text-muted" : "text-text-muted"}`} />
                           )}
 
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className={`font-bold truncate ${isDark ? "text-white" : "text-[#1e3331]"}`}>{row.mechanic || "—"}</span>
-                              <span className={`text-xs font-mono tabular-nums ${isDark ? "text-[#888888]" : "text-[#8A9A94]"}`}>{formatTimestamp(row.timestamp)}</span>
+                              <span className={`font-bold truncate ${isDark ? "text-white" : "text-brand-green"}`}>{row.mechanic || "—"}</span>
+                              <span className={`text-xs font-mono tabular-nums ${isDark ? "text-text-muted" : "text-text-muted"}`}>{formatTimestamp(row.timestamp)}</span>
 
                               {!!fs?.event_context && (
                                 <span className={`text-xs px-2 py-0.5 rounded-2xl border ${
                                   isDark
-                                    ? "text-[#ff6b2c] bg-[rgba(255,107,44,0.15)] border-[rgba(255,107,44,0.30)]"
+                                    ? "text-brand-orange bg-[rgba(233,78,27,0.15)] border-[rgba(233,78,27,0.30)]"
                                     : "text-[#e94e1b] bg-[rgba(233,78,27,0.10)] border-[rgba(233,78,27,0.20)]"
                                 }`}>
                                   {fs.event_context}
@@ -1116,8 +1116,8 @@ export default function SetupPage() {
                               {hasExpandedOnlyChanges && (
                                 <span className={`text-xs font-bold px-2 py-0.5 rounded-2xl border ${
                                   isDark
-                                    ? "bg-[rgba(255,107,44,0.15)] text-[#ff6b2c] border-[rgba(255,107,44,0.30)]"
-                                    : "bg-[rgba(210,74,31,0.10)] text-[#D24A1F] border-[rgba(210,74,31,0.20)]"
+                                    ? "bg-[rgba(233,78,27,0.15)] text-brand-orange border-[rgba(233,78,27,0.30)]"
+                                    : "bg-[rgba(210,74,31,0.10)] text-brand-orange-lo border-[rgba(210,74,31,0.20)]"
                                 }`}>
                                   Other changed
                                 </span>
@@ -1126,8 +1126,8 @@ export default function SetupPage() {
                               {isLatest && changes?.notesChanged && (
                                 <span className={`text-xs font-bold px-2 py-0.5 rounded-2xl border ${
                                   isDark
-                                    ? "bg-[rgba(255,107,44,0.15)] text-[#ff6b2c] border-[rgba(255,107,44,0.30)]"
-                                    : "bg-[rgba(210,74,31,0.10)] text-[#D24A1F] border-[rgba(210,74,31,0.20)]"
+                                    ? "bg-[rgba(233,78,27,0.15)] text-brand-orange border-[rgba(233,78,27,0.30)]"
+                                    : "bg-[rgba(210,74,31,0.10)] text-brand-orange-lo border-[rgba(210,74,31,0.20)]"
                                 }`}>
                                   Notes changed
                                 </span>
@@ -1144,15 +1144,15 @@ export default function SetupPage() {
                             className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold border transition inline-flex items-center gap-1.5 active:scale-[0.97] ${
                               offline || !row?.id
                                 ? isDark
-                                  ? "bg-[#252525] text-[#666666] border-[#333333] cursor-not-allowed"
-                                  : "bg-[rgba(18,38,33,0.04)] text-[#8A9A94] border-[rgba(0,0,0,0.05)] cursor-not-allowed"
+                                  ? "bg-app-elevated text-text-muted border-chrome-strong cursor-not-allowed"
+                                  : "bg-[rgba(18,38,33,0.04)] text-text-muted border-[rgba(0,0,0,0.05)] cursor-not-allowed"
                                 : isRace
                                 ? isDark
                                   ? "bg-[rgba(234,179,8,0.20)] text-yellow-400 border-[rgba(234,179,8,0.40)]"
                                   : "bg-[rgba(234,179,8,0.15)] text-yellow-700 border-[rgba(234,179,8,0.30)]"
                                 : isDark
-                                  ? "bg-[#252525] text-[#888888] border-[#333333]"
-                                  : "bg-[rgba(255,255,255,0.60)] text-[#5A7A70] border-[rgba(0,0,0,0.08)]"
+                                  ? "bg-app-elevated text-text-muted border-chrome-strong"
+                                  : "bg-[rgba(255,255,255,0.60)] text-text-accent-light border-[rgba(0,0,0,0.08)]"
                             }`}
                             title={offline ? "Offline" : isRace ? "Unmark race" : "Mark as race"}
                           >
@@ -1168,11 +1168,11 @@ export default function SetupPage() {
                                 className={`rounded-lg p-1.5 border transition active:scale-[0.97] ${
                                   offline || !row?.id
                                     ? isDark
-                                      ? "bg-[#252525] text-[#666666] border-[#333333] cursor-not-allowed"
-                                      : "bg-[rgba(18,38,33,0.04)] text-[#8A9A94] border-[rgba(0,0,0,0.05)] cursor-not-allowed"
+                                      ? "bg-app-elevated text-text-muted border-chrome-strong cursor-not-allowed"
+                                      : "bg-[rgba(18,38,33,0.04)] text-text-muted border-[rgba(0,0,0,0.05)] cursor-not-allowed"
                                     : isDark
-                                      ? "bg-[#252525] text-[#ff6b2c] border-[#333333] hover:bg-[#333333]"
-                                      : "bg-[rgba(210,74,31,0.10)] text-[#D24A1F] border-[rgba(210,74,31,0.25)]"
+                                      ? "bg-app-elevated text-brand-orange border-chrome-strong hover:bg-chrome-strong"
+                                      : "bg-[rgba(210,74,31,0.10)] text-brand-orange-lo border-[rgba(210,74,31,0.25)]"
                                 }`}
                                 title="Edit (admin)"
                               >
@@ -1185,10 +1185,10 @@ export default function SetupPage() {
                                 className={`rounded-lg p-1.5 border transition active:scale-[0.97] ${
                                   offline || !row?.id || savingAdmin
                                     ? isDark
-                                      ? "bg-[#252525] text-[#666666] border-[#333333] cursor-not-allowed"
-                                      : "bg-[rgba(18,38,33,0.04)] text-[#8A9A94] border-[rgba(0,0,0,0.05)] cursor-not-allowed"
+                                      ? "bg-app-elevated text-text-muted border-chrome-strong cursor-not-allowed"
+                                      : "bg-[rgba(18,38,33,0.04)] text-text-muted border-[rgba(0,0,0,0.05)] cursor-not-allowed"
                                     : isDark
-                                      ? "bg-[#252525] text-red-500 border-[#333333] hover:bg-[#333333]"
+                                      ? "bg-app-elevated text-red-500 border-chrome-strong hover:bg-chrome-strong"
                                       : "bg-[rgba(239,68,68,0.10)] text-red-600 border-[rgba(239,68,68,0.25)]"
                                 }`}
                                 title="Delete (admin)"
@@ -1209,8 +1209,8 @@ export default function SetupPage() {
                           className={`p-2.5 rounded-xl ${
                             isDark
                               ? it.changed
-                                ? "bg-[rgba(255,107,44,0.15)] border border-[rgba(255,107,44,0.30)]"
-                                : "bg-[#252525] border border-[#333333]"
+                                ? "bg-[rgba(233,78,27,0.15)] border border-[rgba(233,78,27,0.30)]"
+                                : "bg-app-elevated border border-chrome-strong"
                               : it.changed
                                 ? "bg-[rgba(210,74,31,0.10)] border border-[rgba(210,74,31,0.25)] shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
                                 : "bg-[rgba(255,255,255,0.45)] border border-[rgba(0,0,0,0.06)] shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
@@ -1218,8 +1218,8 @@ export default function SetupPage() {
                         >
                           <div className={`text-[11px] ${
                             isDark
-                              ? it.changed ? "text-[#ff6b2c]" : "text-[#888888]"
-                              : it.changed ? "text-[#D24A1F]" : "text-[#8A9A94]"
+                              ? it.changed ? "text-brand-orange" : "text-text-muted"
+                              : it.changed ? "text-brand-orange-lo" : "text-text-muted"
                           }`}>{it.label}</div>
                           <div className={`font-semibold truncate tabular-nums font-mono ${isDark ? "text-white" : "text-[#1F3D36]"}`}>{it.value}</div>
                         </div>
@@ -1228,7 +1228,7 @@ export default function SetupPage() {
 
                     {/* Expanded content */}
                     {isExpanded && (
-                      <div className={`px-4 pb-4 pt-2 border-t ${isDark ? "border-[#2a2a2a]" : "border-[rgba(0,0,0,0.06)]"}`}>
+                      <div className={`px-4 pb-4 pt-2 border-t ${isDark ? "border-chrome-strong" : "border-[rgba(0,0,0,0.06)]"}`}>
                         <div className="grid grid-cols-2 gap-2 text-sm">
                           {EXPANDED_KEYS.map((k) => {
                             const v = cur?.[k];
@@ -1240,8 +1240,8 @@ export default function SetupPage() {
                                 className={`p-2.5 rounded-xl ${k === "wheelset" ? "col-span-2" : ""} ${
                                   isDark
                                     ? expandedChanged
-                                      ? "bg-[rgba(255,107,44,0.15)] border border-[rgba(255,107,44,0.30)]"
-                                      : "bg-[#252525] border border-[#333333]"
+                                      ? "bg-[rgba(233,78,27,0.15)] border border-[rgba(233,78,27,0.30)]"
+                                      : "bg-app-elevated border border-chrome-strong"
                                     : expandedChanged
                                       ? "bg-[rgba(233,78,27,0.10)] border border-[rgba(233,78,27,0.25)] shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
                                       : "bg-[rgba(255,255,255,0.45)] border border-[rgba(0,0,0,0.06)] shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
@@ -1249,10 +1249,10 @@ export default function SetupPage() {
                               >
                                 <div className={`text-[11px] ${
                                   isDark
-                                    ? expandedChanged ? "text-[#ff6b2c]" : "text-[#888888]"
-                                    : expandedChanged ? "text-[#e94e1b]" : "text-[#8A9A94]"
+                                    ? expandedChanged ? "text-brand-orange" : "text-text-muted"
+                                    : expandedChanged ? "text-[#e94e1b]" : "text-text-muted"
                                 }`}>{labelize(k)}</div>
-                                <div className={`font-semibold break-words ${isDark ? "text-white" : "text-[#1e3331]"}`}>{v}</div>
+                                <div className={`font-semibold break-words ${isDark ? "text-white" : "text-brand-green"}`}>{v}</div>
                               </div>
                             );
                           })}
@@ -1263,8 +1263,8 @@ export default function SetupPage() {
                             className={`mt-3 p-2.5 rounded-xl ${
                               isDark
                                 ? isLatest && changes?.notesChanged
-                                  ? "bg-[rgba(255,107,44,0.15)] border border-[rgba(255,107,44,0.30)]"
-                                  : "bg-[#252525] border border-[#333333]"
+                                  ? "bg-[rgba(233,78,27,0.15)] border border-[rgba(233,78,27,0.30)]"
+                                  : "bg-app-elevated border border-chrome-strong"
                                 : isLatest && changes?.notesChanged
                                   ? "bg-[rgba(233,78,27,0.10)] border border-[rgba(233,78,27,0.25)] shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
                                   : "bg-[rgba(255,255,255,0.45)] border border-[rgba(0,0,0,0.06)] shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
@@ -1272,10 +1272,10 @@ export default function SetupPage() {
                           >
                             <div className={`text-[11px] ${
                               isDark
-                                ? isLatest && changes?.notesChanged ? "text-[#ff6b2c]" : "text-[#888888]"
-                                : isLatest && changes?.notesChanged ? "text-[#e94e1b]" : "text-[#8A9A94]"
+                                ? isLatest && changes?.notesChanged ? "text-brand-orange" : "text-text-muted"
+                                : isLatest && changes?.notesChanged ? "text-[#e94e1b]" : "text-text-muted"
                             }`}>Notes</div>
-                            <div className={`italic break-words ${isDark ? "text-[#a0a0a0]" : "text-[#5A7A70]"}`}>"{cur.notes}"</div>
+                            <div className={`italic break-words ${isDark ? "text-text-secondary" : "text-text-accent-light"}`}>"{cur.notes}"</div>
                           </div>
                         )}
                       </div>
@@ -1285,8 +1285,8 @@ export default function SetupPage() {
               })}
             </div>
           ) : (
-            <div className={`text-sm py-6 text-center ${isDark ? "text-[#888888]" : "text-[#8A9A94]"}`}>
-              No history for this filter. Try switching to <span className={`font-bold ${isDark ? "text-white" : "text-[#1e3331]"}`}>All</span>.
+            <div className={`text-sm py-6 text-center ${isDark ? "text-text-muted" : "text-text-muted"}`}>
+              No history for this filter. Try switching to <span className={`font-bold ${isDark ? "text-white" : "text-brand-green"}`}>All</span>.
             </div>
           )}
         </div>
@@ -1300,8 +1300,8 @@ export default function SetupPage() {
           saving
             ? "w-20 h-20 bg-white text-[#e94e1b] shadow-[0_0_40px_rgba(233,78,27,0.60)] animate-pulse scale-110"
             : !canSave
-              ? `w-14 h-14 ${isDark ? "bg-[#1e1e1e] text-[#666666]" : "bg-[rgba(30,51,49,0.10)] text-[#8A9A94]"} cursor-not-allowed`
-              : "w-14 h-14 bg-[#ff6b2c] text-white shadow-[0_8px_24px_rgba(255,107,44,0.40)] active:scale-95"
+              ? `w-14 h-14 ${isDark ? "bg-app-surface text-text-muted" : "bg-[rgba(30,51,49,0.10)] text-text-muted"} cursor-not-allowed`
+              : "w-14 h-14 bg-brand-orange text-white shadow-[0_8px_24px_rgba(233,78,27,0.40)] active:scale-95"
         }`}
       >
         <Save size={saving ? 28 : 22} className={saving ? "animate-spin" : ""} />
@@ -1313,11 +1313,11 @@ export default function SetupPage() {
           <Drawer.Overlay className={`fixed inset-0 backdrop-blur-sm z-50 ${isDark ? "bg-black/60" : "bg-black/40"}`} />
           <Drawer.Content
             className={`flex flex-col rounded-t-[32px] fixed bottom-0 left-0 right-0 z-50 outline-none border-t ${
-              isDark ? "border-[#2a2a2a]" : "border-[rgba(0,0,0,0.08)]"
+              isDark ? "border-chrome-strong" : "border-[rgba(0,0,0,0.08)]"
             }`}
             style={{
               background: isDark
-                ? "#1e1e1e"
+                ? "var(--bg-surface)"
                 : "radial-gradient(400px 300px at 50% 100%, rgba(30,51,49,0.15), transparent 70%)," +
                   "rgba(232,228,220,0.98)",
             }}
@@ -1325,7 +1325,7 @@ export default function SetupPage() {
             {/* Drag handle */}
             <div className="p-4 rounded-t-[32px] flex-none">
               <div className={`mx-auto w-12 h-1.5 flex-shrink-0 rounded-full ${
-                isDark ? "bg-[#444444]" : "bg-[rgba(30,51,49,0.15)]"
+                isDark ? "bg-text-muted" : "bg-[rgba(30,51,49,0.15)]"
               }`} />
             </div>
 
@@ -1381,17 +1381,17 @@ function FormField({ label, value, onChange, placeholder, unit, inputMode, patte
     <div
       className={`rounded-xl p-2 border ${fullWidth ? "col-span-full" : ""} ${
         isDark
-          ? "bg-[#1a1a1a] border-[#2a2a2a]"
+          ? "bg-app-bg border-chrome-strong"
           : "bg-[rgba(255,255,255,0.45)] border-[rgba(0,0,0,0.06)] shadow-[0_2px_6px_rgba(0,0,0,0.03)]"
       }`}
     >
       <div className="flex items-center justify-between mb-1">
-        <span className={`text-xs font-medium ${isDark ? "text-[#888888]" : "text-[#5A7A70]"}`}>{label}</span>
+        <span className={`text-xs font-medium ${isDark ? "text-text-muted" : "text-text-accent-light"}`}>{label}</span>
         {unit && (
           <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
             isDark
-              ? "text-[#666666] bg-[#1e1e1e]"
-              : "text-[#8A9A94] bg-[rgba(30,51,49,0.04)]"
+              ? "text-text-muted bg-app-surface"
+              : "text-text-muted bg-[rgba(30,51,49,0.04)]"
           }`}>
             {unit}
           </span>
@@ -1406,8 +1406,8 @@ function FormField({ label, value, onChange, placeholder, unit, inputMode, patte
           rows={rows || 3}
           className={`w-full bg-transparent outline-none resize-none ${
             isDark
-              ? "text-white placeholder:text-[#666666]"
-              : "text-[#1e3331] placeholder:text-[#8A9A94]"
+              ? "text-white placeholder:text-text-muted"
+              : "text-brand-green placeholder:text-text-muted"
           }`}
         />
       ) : (
@@ -1421,8 +1421,8 @@ function FormField({ label, value, onChange, placeholder, unit, inputMode, patte
           placeholder={placeholder}
           className={`w-full bg-transparent outline-none ${
             isDark
-              ? "text-white placeholder:text-[#666666]"
-              : "text-[#1e3331] placeholder:text-[#8A9A94]"
+              ? "text-white placeholder:text-text-muted"
+              : "text-brand-green placeholder:text-text-muted"
           } ${isNumeric ? "font-mono text-lg tabular-nums" : ""}`}
           autoComplete="off"
           enterKeyHint={onEnterNext ? "next" : undefined}
@@ -1447,7 +1447,7 @@ function FilterChip({ active, onClick, children, isDark }) {
         onClick={onClick}
         className={`${baseStyle} ${
           isDark
-            ? "bg-[#ff6b2c] text-white border-[#ff6b2c]"
+            ? "bg-brand-orange text-white border-brand-orange"
             : "bg-[rgba(233,78,27,0.12)] text-[#e94e1b] border-[rgba(233,78,27,0.25)]"
         }`}
       >
@@ -1461,8 +1461,8 @@ function FilterChip({ active, onClick, children, isDark }) {
       onClick={onClick}
       className={`${baseStyle} ${
         isDark
-          ? "bg-[#252525] text-[#888888] border-[#333333] hover:bg-[#333333]"
-          : "bg-[rgba(30,51,49,0.06)] text-[#5A7A70] border-[rgba(0,0,0,0.06)] hover:bg-[rgba(30,51,49,0.10)]"
+          ? "bg-app-elevated text-text-muted border-chrome-strong hover:bg-chrome-strong"
+          : "bg-[rgba(30,51,49,0.06)] text-text-accent-light border-[rgba(0,0,0,0.06)] hover:bg-[rgba(30,51,49,0.10)]"
       }`}
     >
       {children}

@@ -10,40 +10,38 @@ export function RidersModal({ riders, isOpen, onClose, onSelectRider, theme = "l
   const topRow = riders.slice(0, 3);
   const bottomRow = riders.slice(3);
 
-  // Theme-specific colors
+  // Theme-specific colors — mapped to tokens.css values
   const colors = isDark
     ? {
-        // Dark Kit Theme
-        overlay: "bg-black/60",
-        container: "bg-[#1e1e1e] border-[#2a2a2a]",
-        handle: "bg-[#444444]",
-        headerText: "text-[#ff6b2c]",
-        cardOuter: "bg-[#252525] border-b-2 border-b-[#ff6b2c]",
-        cardRing: "ring-1 ring-[rgba(255,255,255,0.05)]",
-        cardActiveRing: "group-active:ring-[#ff6b2c] group-active:ring-2",
-        cardInner: "bg-[#1e1e1e] border-[rgba(255,255,255,0.08)]",
+        overlay: "bg-overlay-scrim",
+        container: "bg-app-surface border-chrome-strong",
+        handle: "bg-text-muted",
+        headerText: "text-brand-orange",
+        cardOuter: "bg-app-elevated border-b-2 border-b-brand-orange",
+        cardRing: "ring-1 ring-chrome-subtle",
+        cardActiveRing: "group-active:ring-brand-orange group-active:ring-2",
+        cardInner: "bg-app-surface border-chrome-subtle",
         cardShadow: "shadow-[0_10px_28px_rgba(0,0,0,0.50)]",
-        nameColor: "text-white",
-        nameHover: "group-hover:text-[#ff6b2c]",
+        nameColor: "text-text-primary",
+        nameHover: "group-hover:text-brand-orange",
       }
     : {
-        // Light 2026 Livery Theme
         overlay: "bg-black/40",
         container: "border-[rgba(0,0,0,0.08)]",
         handle: "bg-[rgba(30,51,49,0.15)]",
-        headerText: "text-[#5A7A70] opacity-70",
+        headerText: "text-text-accent-light opacity-70",
         cardOuter: "bg-[rgba(30,51,49,0.12)]",
         cardRing: "ring-1 ring-[rgba(30,51,49,0.20)]",
-        cardActiveRing: "group-active:ring-[rgba(233,78,27,0.50)]",
-        cardInner: "bg-[#1e3331] border-[rgba(255,255,255,0.1)]",
+        cardActiveRing: "group-active:ring-ring-active",
+        cardInner: "bg-brand-green border-chrome-subtle",
         cardShadow: "shadow-[0_10px_28px_rgba(0,0,0,0.18)]",
-        nameColor: "text-[#1e3331]",
-        nameHover: "group-hover:text-[#e94e1b]",
+        nameColor: "text-brand-green",
+        nameHover: "group-hover:text-brand-orange",
       };
 
   // Container background style
   const containerStyle = isDark
-    ? { background: "#1e1e1e" }
+    ? { background: "var(--bg-surface)" }
     : {
         background:
           "radial-gradient(400px 300px at 50% 100%, rgba(30,51,49,0.15), transparent 70%)," +
@@ -100,9 +98,7 @@ export function RidersModal({ riders, isOpen, onClose, onSelectRider, theme = "l
                         />
                       ) : (
                         <div className={`w-full h-full flex items-center justify-center ${
-                          isDark
-                            ? "bg-[linear-gradient(180deg,#ff8a50_0%,#ff6b2c_100%)]"
-                            : "bg-[linear-gradient(180deg,#f0714a_0%,#e94e1b_100%)]"
+                          "bg-[linear-gradient(180deg,var(--brand-orange-hi)_0%,var(--brand-orange)_100%)]"
                         }`}>
                           <span className="text-lg font-bold text-white">
                             {rider.initial}
@@ -146,9 +142,7 @@ export function RidersModal({ riders, isOpen, onClose, onSelectRider, theme = "l
                         />
                       ) : (
                         <div className={`w-full h-full flex items-center justify-center ${
-                          isDark
-                            ? "bg-[linear-gradient(180deg,#ff8a50_0%,#ff6b2c_100%)]"
-                            : "bg-[linear-gradient(180deg,#f0714a_0%,#e94e1b_100%)]"
+                          "bg-[linear-gradient(180deg,var(--brand-orange-hi)_0%,var(--brand-orange)_100%)]"
                         }`}>
                           <span className="text-lg font-bold text-white">
                             {rider.initial}

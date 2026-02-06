@@ -2,20 +2,15 @@
 // Source: docs/design/00-foundation.md
 
 export function Avatar({ name, initial, image, selected = false, onClick }) {
-  // Dark theme colors
+  // Dark theme colors — mapped to tokens.css values
   const colors = {
-    outerBg: selected ? "bg-[#2a2a2a]" : "bg-[#1e1e1e]",
-    outerBorder: "border-transparent border-b-2 border-b-[#ff6b2c]",
-    outerRing: selected ? "ring-1 ring-[#ff6b2c]" : "ring-0",
-    innerBg: "bg-[#1e1e1e]",
-    innerBorder: "border border-[rgba(255,255,255,0.05)]",
-    nameColor: selected ? "text-[#ff6b2c]" : "text-white",
-    focusRing: "focus-visible:ring-[#ff6b2c]",
-  };
-
-  // Shadow style
-  const cardShadowStyle = {
-    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.4)",
+    outerBg: selected ? "bg-app-elevated" : "bg-app-surface",
+    outerBorder: "border-transparent border-b-2 border-b-brand-orange",
+    outerRing: selected ? "ring-1 ring-brand-orange" : "ring-0",
+    innerBg: "bg-app-surface",
+    innerBorder: "border border-chrome-subtle",
+    nameColor: selected ? "text-brand-orange" : "text-text-primary",
+    focusRing: "focus-visible:ring-brand-orange",
   };
 
   return (
@@ -28,12 +23,12 @@ export function Avatar({ name, initial, image, selected = false, onClick }) {
     >
       {/* Outer container - with hover effects */}
       <div
-        style={cardShadowStyle}
+        style={{ boxShadow: "0 4px 12px rgba(0, 0, 0, 0.4)" }}
         className={[
           "relative p-[2px] rounded-2xl",
           "transition-all duration-200 ease-out",
           "group-hover:scale-[1.03] group-active:scale-[0.97]",
-          "group-hover:shadow-[0_8px_24px_rgba(255,107,44,0.15)] group-hover:border-b-[#ff8a50]",
+          "group-hover:shadow-[0_8px_24px_rgba(233,78,27,0.15)] group-hover:border-b-brand-orange-hi",
           colors.outerBg,
           "backdrop-blur-sm",
           colors.outerBorder,
@@ -55,7 +50,7 @@ export function Avatar({ name, initial, image, selected = false, onClick }) {
               className="w-full h-full object-cover object-[center_35%] translate-y-1"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-[linear-gradient(180deg,#ff8a50_0%,#ff6b2c_100%)]">
+            <div className="w-full h-full flex items-center justify-center bg-[linear-gradient(180deg,var(--brand-orange-hi)_0%,var(--brand-orange)_100%)]">
               <span className="text-lg font-bold text-white">{initial}</span>
             </div>
           )}
@@ -68,7 +63,7 @@ export function Avatar({ name, initial, image, selected = false, onClick }) {
         className={[
           "text-sm font-semibold transition-colors duration-200 truncate max-w-full",
           colors.nameColor,
-          "group-hover:text-[#ff6b2c]",
+          "group-hover:text-brand-orange",
         ].join(" ")}
       >
         {name}

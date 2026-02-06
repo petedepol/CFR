@@ -547,74 +547,74 @@ export default function JigPage() {
   // Theme-specific colors
   const colors = isDark
     ? {
-        pageBg: "#121212",
-        headerBg: "bg-[#1e1e1e]",
-        headerBorder: "border-[#2a2a2a]",
+        pageBg: "var(--bg-app)",
+        headerBg: "bg-app-surface",
+        headerBorder: "border-chrome-strong",
         headerText: "text-white",
-        headerSubtext: "text-[#888888]",
-        backBtn: "bg-[#252525] text-white",
-        wifiOnline: "text-[#ff6b2c]",
-        wifiOffline: "text-[#666666]",
-        cardBg: "bg-[#1e1e1e]",
-        cardBorder: "border-[#2a2a2a]",
+        headerSubtext: "text-text-muted",
+        backBtn: "bg-app-elevated text-white",
+        wifiOnline: "text-brand-orange",
+        wifiOffline: "text-text-muted",
+        cardBg: "bg-app-surface",
+        cardBorder: "border-chrome-strong",
         cardShadow: "shadow-[0_10px_28px_rgba(0,0,0,0.40)]",
         riderName: "text-white",
-        pillBg: "bg-[#252525]",
-        pillBorder: "border-[#333333]",
-        pillActive: "bg-[#ff6b2c] text-white shadow-[0_6px_14px_rgba(255,107,44,0.30)]",
-        pillInactive: "text-[#888888]",
-        inputWrapBg: "bg-[#1a1a1a]",
-        inputWrapBorder: "border-[#2a2a2a]",
-        sectionHeader: "text-[#ff6b2c]",
-        tableHeaderBg: "bg-[#252525]",
-        tableHeaderText: "text-[#888888]",
-        tableRowOdd: "bg-[#1e1e1e]",
-        tableRowEven: "bg-[#1a1a1a]",
-        tableBorder: "border-[#2a2a2a]",
+        pillBg: "bg-app-elevated",
+        pillBorder: "border-chrome-strong",
+        pillActive: "bg-brand-orange text-white shadow-[0_6px_14px_rgba(233,78,27,0.30)]",
+        pillInactive: "text-text-muted",
+        inputWrapBg: "bg-app-bg",
+        inputWrapBorder: "border-chrome-strong",
+        sectionHeader: "text-brand-orange",
+        tableHeaderBg: "bg-app-elevated",
+        tableHeaderText: "text-text-muted",
+        tableRowOdd: "bg-app-surface",
+        tableRowEven: "bg-app-bg",
+        tableBorder: "border-chrome-strong",
         tableText: "text-white",
-        tableSecondary: "text-[#888888]",
-        notesText: "text-[#888888] italic",
-        emptyText: "text-[#666666]",
+        tableSecondary: "text-text-muted",
+        notesText: "text-text-muted italic",
+        emptyText: "text-text-muted",
         alertBg: "bg-[rgba(245,158,11,0.15)]",
         alertBorder: "border-[rgba(245,158,11,0.30)]",
         alertText: "text-amber-400",
         editBannerBg: "bg-[rgba(59,130,246,0.15)]",
         editBannerBorder: "border-[rgba(59,130,246,0.30)]",
         editBannerText: "text-blue-400",
-        modalBg: "#1e1e1e",
-        modalBorder: "#2a2a2a",
-        modalHandle: "bg-[#444444]",
-        modalHeader: "text-[#ff6b2c]",
+        modalBg: "var(--bg-surface)",
+        modalBorder: "rgba(255,255,255,0.14)",
+        modalHandle: "bg-text-muted",
+        modalHeader: "text-brand-orange",
       }
     : {
-        pageBg: "#e8e4dc",
+        pageBg: "var(--light-bg)",
         headerBg: "bg-transparent",
         headerBorder: "border-transparent",
-        headerText: "text-[#1e3331]",
-        headerSubtext: "text-[#5A7A70]",
-        backBtn: "bg-[rgba(30,51,49,0.08)] text-[#5A7A70]",
+        headerText: "text-brand-green",
+        headerSubtext: "text-text-accent-light",
+        backBtn: "bg-[rgba(30,51,49,0.08)] text-text-accent-light",
         wifiOnline: "text-green-600",
-        wifiOffline: "text-[#8A9A94]",
-        cardBg: "bg-[rgba(232,228,220,0.75)]",
+        wifiOffline: "text-text-muted",
+        cardBg: "bg-light-surface/75",
         cardBorder: "border-[rgba(0,0,0,0.08)]",
         cardShadow: "shadow-[0_10px_28px_rgba(0,0,0,0.10)]",
-        riderName: "text-[#1e3331]",
+        riderName: "text-brand-green",
         pillBg: "bg-[rgba(255,255,255,0.50)]",
         pillBorder: "border-[rgba(0,0,0,0.08)]",
         pillActive: "bg-[linear-gradient(180deg,#f0714a_0%,#e94e1b_100%)] text-white shadow-[0_6px_14px_rgba(233,78,27,0.30)]",
-        pillInactive: "text-[#5A7A70]",
+        pillInactive: "text-text-accent-light",
         inputWrapBg: "bg-[rgba(255,255,255,0.45)]",
         inputWrapBorder: "border-[rgba(0,0,0,0.06)]",
-        sectionHeader: "text-[#5A7A70]",
+        sectionHeader: "text-text-accent-light",
         tableHeaderBg: "bg-[rgba(30,51,49,0.04)]",
-        tableHeaderText: "text-[#5A7A70]",
+        tableHeaderText: "text-text-accent-light",
         tableRowOdd: "",
         tableRowEven: "",
         tableBorder: "border-[rgba(0,0,0,0.08)]",
-        tableText: "text-[#1e3331]",
-        tableSecondary: "text-[#8A9A94]",
-        notesText: "text-[#5A7A70] italic",
-        emptyText: "text-[#8A9A94]",
+        tableText: "text-brand-green",
+        tableSecondary: "text-text-muted",
+        notesText: "text-text-accent-light italic",
+        emptyText: "text-text-muted",
         alertBg: "bg-[rgba(245,158,11,0.08)]",
         alertBorder: "border-[rgba(245,158,11,0.15)]",
         alertText: "text-amber-700",
@@ -624,7 +624,7 @@ export default function JigPage() {
         modalBg: "rgba(232,228,220,0.98)",
         modalBorder: "rgba(0,0,0,0.08)",
         modalHandle: "bg-[rgba(30,51,49,0.15)]",
-        modalHeader: "text-[#5A7A70] opacity-70",
+        modalHeader: "text-text-accent-light opacity-70",
       };
 
   const pageStyle = isDark
@@ -670,14 +670,14 @@ export default function JigPage() {
                 ) : (
                   <Wifi size={16} className={colors.wifiOnline} />
                 )}
-                {dirty && <div className="w-2 h-2 rounded-full bg-[#ff6b2c]" />}
+                {dirty && <div className="w-2 h-2 rounded-full bg-brand-orange" />}
               </div>
             </div>
           </div>
 
           {/* Rider + Bike Type Row */}
           <div
-            className={`flex items-center justify-between rounded-[26px] p-3.5 backdrop-blur-sm border ring-1 ${isDark ? "ring-[rgba(255,107,44,0.15)]" : "ring-[rgba(255,255,255,0.05)]"} ${colors.cardBg} ${colors.cardBorder} ${colors.cardShadow}`}
+            className={`flex items-center justify-between rounded-[26px] p-3.5 backdrop-blur-sm border ring-1 ${isDark ? "ring-[rgba(233,78,27,0.15)]" : "ring-[rgba(255,255,255,0.05)]"} ${colors.cardBg} ${colors.cardBorder} ${colors.cardShadow}`}
             style={{
               boxShadow: isDark
                 ? "0 10px 28px rgba(0, 0, 0, 0.40), 0 0 0 1px rgba(255, 107, 44, 0.08)"
@@ -693,12 +693,12 @@ export default function JigPage() {
                   className="flex items-center gap-3 active:scale-[0.98] transition"
                 >
                   {/* Avatar */}
-                  <div className={`relative p-[2px] rounded-2xl backdrop-blur-sm border ${isDark ? "bg-[#252525] border-b-2 border-b-[#ff6b2c]" : "bg-[rgba(30,51,49,0.12)] border-[rgba(0,0,0,0.08)]"} ring-1 ${isDark ? "ring-[rgba(255,255,255,0.05)]" : "ring-[rgba(30,51,49,0.20)]"} shadow-[0_8px_20px_rgba(0,0,0,0.12)]`}>
-                    <div className={`w-[50px] h-[50px] rounded-xl overflow-hidden border ${isDark ? "bg-[#1e1e1e] border-[rgba(255,255,255,0.08)]" : "bg-[#1e3331] border-[rgba(255,255,255,0.1)]"}`}>
+                  <div className={`relative p-[2px] rounded-2xl backdrop-blur-sm border ${isDark ? "bg-app-elevated border-b-2 border-b-brand-orange" : "bg-[rgba(30,51,49,0.12)] border-[rgba(0,0,0,0.08)]"} ring-1 ${isDark ? "ring-[rgba(255,255,255,0.05)]" : "ring-[rgba(30,51,49,0.20)]"} shadow-[0_8px_20px_rgba(0,0,0,0.12)]`}>
+                    <div className={`w-[50px] h-[50px] rounded-xl overflow-hidden border ${isDark ? "bg-app-surface border-[rgba(255,255,255,0.08)]" : "bg-[#1e3331] border-[rgba(255,255,255,0.1)]"}`}>
                       {currentRider?.image ? (
                         <img src={currentRider.image} alt={rider} className="w-full h-full object-cover" />
                       ) : (
-                        <div className={`w-full h-full flex items-center justify-center ${isDark ? "bg-[linear-gradient(180deg,#ff8a50_0%,#ff6b2c_100%)]" : "bg-[linear-gradient(180deg,#f0714a_0%,#e94e1b_100%)]"}`}>
+                        <div className={`w-full h-full flex items-center justify-center ${isDark ? "bg-[linear-gradient(180deg,var(--brand-orange-hi)_0%,var(--brand-orange)_100%)]" : "bg-[linear-gradient(180deg,#f0714a_0%,#e94e1b_100%)]"}`}>
                           <span className="text-sm font-bold text-white">{rider?.[0] || "?"}</span>
                         </div>
                       )}
@@ -719,16 +719,16 @@ export default function JigPage() {
                   className="flex items-center gap-3 active:scale-[0.98] transition"
                 >
                   {/* Bike name */}
-                  <span className={`font-bold tracking-[0.10em] ${isDark ? "text-white" : "text-[#1e3331]"}`}>{currentBike?.label?.toUpperCase()}</span>
+                  <span className={`font-bold tracking-[0.10em] ${isDark ? "text-white" : "text-brand-green"}`}>{currentBike?.label?.toUpperCase()}</span>
                   {/* Bike thumbnail with glass tile */}
                   <div className={`relative p-[2px] rounded-2xl backdrop-blur-sm border ring-1 ${
                     isDark
-                      ? "bg-[#252525] border-b-2 border-b-[#ff6b2c] ring-[rgba(255,255,255,0.05)] shadow-[0_8px_20px_rgba(0,0,0,0.12)]"
+                      ? "bg-app-elevated border-b-2 border-b-brand-orange ring-[rgba(255,255,255,0.05)] shadow-[0_8px_20px_rgba(0,0,0,0.12)]"
                       : "bg-[rgba(30,51,49,0.12)] border-[rgba(0,0,0,0.08)] ring-[rgba(30,51,49,0.20)] shadow-[0_8px_20px_rgba(0,0,0,0.12)]"
                   }`}>
                     <div className={`w-[50px] h-[50px] rounded-xl overflow-hidden flex items-center justify-center border ${
                       isDark
-                        ? "bg-[#1e1e1e] border-[rgba(255,255,255,0.05)]"
+                        ? "bg-app-surface border-[rgba(255,255,255,0.05)]"
                         : "bg-[rgba(255,255,255,0.70)] border-[rgba(0,0,0,0.06)]"
                     }`}>
                       {currentBike?.image ? (
@@ -778,7 +778,7 @@ export default function JigPage() {
         {loading ? (
           <div className="space-y-4">
             {[1, 2].map((i) => (
-              <div key={i} className={`h-16 rounded-3xl animate-pulse ${isDark ? "bg-[#1e1e1e]" : "bg-[rgba(30,51,49,0.04)]"}`} />
+              <div key={i} className={`h-16 rounded-3xl animate-pulse ${isDark ? "bg-app-surface" : "bg-[rgba(30,51,49,0.04)]"}`} />
             ))}
           </div>
         ) : (
@@ -859,7 +859,7 @@ export default function JigPage() {
           </h2>
 
           {historyLoading ? (
-            <div className={`p-4 rounded-[26px] ${isDark ? "bg-[#1e1e1e]" : "bg-[rgba(30,51,49,0.04)]"}`}>
+            <div className={`p-4 rounded-[26px] ${isDark ? "bg-app-surface" : "bg-[rgba(30,51,49,0.04)]"}`}>
               <SkeletonList rows={3} />
             </div>
           ) : historyRows.length ? (
@@ -868,7 +868,7 @@ export default function JigPage() {
                 className={`overflow-x-auto font-sans ${isDark ? "scrollbar-dark" : "scrollbar-light"}`}
                 style={{
                   scrollbarWidth: "thin",
-                  scrollbarColor: isDark ? "#555 #252525" : "#bbb #e8e4dc",
+                  scrollbarColor: isDark ? "var(--text-muted) var(--bg-elevated)" : "#bbb var(--light-bg)",
                 }}
               >
                 <table className="w-full min-w-[640px]" style={{ borderCollapse: "collapse" }}>
@@ -941,9 +941,9 @@ export default function JigPage() {
                                   <button
                                     type="button"
                                     onClick={() => startEditFromRow(row)}
-                                    className={`rounded-lg border p-2 transition ${isDark ? "border-[#ff6b2c]/30 bg-[#ff6b2c]/10 hover:bg-[#ff6b2c]/20" : "border-[rgba(233,78,27,0.25)] bg-[rgba(233,78,27,0.10)] hover:bg-[rgba(233,78,27,0.15)]"}`}
+                                    className={`rounded-lg border p-2 transition ${isDark ? "border-brand-orange/30 bg-brand-orange/10 hover:bg-brand-orange/20" : "border-[rgba(233,78,27,0.25)] bg-[rgba(233,78,27,0.10)] hover:bg-[rgba(233,78,27,0.15)]"}`}
                                   >
-                                    <Pencil size={14} className="text-[#ff6b2c]" />
+                                    <Pencil size={14} className="text-brand-orange" />
                                   </button>
                                   <button
                                     type="button"
@@ -978,7 +978,7 @@ export default function JigPage() {
           saving
             ? "w-20 h-20 bg-white text-[#e94e1b] shadow-[0_0_40px_rgba(233,78,27,0.60)] animate-pulse scale-110"
             : !canSave
-              ? `w-14 h-14 ${isDark ? "bg-[#252525] text-[#666666]" : "bg-[rgba(30,51,49,0.10)] text-[#8A9A94]"} cursor-not-allowed`
+              ? `w-14 h-14 ${isDark ? "bg-app-elevated text-text-muted" : "bg-[rgba(30,51,49,0.10)] text-text-muted"} cursor-not-allowed`
               : "w-14 h-14 bg-[linear-gradient(180deg,#f0714a_0%,#e94e1b_100%)] text-white shadow-[0_8px_24px_rgba(233,78,27,0.40)] active:scale-95"
         }`}
       >
@@ -989,23 +989,23 @@ export default function JigPage() {
       {warnOpen && warnInfo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={cancelWarn} />
-          <div className={`relative rounded-3xl border shadow-2xl max-w-md w-full p-6 ${isDark ? "bg-[#1e1e1e] border-[#2a2a2a]" : "bg-[rgba(232,228,220,0.98)] border-[rgba(0,0,0,0.08)]"}`}>
+          <div className={`relative rounded-3xl border shadow-2xl max-w-md w-full p-6 ${isDark ? "bg-app-surface border-chrome-strong" : "bg-[rgba(232,228,220,0.98)] border-[rgba(0,0,0,0.08)]"}`}>
             <div className="flex items-start justify-between gap-3 mb-4">
               <div className="flex items-start gap-3">
                 <div className="rounded-2xl bg-[rgba(239,68,68,0.10)] border border-[rgba(239,68,68,0.20)] p-2">
                   <AlertTriangle className="text-red-500" size={20} />
                 </div>
                 <div>
-                  <h3 className={`text-lg font-bold ${isDark ? "text-white" : "text-[#1e3331]"}`}>Significant change detected</h3>
-                  <p className={`text-xs mt-1 ${isDark ? "text-[#888888]" : "text-[#5A7A70]"}`}>
+                  <h3 className={`text-lg font-bold ${isDark ? "text-white" : "text-brand-green"}`}>Significant change detected</h3>
+                  <p className={`text-xs mt-1 ${isDark ? "text-text-muted" : "text-text-accent-light"}`}>
                     Compared to the last saved jig update
                     {warnInfo.prevWhen ? ` (${warnInfo.prevWhen.toLocaleString()})` : ""}.
                     Threshold: <span className="font-bold">{warnInfo.threshold}mm</span>
                   </p>
                 </div>
               </div>
-              <button onClick={cancelWarn} className={`p-2 rounded-full ${isDark ? "bg-[#252525]" : "bg-[rgba(30,51,49,0.08)]"}`}>
-                <X size={18} className={isDark ? "text-[#888888]" : "text-[#5A7A70]"} />
+              <button onClick={cancelWarn} className={`p-2 rounded-full ${isDark ? "bg-app-elevated" : "bg-[rgba(30,51,49,0.08)]"}`}>
+                <X size={18} className={isDark ? "text-text-muted" : "text-text-accent-light"} />
               </button>
             </div>
 
@@ -1013,10 +1013,10 @@ export default function JigPage() {
               <div className="space-y-2 text-sm">
                 {warnInfo.flagged.slice(0, 3).map((d) => (
                   <div key={d.key} className="flex items-center justify-between gap-3">
-                    <span className={isDark ? "text-[#888888]" : "text-[#5A7A70]"}>{d.label}</span>
+                    <span className={isDark ? "text-text-muted" : "text-text-accent-light"}>{d.label}</span>
                     <div className="text-right">
-                      <span className={`font-bold font-mono tabular-nums ${isDark ? "text-white" : "text-[#1e3331]"}`}>{fmtNum(d.next)}mm</span>
-                      <span className={isDark ? "text-[#666666]" : "text-[#8A9A94]"}> (was {fmtNum(d.prev)}mm)</span>
+                      <span className={`font-bold font-mono tabular-nums ${isDark ? "text-white" : "text-brand-green"}`}>{fmtNum(d.next)}mm</span>
+                      <span className={isDark ? "text-text-muted" : "text-text-muted"}> (was {fmtNum(d.prev)}mm)</span>
                       <span className="ml-2 font-bold font-mono tabular-nums text-red-500">{fmtSigned(d.diff)}mm</span>
                     </div>
                   </div>
@@ -1030,7 +1030,7 @@ export default function JigPage() {
             <div className="flex gap-2">
               <button
                 onClick={cancelWarn}
-                className={`flex-1 px-4 py-3 rounded-2xl font-semibold ${isDark ? "bg-[#252525] text-white" : "bg-[rgba(30,51,49,0.08)] text-[#1e3331]"}`}
+                className={`flex-1 px-4 py-3 rounded-2xl font-semibold ${isDark ? "bg-app-elevated text-white" : "bg-[rgba(30,51,49,0.08)] text-brand-green"}`}
               >
                 Cancel
               </button>
@@ -1107,11 +1107,11 @@ export default function JigPage() {
           <Drawer.Overlay className={`fixed inset-0 backdrop-blur-sm z-50 ${isDark ? "bg-black/60" : "bg-black/40"}`} />
           <Drawer.Content
             className={`flex flex-col rounded-t-[32px] fixed bottom-0 left-0 right-0 z-50 outline-none border-t ${
-              isDark ? "border-[#2a2a2a]" : "border-[rgba(0,0,0,0.08)]"
+              isDark ? "border-chrome-strong" : "border-[rgba(0,0,0,0.08)]"
             }`}
             style={{
               background: isDark
-                ? "#1e1e1e"
+                ? "var(--bg-surface)"
                 : "radial-gradient(400px 300px at 50% 100%, rgba(30,51,49,0.15), transparent 70%)," +
                   "rgba(232,228,220,0.98)",
             }}
@@ -1119,14 +1119,14 @@ export default function JigPage() {
             {/* Drag handle */}
             <div className="p-4 rounded-t-[32px] flex-none">
               <div className={`mx-auto w-12 h-1.5 flex-shrink-0 rounded-full ${
-                isDark ? "bg-[#444444]" : "bg-[rgba(30,51,49,0.15)]"
+                isDark ? "bg-text-muted" : "bg-[rgba(30,51,49,0.15)]"
               }`} />
             </div>
 
             {/* Instruction text */}
             <div className="text-center pb-4">
               <p className={`text-[10px] uppercase font-semibold tracking-[0.3em] ${
-                isDark ? "text-[#ff6b2c]" : "text-[#5A7A70] opacity-70"
+                isDark ? "text-brand-orange" : "text-text-accent-light opacity-70"
               }`}>
                 Tap Bike &rarr; Switch
               </p>
@@ -1144,7 +1144,7 @@ export default function JigPage() {
                     }}
                     className={`
                       group flex flex-col items-center gap-3 w-[80px] flex-shrink-0
-                      focus-visible:outline-none focus-visible:ring-2 ${isDark ? "focus-visible:ring-[#ff6b2c]" : "focus-visible:ring-[rgba(233,78,27,0.55)]"}
+                      focus-visible:outline-none focus-visible:ring-2 ${isDark ? "focus-visible:ring-brand-orange" : "focus-visible:ring-[rgba(233,78,27,0.55)]"}
                     `}
                   >
                     {/* Bike tile */}
@@ -1159,31 +1159,31 @@ export default function JigPage() {
                         "transition-all duration-200 ease-out",
                         "group-hover:scale-[1.03] group-active:scale-[0.97]",
                         isDark
-                          ? bikeType === b.id ? "bg-[#2a2a2a]" : "bg-[#1e1e1e]"
+                          ? bikeType === b.id ? "bg-chrome-strong" : "bg-app-surface"
                           : bikeType === b.id ? "bg-[rgba(30,51,49,0.18)]" : "bg-[rgba(30,51,49,0.12)]",
                         "backdrop-blur-sm",
                         isDark
-                          ? "border-transparent border-b-2 border-b-[#ff6b2c]"
+                          ? "border-transparent border-b-2 border-b-brand-orange"
                           : "border border-[rgba(0,0,0,0.08)]",
                         bikeType === b.id
-                          ? isDark ? "ring-1 ring-[#ff6b2c]" : "ring-1 ring-[rgba(233,78,27,0.50)]"
+                          ? isDark ? "ring-1 ring-brand-orange" : "ring-1 ring-[rgba(233,78,27,0.50)]"
                           : isDark ? "ring-0" : "ring-1 ring-[rgba(30,51,49,0.20)]",
                         isDark
-                          ? "group-hover:shadow-[0_8px_24px_rgba(255,107,44,0.15)]"
+                          ? "group-hover:shadow-[0_8px_24px_rgba(233,78,27,0.15)]"
                           : "group-hover:shadow-[0_12px_32px_rgba(0,0,0,0.22)]",
                       ].join(" ")}
                     >
                       <div
                         className={`
                           w-[70px] h-[70px] rounded-xl overflow-hidden flex items-center justify-center
-                          ${isDark ? "bg-[#1e1e1e] border border-[rgba(255,255,255,0.05)]" : "bg-[rgba(255,255,255,0.70)] border border-[rgba(0,0,0,0.06)]"}
+                          ${isDark ? "bg-app-surface border border-[rgba(255,255,255,0.05)]" : "bg-[rgba(255,255,255,0.70)] border border-[rgba(0,0,0,0.06)]"}
                         `}
                       >
                         {b.image ? (
                           <img src={b.image} alt={b.label} className="w-[58px] h-[58px] object-contain" />
                         ) : (
                           <div className={`w-full h-full flex items-center justify-center ${
-                            isDark ? "bg-[#ff6b2c]" : "bg-[linear-gradient(180deg,#f0714a_0%,#e94e1b_100%)]"
+                            isDark ? "bg-brand-orange" : "bg-[linear-gradient(180deg,#f0714a_0%,#e94e1b_100%)]"
                           }`}>
                             <span className="text-lg font-bold text-white">{b.label[0]}</span>
                           </div>
@@ -1201,9 +1201,9 @@ export default function JigPage() {
                       className={[
                         "text-sm font-semibold transition-colors duration-200 truncate max-w-full",
                         bikeType === b.id
-                          ? isDark ? "text-[#ff6b2c]" : "text-[#e94e1b]"
-                          : isDark ? "text-white" : "text-[#1e3331]",
-                        isDark ? "group-hover:text-[#ff6b2c]" : "group-hover:text-[#e94e1b]",
+                          ? isDark ? "text-brand-orange" : "text-[#e94e1b]"
+                          : isDark ? "text-white" : "text-brand-green",
+                        isDark ? "group-hover:text-brand-orange" : "group-hover:text-[#e94e1b]",
                       ].join(" ")}
                     >
                       {b.label}
@@ -1233,11 +1233,11 @@ export default function JigPage() {
 // Delta cell component for history table
 function DeltaCell({ delta, isDark }) {
   if (delta === null || delta === undefined) {
-    return <span className={`font-mono tabular-nums ${isDark ? "text-[#666666]" : "text-[#8A9A94]"}`}>—</span>;
+    return <span className={`font-mono tabular-nums ${isDark ? "text-text-muted" : "text-text-muted"}`}>—</span>;
   }
 
   // Green for positive, red for negative
-  const colorClass = delta > 0 ? "text-green-500" : delta < 0 ? "text-red-500" : (isDark ? "text-[#666666]" : "text-[#8A9A94]");
+  const colorClass = delta > 0 ? "text-green-500" : delta < 0 ? "text-red-500" : (isDark ? "text-text-muted" : "text-text-muted");
 
   return (
     <span className={`font-mono tabular-nums font-medium ${colorClass}`}>

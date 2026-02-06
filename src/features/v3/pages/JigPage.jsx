@@ -457,6 +457,7 @@ export default function JigPage() {
         });
         lastSaveRef.current = { sig: dedupeSig, at: Date.now() };
         setDirty(false);
+        dirtyRef.current = false;
         clearDraft(rider, bikeType);
         setEditingId(null);
         toast.success("Updated");
@@ -479,6 +480,7 @@ export default function JigPage() {
       });
       lastSaveRef.current = { sig: dedupeSig, at: Date.now() };
       setDirty(false);
+      dirtyRef.current = false;
       clearDraft(rider, bikeType);
 
       if (res?.queued) {

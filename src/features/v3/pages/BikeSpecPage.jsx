@@ -435,6 +435,7 @@ export default function BikeSpecPage() {
         });
         lastSaveRef.current = { sig: dedupeSig, at: Date.now() };
         setDirty(false);
+        dirtyRef.current = false;
         clearDraft(rider, bikeType);
         setEditingId(null);
         toast.success("Updated");
@@ -447,6 +448,7 @@ export default function BikeSpecPage() {
       const res = await insertFull({ rider, mechanic, bikeType, fullSpec: spec, dedupeSig });
       lastSaveRef.current = { sig: dedupeSig, at: Date.now() };
       setDirty(false);
+      dirtyRef.current = false;
       clearDraft(rider, bikeType);
 
       if (res?.queued) {

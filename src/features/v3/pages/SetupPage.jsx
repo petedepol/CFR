@@ -560,6 +560,7 @@ export default function SetupPage() {
         await updateMtbSettingsEntry({ id: editingId, eventContext, setup });
         lastSaveRef.current = { sig: dedupeSig, at: Date.now() };
         setDirty(false);
+        dirtyRef.current = false;
         clearDraft(rider);
         setEditingId(null);
         toast.success("Updated");
@@ -578,6 +579,7 @@ export default function SetupPage() {
       });
       lastSaveRef.current = { sig: dedupeSig, at: Date.now() };
       setDirty(false);
+      dirtyRef.current = false;
       clearDraft(rider);
 
       if (res?.queued) {

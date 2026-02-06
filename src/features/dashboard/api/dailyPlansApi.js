@@ -225,13 +225,16 @@ export async function parseWithAI(text) {
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
   const session = (await supabase.auth.getSession()).data.session;
+  if (!session?.access_token) {
+    throw new Error("Not authenticated — please log in and try again.");
+  }
 
   const response = await fetch(`${supabaseUrl}/functions/v1/parse-plan`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "apikey": supabaseAnonKey,
-      "Authorization": `Bearer ${session?.access_token || supabaseAnonKey}`,
+      "Authorization": `Bearer ${session.access_token}`,
     },
     body: JSON.stringify({ text }),
   });

@@ -208,13 +208,23 @@ function daysAgoLocal(n) {
 }
 
 function fmtPsi(v) {
-  const s = String(v ?? "").trim();
+  const s = String(v ?? "").trim().replace(",", ".");
   return s ? `${s} psi` : "—";
 }
 
 function fmtClicks(v) {
   const s = String(v ?? "").trim();
-  return s ? `${s} clicks` : "—";
+  return s || "—";
+}
+
+// Normalize comma decimals to dots for numeric setup fields (iPhone locale keyboard)
+const NUMERIC_KEYS = ["front_pressure", "rear_pressure", "fork_pressure", "shock_pressure", "fork_rebound", "shock_rebound"];
+function normalizeDecimals(setup) {
+  const out = { ...setup };
+  for (const k of NUMERIC_KEYS) {
+    if (typeof out[k] === "string") out[k] = out[k].replace(",", ".");
+  }
+  return out;
 }
 
 // ----- Main Component -----
@@ -555,9 +565,11 @@ export default function SetupPage() {
     if (navigator.vibrate) navigator.vibrate(50);
 
     try {
+      const cleanSetup = normalizeDecimals(setup);
+
       if (editingId && isAdmin) {
         setSavingAdmin(true);
-        await updateMtbSettingsEntry({ id: editingId, eventContext, setup });
+        await updateMtbSettingsEntry({ id: editingId, eventContext, setup: cleanSetup });
         lastSaveRef.current = { sig: dedupeSig, at: Date.now() };
         setDirty(false);
         dirtyRef.current = false;
@@ -574,7 +586,7 @@ export default function SetupPage() {
         rider,
         mechanic,
         eventContext,
-        setup,
+        setup: cleanSetup,
         dedupeSig,
       });
       lastSaveRef.current = { sig: dedupeSig, at: Date.now() };

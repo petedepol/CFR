@@ -2,16 +2,21 @@
 @import "./styles/tokens.css";
 @import "./ui/v3Theme.css";
 
-/* Tailwind v4 theme - semantic color mappings */
+/* Tailwind v4 theme - semantic color mappings from tokens.css */
 @theme {
+  /* Backgrounds */
   --color-app-bg: var(--bg-app);
   --color-app-surface: var(--bg-surface);
   --color-app-elevated: var(--bg-elevated);
 
+  /* Text */
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
+  --color-text-accent-light: var(--text-accent-light);
+  --color-text-placeholder: var(--text-placeholder);
 
+  /* Brand */
   --color-brand-orange: var(--brand-orange);
   --color-brand-orange-hi: var(--brand-orange-hi);
   --color-brand-orange-lo: var(--brand-orange-lo);
@@ -19,19 +24,31 @@
   --color-brand-green-hi: var(--brand-green-hi);
   --color-brand-green-lo: var(--brand-green-lo);
 
+  /* Chrome */
   --color-overlay-hover: var(--overlay-hover);
   --color-overlay-pressed: var(--overlay-pressed);
   --color-overlay-scrim: var(--overlay-scrim);
-
   --color-chrome-subtle: var(--border-subtle);
   --color-chrome-strong: var(--border-strong);
 
   /* Glass system */
   --color-glass-rail: var(--glass-rail);
   --color-glass-tile: var(--glass-tile);
+  --color-glass-sheet: var(--glass-sheet);
   --color-glass-border: var(--glass-border);
   --color-glass-highlight: var(--glass-highlight);
   --color-ring-active: var(--ring-active);
+
+  /* Status / semantic */
+  --color-status-success: var(--status-success);
+  --color-status-warning: var(--status-warning);
+  --color-status-info: var(--status-info);
+  --color-status-destructive: var(--status-destructive);
+
+  /* Light mode surfaces */
+  --color-light-bg: var(--light-bg);
+  --color-light-surface: var(--light-surface);
+  --color-light-elevated: var(--light-elevated);
 
   /* Shadows */
   --shadow-rail: var(--shadow-rail);

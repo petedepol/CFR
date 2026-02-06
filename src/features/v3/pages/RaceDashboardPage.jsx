@@ -1306,13 +1306,13 @@ export default function RaceDashboardPage() {
   // Rider color
   function getRiderColor(rider) {
     const colors = {
-      Ana: "#ff6b6b",
+      Ana: "var(--status-destructive)",
       Charlie: "#4ecdc4",
       Cole: "#ffe66d",
       Luca: "#95e1d3",
       Jolanda: "#dda0dd",
     };
-    return colors[rider] || "#888888";
+    return colors[rider] || "var(--text-muted)";
   }
 
   // Open rider day view modal
@@ -1391,7 +1391,7 @@ export default function RaceDashboardPage() {
   return (
     <div
       className="min-h-dvh font-sans"
-      style={{ backgroundColor: "#121212" }}
+      style={{ backgroundColor: "var(--bg-app)" }}
     >
       <div className="max-w-lg mx-auto px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-24">
 
@@ -1408,7 +1408,7 @@ export default function RaceDashboardPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => navigateDay(-1)}
-              className="p-2 rounded-lg text-[#888888] active:bg-[rgba(255,255,255,0.06)]"
+              className="p-2 rounded-lg text-text-muted active:bg-[rgba(255,255,255,0.06)]"
             >
               <ChevronLeft size={20} />
             </button>
@@ -1417,7 +1417,7 @@ export default function RaceDashboardPage() {
             </span>
             <button
               onClick={() => navigateDay(1)}
-              className="p-2 rounded-lg text-[#888888] active:bg-[rgba(255,255,255,0.06)]"
+              className="p-2 rounded-lg text-text-muted active:bg-[rgba(255,255,255,0.06)]"
             >
               <ChevronRight size={20} />
             </button>
@@ -1429,7 +1429,7 @@ export default function RaceDashboardPage() {
             {(scheduleItems.length > 0 || todoItems.length > 0 || noteItems.length > 0) && (
               <button
                 onClick={() => setClearModalOpen(true)}
-                className="p-2 rounded-xl text-[#666666] active:bg-[rgba(255,255,255,0.06)]"
+                className="p-2 rounded-xl text-text-muted active:bg-[rgba(255,255,255,0.06)]"
                 title="Clear day"
               >
                 <Trash2 size={18} />
@@ -1452,7 +1452,7 @@ export default function RaceDashboardPage() {
         {/* Location Bar */}
         <button
           onClick={() => setLocationModalOpen(true)}
-          className="w-full mb-6 flex items-center justify-center gap-2 py-2 rounded-xl bg-[#1e1e1e] text-[#888888] active:bg-[#252525] transition"
+          className="w-full mb-6 flex items-center justify-center gap-2 py-2 rounded-xl bg-app-surface text-text-muted active:bg-app-elevated transition"
         >
           <MapPin size={14} />
           <span className="text-sm">
@@ -1466,7 +1466,7 @@ export default function RaceDashboardPage() {
             {formatTime(currentTime)}
           </div>
           {dataLoading && (
-            <div className="flex items-center justify-center gap-2 mt-2 text-[#666666] text-xs">
+            <div className="flex items-center justify-center gap-2 mt-2 text-text-muted text-xs">
               <Loader2 size={12} className="animate-spin" />
               <span>Loading...</span>
             </div>
@@ -1476,40 +1476,40 @@ export default function RaceDashboardPage() {
         {/* Next Up + Weather Row */}
         <div className="grid grid-cols-2 gap-3 mb-6">
           {/* Next Up Card - with orange left border accent */}
-          <div className="bg-[#1e1e1e] rounded-2xl p-4 border-l-[3px] border-l-[#ff6b2c]">
-            <div className="text-[#888888] text-xs font-semibold tracking-wider mb-2">NEXT UP</div>
+          <div className="bg-app-surface rounded-2xl p-4 border-l-[3px] border-l-brand-orange">
+            <div className="text-text-muted text-xs font-semibold tracking-wider mb-2">NEXT UP</div>
             {nextUpItem ? (
               <>
                 <div className="text-white font-semibold text-sm mb-1 truncate">
                   {nextUpItem.description}
                 </div>
-                <div className="text-[#ff6b2c] font-bold text-2xl font-mono tabular-nums">
+                <div className="text-brand-orange font-bold text-2xl font-mono tabular-nums">
                   {formatCountdown(nextUpItem.time.getTime() - currentTime.getTime())}
                 </div>
               </>
             ) : (
-              <div className="text-[#555555] text-sm">Nothing scheduled</div>
+              <div className="text-text-muted text-sm">Nothing scheduled</div>
             )}
           </div>
 
           {/* Weather Card */}
           <button
             onClick={() => location ? setWeatherExpanded(!weatherExpanded) : setLocationModalOpen(true)}
-            className="bg-[#1e1e1e] rounded-2xl p-4 text-left active:bg-[#252525] transition"
+            className="bg-app-surface rounded-2xl p-4 text-left active:bg-app-elevated transition"
           >
-            <div className="text-[#888888] text-xs font-semibold tracking-wider mb-2">WEATHER</div>
+            <div className="text-text-muted text-xs font-semibold tracking-wider mb-2">WEATHER</div>
             {!location ? (
-              <div className="flex items-center gap-2 text-[#555555]">
+              <div className="flex items-center gap-2 text-text-muted">
                 <MapPin size={16} />
                 <span className="text-sm">Set location</span>
               </div>
             ) : weatherLoading ? (
-              <div className="flex items-center gap-2 text-[#666666]">
+              <div className="flex items-center gap-2 text-text-muted">
                 <Loader2 size={16} className="animate-spin" />
                 <span className="text-sm">Loading...</span>
               </div>
             ) : weatherError ? (
-              <div className="text-[#ff6b6b] text-sm">{weatherError}</div>
+              <div className="text-status-destructive text-sm">{weatherError}</div>
             ) : weather?.current ? (
               <>
                 <div className="flex items-center gap-2 mb-1">
@@ -1517,18 +1517,18 @@ export default function RaceDashboardPage() {
                   <span className="text-white font-bold text-xl">{weather.current.temp}°</span>
                   {weather.later && (
                     <>
-                      <span className="text-[#555555]">→</span>
-                      <span className="text-[#888888]">{weather.later.temp}°</span>
+                      <span className="text-text-muted">→</span>
+                      <span className="text-text-muted">{weather.later.temp}°</span>
                     </>
                   )}
                 </div>
-                <div className="flex items-center gap-1 text-[#666666] text-xs">
+                <div className="flex items-center gap-1 text-text-muted text-xs">
                   <Wind size={12} />
                   <span>{weather.current.wind} km/h</span>
                 </div>
               </>
             ) : (
-              <div className="text-[#555555] text-sm">No data</div>
+              <div className="text-text-muted text-sm">No data</div>
             )}
           </button>
         </div>
@@ -1542,11 +1542,11 @@ export default function RaceDashboardPage() {
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden mb-6"
             >
-              <div className="bg-[#1e1e1e] rounded-2xl p-4">
+              <div className="bg-app-surface rounded-2xl p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="text-[#888888] text-xs font-semibold tracking-wider">HOURLY</div>
+                  <div className="text-text-muted text-xs font-semibold tracking-wider">HOURLY</div>
                   {location && (
-                    <div className="text-[#555555] text-xs flex items-center gap-1">
+                    <div className="text-text-muted text-xs flex items-center gap-1">
                       <MapPin size={10} />
                       {location.name}
                     </div>
@@ -1558,8 +1558,8 @@ export default function RaceDashboardPage() {
                     const hasHighRain = h.rainProb > 50;
                     return (
                       <div key={i} className="flex flex-col items-center gap-1 min-w-[40px]">
-                        <span className="text-[#555555] text-xs">{String(h.hour).padStart(2, '0')}:00</span>
-                        <Icon size={16} className={hasHighRain ? "text-[#6ba3d6]" : "text-[#888888]"} />
+                        <span className="text-text-muted text-xs">{String(h.hour).padStart(2, '0')}:00</span>
+                        <Icon size={16} className={hasHighRain ? "text-[#6ba3d6]" : "text-text-muted"} />
                         <span className="text-white text-sm font-semibold">{h.temp}°</span>
                         {h.rainProb > 20 && (
                           <div className="flex items-center gap-0.5">
@@ -1583,13 +1583,13 @@ export default function RaceDashboardPage() {
               {pinnedItems.map(item => (
                 <div
                   key={item.id}
-                  className="flex-shrink-0 bg-[#252525] rounded-xl px-3 py-2 border-l-2 border-[#ff6b2c]"
+                  className="flex-shrink-0 bg-app-elevated rounded-xl px-3 py-2 border-l-2 border-brand-orange"
                 >
                   <div className="text-white text-xs font-medium truncate max-w-[120px]">
                     {item.description}
                   </div>
                   {item.type === "schedule" && item.time && (
-                    <div className="text-[#ff6b2c] text-sm font-bold font-mono tabular-nums">
+                    <div className="text-brand-orange text-sm font-bold font-mono tabular-nums">
                       {formatCountdown(item.time.getTime() - currentTime.getTime())}
                     </div>
                   )}
@@ -1603,17 +1603,17 @@ export default function RaceDashboardPage() {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="text-[#888888] text-xs font-semibold tracking-wider">SCHEDULE</div>
+              <div className="text-text-muted text-xs font-semibold tracking-wider">SCHEDULE</div>
               <button
                 onClick={() => setScheduleAddOpen(true)}
-                className="p-1 rounded-md text-[#888888] hover:text-[#ff6b2c] active:bg-[rgba(255,255,255,0.06)] transition"
+                className="p-1 rounded-md text-text-muted hover:text-brand-orange active:bg-[rgba(255,255,255,0.06)] transition"
               >
                 <Plus size={14} />
               </button>
             </div>
             <button
               onClick={() => setImportModalOpen(true)}
-              className="text-[#ff6b2c] text-xs font-semibold flex items-center gap-1 active:opacity-70"
+              className="text-brand-orange text-xs font-semibold flex items-center gap-1 active:opacity-70"
             >
               <Plus size={14} />
               Import
@@ -1621,7 +1621,7 @@ export default function RaceDashboardPage() {
           </div>
 
           {scheduleItems.length === 0 ? (
-            <div className="text-[#555555] text-sm py-4 text-center">No events scheduled</div>
+            <div className="text-text-muted text-sm py-4 text-center">No events scheduled</div>
           ) : (
             <div className="space-y-2">
               {scheduleItems.map(item => {
@@ -1638,13 +1638,13 @@ export default function RaceDashboardPage() {
                     className={`rounded-xl px-4 py-3 flex items-center gap-3 ${
                       hasHighRainProb
                         ? "bg-[#1a2430] border border-[#2a3a4a]"
-                        : "bg-[#1e1e1e]"
+                        : "bg-app-surface"
                     }`}
                   >
                     {/* Left column: Time + Event (~70%) */}
                     <div className="flex items-center gap-3 flex-[7] min-w-0">
                       {/* Time */}
-                      <div className="text-[#888888] font-mono tabular-nums text-sm w-12 flex-shrink-0">
+                      <div className="text-text-muted font-mono tabular-nums text-sm w-12 flex-shrink-0">
                         {item.time ? formatTime(item.time) : "--:--"}
                       </div>
 
@@ -1682,7 +1682,7 @@ export default function RaceDashboardPage() {
                           {WeatherCondIcon && (
                             <WeatherCondIcon
                               size={16}
-                              className={hasHighRainProb ? "text-[#6ba3d6]" : "text-[#888888]"}
+                              className={hasHighRainProb ? "text-[#6ba3d6]" : "text-text-muted"}
                             />
                           )}
                           {/* Temperature */}
@@ -1691,7 +1691,7 @@ export default function RaceDashboardPage() {
                           </span>
                           {/* Wind if significant */}
                           {showWind && (
-                            <div className="flex items-center gap-0.5 text-[#888888] text-xs">
+                            <div className="flex items-center gap-0.5 text-text-muted text-xs">
                               <Wind size={12} />
                               <span>{hourWeather.wind}</span>
                             </div>
@@ -1705,15 +1705,15 @@ export default function RaceDashboardPage() {
                           onClick={() => togglePin("schedule", item.id)}
                           className={`p-1.5 rounded-lg transition ${
                             item.pinned
-                              ? "text-[#ff6b2c] bg-[rgba(255,107,44,0.15)]"
-                              : "text-[#666666] active:bg-[rgba(255,255,255,0.06)]"
+                              ? "text-brand-orange bg-[rgba(233,78,27,0.15)]"
+                              : "text-text-muted active:bg-[rgba(255,255,255,0.06)]"
                           }`}
                         >
                           <Pin size={14} />
                         </button>
                         <button
                           onClick={() => deleteItem("schedule", item.id)}
-                          className="p-1.5 rounded-lg text-[#666666] active:bg-[rgba(255,255,255,0.06)]"
+                          className="p-1.5 rounded-lg text-text-muted active:bg-[rgba(255,255,255,0.06)]"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -1730,27 +1730,27 @@ export default function RaceDashboardPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="text-[#888888] text-xs font-semibold tracking-wider">TODOS</div>
+              <div className="text-text-muted text-xs font-semibold tracking-wider">TODOS</div>
               <button
                 onClick={() => setTodoAddOpen(true)}
-                className="p-1 rounded-md text-[#888888] hover:text-[#ff6b2c] active:bg-[rgba(255,255,255,0.06)] transition"
+                className="p-1 rounded-md text-text-muted hover:text-brand-orange active:bg-[rgba(255,255,255,0.06)] transition"
               >
                 <Plus size={14} />
               </button>
             </div>
-            <div className="text-[#555555] text-xs font-mono">
+            <div className="text-text-muted text-xs font-mono">
               {todoStats.completed}/{todoStats.total}
             </div>
           </div>
 
           {todoItems.length === 0 ? (
-            <div className="text-[#555555] text-sm py-4 text-center">No todos</div>
+            <div className="text-text-muted text-sm py-4 text-center">No todos</div>
           ) : (
             <div className="space-y-2">
               {todoItems.map(item => (
                 <div
                   key={item.id}
-                  className={`bg-[#1e1e1e] rounded-xl px-4 py-3 flex items-center gap-3 transition ${
+                  className={`bg-app-surface rounded-xl px-4 py-3 flex items-center gap-3 transition ${
                     item.completed ? "opacity-30" : ""
                   }`}
                 >
@@ -1759,8 +1759,8 @@ export default function RaceDashboardPage() {
                     onClick={() => toggleTodo(item.id)}
                     className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition ${
                       item.completed
-                        ? "bg-[#ff6b2c] border-[#ff6b2c]"
-                        : "border-[#555555]"
+                        ? "bg-brand-orange border-brand-orange"
+                        : "border-text-muted"
                     }`}
                   >
                     {item.completed && <Check size={12} className="text-white" />}
@@ -1769,7 +1769,7 @@ export default function RaceDashboardPage() {
                   {/* Description */}
                   <div className="flex-1 min-w-0">
                     <div className={`text-sm truncate ${
-                      item.completed ? "text-[#666666] line-through" : "text-white"
+                      item.completed ? "text-text-muted line-through" : "text-white"
                     }`}>
                       {item.description}
                     </div>
@@ -1801,15 +1801,15 @@ export default function RaceDashboardPage() {
                       onClick={() => togglePin("todo", item.id)}
                       className={`p-1.5 rounded-lg transition ${
                         item.pinned
-                          ? "text-[#ff6b2c] bg-[rgba(255,107,44,0.15)]"
-                          : "text-[#666666] active:bg-[rgba(255,255,255,0.06)]"
+                          ? "text-brand-orange bg-[rgba(233,78,27,0.15)]"
+                          : "text-text-muted active:bg-[rgba(255,255,255,0.06)]"
                       }`}
                     >
                       <Pin size={14} />
                     </button>
                     <button
                       onClick={() => deleteItem("todo", item.id)}
-                      className="p-1.5 rounded-lg text-[#666666] active:bg-[rgba(255,255,255,0.06)]"
+                      className="p-1.5 rounded-lg text-text-muted active:bg-[rgba(255,255,255,0.06)]"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -1823,31 +1823,31 @@ export default function RaceDashboardPage() {
         {/* Notes Section */}
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-3">
-            <StickyNote size={14} className="text-[#888888]" />
-            <div className="text-[#888888] text-xs font-semibold tracking-wider">NOTES</div>
+            <StickyNote size={14} className="text-text-muted" />
+            <div className="text-text-muted text-xs font-semibold tracking-wider">NOTES</div>
             <button
               onClick={() => setNoteAddOpen(true)}
-              className="p-1 rounded-md text-[#888888] hover:text-[#ff6b2c] active:bg-[rgba(255,255,255,0.06)] transition"
+              className="p-1 rounded-md text-text-muted hover:text-brand-orange active:bg-[rgba(255,255,255,0.06)] transition"
             >
               <Plus size={14} />
             </button>
           </div>
 
           {noteItems.length === 0 ? (
-            <div className="text-[#555555] text-sm py-4 text-center">No notes</div>
+            <div className="text-text-muted text-sm py-4 text-center">No notes</div>
           ) : (
             <div className="space-y-2">
               {noteItems.map(item => (
                 <div
                   key={item.id}
-                  className="bg-[#1e1e1e] rounded-xl px-4 py-3 flex items-center gap-3"
+                  className="bg-app-surface rounded-xl px-4 py-3 flex items-center gap-3"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="text-[#cccccc] text-sm">{item.text}</div>
+                    <div className="text-text-secondary text-sm">{item.text}</div>
                   </div>
                   <button
                     onClick={() => deleteItem("note", item.id)}
-                    className="p-1.5 rounded-lg text-[#666666] opacity-40 hover:opacity-100 active:bg-[rgba(255,255,255,0.06)]"
+                    className="p-1.5 rounded-lg text-text-muted opacity-40 hover:opacity-100 active:bg-[rgba(255,255,255,0.06)]"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -1869,8 +1869,8 @@ export default function RaceDashboardPage() {
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
           <Drawer.Content
-            className="flex flex-col rounded-t-[32px] fixed bottom-0 left-0 right-0 z-50 outline-none border-t border-[#2a2a2a]"
-            style={{ background: "#1e1e1e", maxHeight: "90dvh" }}
+            className="flex flex-col rounded-t-[32px] fixed bottom-0 left-0 right-0 z-50 outline-none border-t border-chrome-strong"
+            style={{ background: "var(--bg-surface)", maxHeight: "90dvh" }}
             aria-describedby={undefined}
           >
             <Drawer.Title className="sr-only">Import Plan</Drawer.Title>
@@ -1878,7 +1878,7 @@ export default function RaceDashboardPage() {
             {/* Fixed Header */}
             <div className="flex-shrink-0 px-4 pt-4">
               {/* Drag handle */}
-              <div className="mx-auto w-12 h-1.5 rounded-full mb-4 bg-[#444444]" />
+              <div className="mx-auto w-12 h-1.5 rounded-full mb-4 bg-text-muted" />
 
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-white">
@@ -1889,7 +1889,7 @@ export default function RaceDashboardPage() {
                 </h2>
                 <button
                   onClick={cancelImport}
-                  className="p-2 rounded-full bg-[#252525] text-[#888888]"
+                  className="p-2 rounded-full bg-app-elevated text-text-muted"
                 >
                   <X size={20} />
                 </button>
@@ -1909,11 +1909,11 @@ export default function RaceDashboardPage() {
                     onChange={(e) => setImportText(e.target.value)}
                     placeholder="Paste schedule, WhatsApp message, notes, todos... anything"
                     rows={8}
-                    className="w-full px-4 py-3 rounded-xl bg-[#252525] border border-[#333333] text-white placeholder:text-[#555555] resize-none focus:outline-none focus:ring-2 focus:ring-[rgba(255,107,44,0.25)] mb-2"
+                    className="w-full px-4 py-3 rounded-xl bg-app-elevated border border-chrome-strong text-white placeholder:text-text-muted resize-none focus:outline-none focus:ring-2 focus:ring-[rgba(233,78,27,0.25)] mb-2"
                     style={{ fontSize: "16px" }}
                   />
 
-                  <p className="text-[#888888] text-xs mb-4">
+                  <p className="text-text-muted text-xs mb-4">
                     GPT-4o will extract times, events, and tasks automatically
                   </p>
                 </>
@@ -1923,7 +1923,7 @@ export default function RaceDashboardPage() {
                   {/* Schedule Items */}
                   {importPreview.scheduleItems.length > 0 && (
                     <div className="mb-4">
-                      <div className="text-[#ff6b2c] text-xs font-semibold tracking-wider mb-2">
+                      <div className="text-brand-orange text-xs font-semibold tracking-wider mb-2">
                         SCHEDULE
                       </div>
                       <div className="space-y-2">
@@ -1931,16 +1931,16 @@ export default function RaceDashboardPage() {
                           <button
                             key={item.id}
                             onClick={() => togglePreviewItem("schedule", item.id)}
-                            className="w-full bg-[#252525] rounded-xl px-4 py-3 flex items-center gap-3 text-left"
+                            className="w-full bg-app-elevated rounded-xl px-4 py-3 flex items-center gap-3 text-left"
                           >
                             <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition ${
                               item.selected
-                                ? "bg-[#ff6b2c] border-[#ff6b2c]"
-                                : "border-[#555555]"
+                                ? "bg-brand-orange border-brand-orange"
+                                : "border-text-muted"
                             }`}>
                               {item.selected && <Check size={12} className="text-white" />}
                             </div>
-                            <div className="text-[#888888] font-mono text-sm w-12 flex-shrink-0">
+                            <div className="text-text-muted font-mono text-sm w-12 flex-shrink-0">
                               {item.time ? formatTime(item.time) : "--:--"}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -1964,7 +1964,7 @@ export default function RaceDashboardPage() {
                   {/* Todo Items */}
                   {importPreview.todoItems.length > 0 && (
                     <div className="mb-4">
-                      <div className="text-[#ff6b2c] text-xs font-semibold tracking-wider mb-2">
+                      <div className="text-brand-orange text-xs font-semibold tracking-wider mb-2">
                         TODOS
                       </div>
                       <div className="space-y-2">
@@ -1972,12 +1972,12 @@ export default function RaceDashboardPage() {
                           <button
                             key={item.id}
                             onClick={() => togglePreviewItem("todo", item.id)}
-                            className="w-full bg-[#252525] rounded-xl px-4 py-3 flex items-center gap-3 text-left"
+                            className="w-full bg-app-elevated rounded-xl px-4 py-3 flex items-center gap-3 text-left"
                           >
                             <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition ${
                               item.selected
-                                ? "bg-[#ff6b2c] border-[#ff6b2c]"
-                                : "border-[#555555]"
+                                ? "bg-brand-orange border-brand-orange"
+                                : "border-text-muted"
                             }`}>
                               {item.selected && <Check size={12} className="text-white" />}
                             </div>
@@ -2003,8 +2003,8 @@ export default function RaceDashboardPage() {
                   {(importPreview.noteItems || []).length > 0 && (
                     <div className="mb-4">
                       <div className="flex items-center gap-2 mb-2">
-                        <StickyNote size={12} className="text-[#ff6b2c]" />
-                        <div className="text-[#ff6b2c] text-xs font-semibold tracking-wider">
+                        <StickyNote size={12} className="text-brand-orange" />
+                        <div className="text-brand-orange text-xs font-semibold tracking-wider">
                           NOTES
                         </div>
                       </div>
@@ -2013,17 +2013,17 @@ export default function RaceDashboardPage() {
                           <button
                             key={item.id}
                             onClick={() => togglePreviewItem("note", item.id)}
-                            className="w-full bg-[#252525] rounded-xl px-4 py-3 flex items-center gap-3 text-left"
+                            className="w-full bg-app-elevated rounded-xl px-4 py-3 flex items-center gap-3 text-left"
                           >
                             <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition ${
                               item.selected
-                                ? "bg-[#ff6b2c] border-[#ff6b2c]"
-                                : "border-[#555555]"
+                                ? "bg-brand-orange border-brand-orange"
+                                : "border-text-muted"
                             }`}>
                               {item.selected && <Check size={12} className="text-white" />}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="text-[#cccccc] text-sm">{item.text}</div>
+                              <div className="text-text-secondary text-sm">{item.text}</div>
                             </div>
                           </button>
                         ))}
@@ -2034,10 +2034,10 @@ export default function RaceDashboardPage() {
                   {/* Empty state */}
                   {importPreview.scheduleItems.length === 0 && importPreview.todoItems.length === 0 && (importPreview.noteItems || []).length === 0 && (
                     <div className="py-8 text-center">
-                      <p className="text-[#888888]">No items found in the text</p>
+                      <p className="text-text-muted">No items found in the text</p>
                       <button
                         onClick={() => setImportPreview(null)}
-                        className="text-[#ff6b2c] text-sm font-semibold mt-2"
+                        className="text-brand-orange text-sm font-semibold mt-2"
                       >
                         Try again
                       </button>
@@ -2053,7 +2053,7 @@ export default function RaceDashboardPage() {
                 <button
                   onClick={processImport}
                   disabled={!importText.trim() || importProcessing}
-                  className="w-full py-4 rounded-2xl font-bold text-white bg-[#ff6b2c] shadow-[0_8px_20px_rgba(255,107,44,0.35)] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full py-4 rounded-2xl font-bold text-white bg-brand-orange shadow-[0_8px_20px_rgba(233,78,27,0.35)] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {importProcessing ? (
                     <>
@@ -2069,13 +2069,13 @@ export default function RaceDashboardPage() {
                   <div className="flex gap-3">
                     <button
                       onClick={cancelImport}
-                      className="flex-1 py-3 rounded-xl font-semibold text-[#888888]"
+                      className="flex-1 py-3 rounded-xl font-semibold text-text-muted"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={confirmImport}
-                      className="flex-1 py-3 rounded-xl font-bold text-white bg-[#ff6b2c] shadow-[0_8px_20px_rgba(255,107,44,0.35)]"
+                      className="flex-1 py-3 rounded-xl font-bold text-white bg-brand-orange shadow-[0_8px_20px_rgba(233,78,27,0.35)]"
                     >
                       Add Selected
                     </button>
@@ -2111,13 +2111,13 @@ export default function RaceDashboardPage() {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="fixed z-50 left-4 right-4 top-[10vh] max-h-[70vh] overflow-y-auto rounded-2xl border border-[#2a2a2a]"
-              style={{ background: "#1e1e1e" }}
+              className="fixed z-50 left-4 right-4 top-[10vh] max-h-[70vh] overflow-y-auto rounded-2xl border border-chrome-strong"
+              style={{ background: "var(--bg-surface)" }}
             >
               <div className="p-4">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                    <MapPin size={20} className="text-[#ff6b2c]" />
+                    <MapPin size={20} className="text-brand-orange" />
                     Set Location
                   </h2>
                   <button
@@ -2126,7 +2126,7 @@ export default function RaceDashboardPage() {
                       setLocationSearch("");
                       setLocationResult(null);
                     }}
-                    className="p-2 rounded-full bg-[#252525] text-[#888888]"
+                    className="p-2 rounded-full bg-app-elevated text-text-muted"
                   >
                     <X size={20} />
                   </button>
@@ -2147,13 +2147,13 @@ export default function RaceDashboardPage() {
                     onChange={(e) => setLocationSearch(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && searchLocation(locationSearch)}
                     placeholder="e.g. Malaga, Val di Sole, Nove Mesto"
-                    className="flex-1 px-4 py-3 rounded-xl bg-[#252525] border border-[#333333] text-white text-base placeholder:text-[#555555] focus:outline-none focus:ring-2 focus:ring-[rgba(255,107,44,0.25)]"
+                    className="flex-1 px-4 py-3 rounded-xl bg-app-elevated border border-chrome-strong text-white text-base placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-[rgba(233,78,27,0.25)]"
                     style={{ fontSize: "16px" }} // Prevents iOS zoom
                   />
                   <button
                     onClick={() => searchLocation(locationSearch)}
                     disabled={!locationSearch.trim() || locationSearching}
-                    className="px-4 py-3 rounded-xl bg-[#ff6b2c] text-white font-semibold disabled:opacity-50 flex items-center gap-2"
+                    className="px-4 py-3 rounded-xl bg-brand-orange text-white font-semibold disabled:opacity-50 flex items-center gap-2"
                   >
                     {locationSearching ? (
                       <Loader2 size={18} className="animate-spin" />
@@ -2167,13 +2167,13 @@ export default function RaceDashboardPage() {
                 {locationResult && (
                   <div className="mb-4">
                     {locationResult.error ? (
-                      <div className="px-4 py-3 rounded-xl bg-[#2a2020] border border-[#4a3030] text-[#ff6b6b] text-sm">
+                      <div className="px-4 py-3 rounded-xl bg-[#2a2020] border border-[#4a3030] text-status-destructive text-sm">
                         {locationResult.error}
                       </div>
                     ) : (
                       <div className="px-4 py-3 rounded-xl bg-[#1a2a1a] border border-[#2a4a2a]">
                         <div className="text-white font-medium mb-1">{locationResult.name}</div>
-                        <div className="text-[#666666] text-xs">
+                        <div className="text-text-muted text-xs">
                           {locationResult.lat.toFixed(2)}°, {locationResult.lon.toFixed(2)}°
                         </div>
                       </div>
@@ -2183,8 +2183,8 @@ export default function RaceDashboardPage() {
 
                 {/* Current Location */}
                 {location && (
-                  <div className="mb-4 px-4 py-3 rounded-xl bg-[#252525] border border-[#333333]">
-                    <div className="text-[#888888] text-xs mb-1">Current location</div>
+                  <div className="mb-4 px-4 py-3 rounded-xl bg-app-elevated border border-chrome-strong">
+                    <div className="text-text-muted text-xs mb-1">Current location</div>
                     <div className="text-white">{location.name}</div>
                   </div>
                 )}
@@ -2193,7 +2193,7 @@ export default function RaceDashboardPage() {
                 <button
                   onClick={confirmLocation}
                   disabled={!locationResult || locationResult.error}
-                  className="w-full py-4 rounded-2xl font-bold text-white bg-[#ff6b2c] shadow-[0_8px_20px_rgba(255,107,44,0.35)] transition-all disabled:opacity-50"
+                  className="w-full py-4 rounded-2xl font-bold text-white bg-brand-orange shadow-[0_8px_20px_rgba(233,78,27,0.35)] transition-all disabled:opacity-50"
                 >
                   Confirm Location
                 </button>
@@ -2208,21 +2208,21 @@ export default function RaceDashboardPage() {
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
           <Drawer.Content
-            className="flex flex-col rounded-t-[32px] fixed bottom-0 left-0 right-0 z-50 outline-none border-t border-[#2a2a2a]"
-            style={{ background: "#1e1e1e" }}
+            className="flex flex-col rounded-t-[32px] fixed bottom-0 left-0 right-0 z-50 outline-none border-t border-chrome-strong"
+            style={{ background: "var(--bg-surface)" }}
             aria-describedby={undefined}
           >
             <Drawer.Title className="sr-only">Clear All Items</Drawer.Title>
             <div className="p-4">
               {/* Drag handle */}
-              <div className="mx-auto w-12 h-1.5 rounded-full mb-4 bg-[#444444]" />
+              <div className="mx-auto w-12 h-1.5 rounded-full mb-4 bg-text-muted" />
 
               <div className="flex flex-col items-center text-center mb-6">
                 <div className="w-16 h-16 rounded-full bg-[#2a2020] flex items-center justify-center mb-4">
-                  <AlertTriangle size={32} className="text-[#ff6b6b]" />
+                  <AlertTriangle size={32} className="text-status-destructive" />
                 </div>
                 <h2 className="text-lg font-bold text-white mb-2">Clear all items for today?</h2>
-                <p className="text-[#888888] text-sm">
+                <p className="text-text-muted text-sm">
                   This will remove all {scheduleItems.length} schedule items, {todoItems.length} todos, and {noteItems.length} notes for {dayLabel}.
                 </p>
               </div>
@@ -2230,7 +2230,7 @@ export default function RaceDashboardPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setClearModalOpen(false)}
-                  className="flex-1 py-4 rounded-2xl font-semibold text-white bg-[#252525]"
+                  className="flex-1 py-4 rounded-2xl font-semibold text-white bg-app-elevated"
                 >
                   Cancel
                 </button>
@@ -2269,8 +2269,8 @@ export default function RaceDashboardPage() {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="fixed z-50 left-4 right-4 top-[10vh] rounded-2xl border border-[#2a2a2a]"
-              style={{ background: "#1e1e1e" }}
+              className="fixed z-50 left-4 right-4 top-[10vh] rounded-2xl border border-chrome-strong"
+              style={{ background: "var(--bg-surface)" }}
             >
               <div className="p-4">
                 <div className="flex items-center justify-between mb-4">
@@ -2282,7 +2282,7 @@ export default function RaceDashboardPage() {
                       setNewScheduleEvent("");
                       setNewScheduleRider("");
                     }}
-                    className="p-2 rounded-full bg-[#252525] text-[#888888]"
+                    className="p-2 rounded-full bg-app-elevated text-text-muted"
                   >
                     <X size={20} />
                   </button>
@@ -2290,7 +2290,7 @@ export default function RaceDashboardPage() {
 
                 {/* Time Input - 24h format */}
                 <div className="mb-3">
-                  <label className="text-[#888888] text-xs font-semibold tracking-wider mb-1 block">TIME (24H)</label>
+                  <label className="text-text-muted text-xs font-semibold tracking-wider mb-1 block">TIME (24H)</label>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -2309,31 +2309,31 @@ export default function RaceDashboardPage() {
                     }}
                     placeholder="14:30"
                     maxLength={5}
-                    className="w-full px-4 py-3 rounded-xl bg-[#252525] border border-[#333333] text-white text-base placeholder:text-[#555555] focus:outline-none focus:border-[#ff6b2c] font-mono"
+                    className="w-full px-4 py-3 rounded-xl bg-app-elevated border border-chrome-strong text-white text-base placeholder:text-text-muted focus:outline-none focus:border-brand-orange font-mono"
                     style={{ fontSize: "16px" }}
                   />
                 </div>
 
                 {/* Event Input */}
                 <div className="mb-3">
-                  <label className="text-[#888888] text-xs font-semibold tracking-wider mb-1 block">EVENT</label>
+                  <label className="text-text-muted text-xs font-semibold tracking-wider mb-1 block">EVENT</label>
                   <input
                     type="text"
                     value={newScheduleEvent}
                     onChange={(e) => setNewScheduleEvent(e.target.value)}
                     placeholder="e.g. Practice run, Bike check"
-                    className="w-full px-4 py-3 rounded-xl bg-[#252525] border border-[#333333] text-white text-base placeholder:text-[#555555] focus:outline-none focus:border-[#ff6b2c]"
+                    className="w-full px-4 py-3 rounded-xl bg-app-elevated border border-chrome-strong text-white text-base placeholder:text-text-muted focus:outline-none focus:border-brand-orange"
                     style={{ fontSize: "16px" }}
                   />
                 </div>
 
                 {/* Rider Dropdown */}
                 <div className="mb-4">
-                  <label className="text-[#888888] text-xs font-semibold tracking-wider mb-1 block">RIDER (optional)</label>
+                  <label className="text-text-muted text-xs font-semibold tracking-wider mb-1 block">RIDER (optional)</label>
                   <select
                     value={newScheduleRider}
                     onChange={(e) => setNewScheduleRider(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-[#252525] border border-[#333333] text-white text-base focus:outline-none focus:border-[#ff6b2c] appearance-none"
+                    className="w-full px-4 py-3 rounded-xl bg-app-elevated border border-chrome-strong text-white text-base focus:outline-none focus:border-brand-orange appearance-none"
                     style={{ fontSize: "16px" }}
                   >
                     <option value="">None</option>
@@ -2352,14 +2352,14 @@ export default function RaceDashboardPage() {
                       setNewScheduleEvent("");
                       setNewScheduleRider("");
                     }}
-                    className="flex-1 py-3 rounded-xl font-semibold text-[#888888] bg-[#252525]"
+                    className="flex-1 py-3 rounded-xl font-semibold text-text-muted bg-app-elevated"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={addScheduleItem}
                     disabled={!newScheduleTime || !newScheduleEvent.trim()}
-                    className="flex-1 py-3 rounded-xl font-bold text-white bg-[#ff6b2c] disabled:opacity-50"
+                    className="flex-1 py-3 rounded-xl font-bold text-white bg-brand-orange disabled:opacity-50"
                   >
                     Add
                   </button>
@@ -2389,8 +2389,8 @@ export default function RaceDashboardPage() {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="fixed z-50 left-4 right-4 top-[10vh] rounded-2xl border border-[#2a2a2a]"
-              style={{ background: "#1e1e1e" }}
+              className="fixed z-50 left-4 right-4 top-[10vh] rounded-2xl border border-chrome-strong"
+              style={{ background: "var(--bg-surface)" }}
             >
               <div className="p-4">
                 <div className="flex items-center justify-between mb-4">
@@ -2401,7 +2401,7 @@ export default function RaceDashboardPage() {
                       setNewTodoTask("");
                       setNewTodoRider("");
                     }}
-                    className="p-2 rounded-full bg-[#252525] text-[#888888]"
+                    className="p-2 rounded-full bg-app-elevated text-text-muted"
                   >
                     <X size={20} />
                   </button>
@@ -2409,24 +2409,24 @@ export default function RaceDashboardPage() {
 
                 {/* Task Input */}
                 <div className="mb-3">
-                  <label className="text-[#888888] text-xs font-semibold tracking-wider mb-1 block">TASK</label>
+                  <label className="text-text-muted text-xs font-semibold tracking-wider mb-1 block">TASK</label>
                   <input
                     type="text"
                     value={newTodoTask}
                     onChange={(e) => setNewTodoTask(e.target.value)}
                     placeholder="e.g. Check brakes, Swap tyres"
-                    className="w-full px-4 py-3 rounded-xl bg-[#252525] border border-[#333333] text-white text-base placeholder:text-[#555555] focus:outline-none focus:border-[#ff6b2c]"
+                    className="w-full px-4 py-3 rounded-xl bg-app-elevated border border-chrome-strong text-white text-base placeholder:text-text-muted focus:outline-none focus:border-brand-orange"
                     style={{ fontSize: "16px" }}
                   />
                 </div>
 
                 {/* Rider Dropdown */}
                 <div className="mb-4">
-                  <label className="text-[#888888] text-xs font-semibold tracking-wider mb-1 block">RIDER (optional)</label>
+                  <label className="text-text-muted text-xs font-semibold tracking-wider mb-1 block">RIDER (optional)</label>
                   <select
                     value={newTodoRider}
                     onChange={(e) => setNewTodoRider(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-[#252525] border border-[#333333] text-white text-base focus:outline-none focus:border-[#ff6b2c] appearance-none"
+                    className="w-full px-4 py-3 rounded-xl bg-app-elevated border border-chrome-strong text-white text-base focus:outline-none focus:border-brand-orange appearance-none"
                     style={{ fontSize: "16px" }}
                   >
                     <option value="">None</option>
@@ -2444,14 +2444,14 @@ export default function RaceDashboardPage() {
                       setNewTodoTask("");
                       setNewTodoRider("");
                     }}
-                    className="flex-1 py-3 rounded-xl font-semibold text-[#888888] bg-[#252525]"
+                    className="flex-1 py-3 rounded-xl font-semibold text-text-muted bg-app-elevated"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={addTodoItem}
                     disabled={!newTodoTask.trim()}
-                    className="flex-1 py-3 rounded-xl font-bold text-white bg-[#ff6b2c] disabled:opacity-50"
+                    className="flex-1 py-3 rounded-xl font-bold text-white bg-brand-orange disabled:opacity-50"
                   >
                     Add
                   </button>
@@ -2480,8 +2480,8 @@ export default function RaceDashboardPage() {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="fixed z-50 left-4 right-4 top-[10vh] rounded-2xl border border-[#2a2a2a]"
-              style={{ background: "#1e1e1e" }}
+              className="fixed z-50 left-4 right-4 top-[10vh] rounded-2xl border border-chrome-strong"
+              style={{ background: "var(--bg-surface)" }}
             >
               <div className="p-4">
                 <div className="flex items-center justify-between mb-4">
@@ -2491,7 +2491,7 @@ export default function RaceDashboardPage() {
                       setNoteAddOpen(false);
                       setNewNoteText("");
                     }}
-                    className="p-2 rounded-full bg-[#252525] text-[#888888]"
+                    className="p-2 rounded-full bg-app-elevated text-text-muted"
                   >
                     <X size={20} />
                   </button>
@@ -2499,13 +2499,13 @@ export default function RaceDashboardPage() {
 
                 {/* Note Input */}
                 <div className="mb-4">
-                  <label className="text-[#888888] text-xs font-semibold tracking-wider mb-1 block">NOTE</label>
+                  <label className="text-text-muted text-xs font-semibold tracking-wider mb-1 block">NOTE</label>
                   <input
                     type="text"
                     value={newNoteText}
                     onChange={(e) => setNewNoteText(e.target.value)}
                     placeholder="e.g. Radios channel 16"
-                    className="w-full px-4 py-3 rounded-xl bg-[#252525] border border-[#333333] text-white text-base placeholder:text-[#555555] focus:outline-none focus:border-[#ff6b2c]"
+                    className="w-full px-4 py-3 rounded-xl bg-app-elevated border border-chrome-strong text-white text-base placeholder:text-text-muted focus:outline-none focus:border-brand-orange"
                     style={{ fontSize: "16px" }}
                   />
                 </div>
@@ -2517,14 +2517,14 @@ export default function RaceDashboardPage() {
                       setNoteAddOpen(false);
                       setNewNoteText("");
                     }}
-                    className="flex-1 py-3 rounded-xl font-semibold text-[#888888] bg-[#252525]"
+                    className="flex-1 py-3 rounded-xl font-semibold text-text-muted bg-app-elevated"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={addNoteItem}
                     disabled={!newNoteText.trim()}
-                    className="flex-1 py-3 rounded-xl font-bold text-white bg-[#ff6b2c] disabled:opacity-50"
+                    className="flex-1 py-3 rounded-xl font-bold text-white bg-brand-orange disabled:opacity-50"
                   >
                     Add
                   </button>
@@ -2552,26 +2552,26 @@ export default function RaceDashboardPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed z-50 left-4 right-4 top-[5vh] bottom-[5vh] rounded-2xl border border-[#2a2a2a] overflow-hidden flex flex-col"
-              style={{ background: "#1e1e1e" }}
+              className="fixed z-50 left-4 right-4 top-[5vh] bottom-[5vh] rounded-2xl border border-chrome-strong overflow-hidden flex flex-col"
+              style={{ background: "var(--bg-surface)" }}
             >
               {/* Header */}
-              <div className="p-4 border-b border-[#2a2a2a] flex items-center gap-3">
+              <div className="p-4 border-b border-chrome-strong flex items-center gap-3">
                 {/* Rider Photo */}
-                <div className="w-12 h-12 rounded-full overflow-hidden bg-[#252525] flex-shrink-0">
+                <div className="w-12 h-12 rounded-full overflow-hidden bg-app-elevated flex-shrink-0">
                   <img
                     src={RIDER_PHOTOS[selectedRider]}
                     alt={selectedRider}
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       e.target.style.display = 'none';
-                      e.target.parentElement.innerHTML = `<div class="w-full h-full flex items-center justify-center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#888888" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg></div>`;
+                      e.target.parentElement.innerHTML = `<div class="w-full h-full flex items-center justify-center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8A9A94" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg></div>`;
                     }}
                   />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h2 className="text-lg font-bold text-white">{selectedRider}</h2>
-                  <div className="text-[#888888] text-sm">
+                  <div className="text-text-muted text-sm">
                     {selectedDate.toLocaleDateString("en-GB", {
                       weekday: "short",
                       day: "numeric",
@@ -2581,7 +2581,7 @@ export default function RaceDashboardPage() {
                 </div>
                 <button
                   onClick={() => setRiderDayModalOpen(false)}
-                  className="p-2 rounded-full bg-[#252525] text-[#888888]"
+                  className="p-2 rounded-full bg-app-elevated text-text-muted"
                 >
                   <X size={20} />
                 </button>
@@ -2592,8 +2592,8 @@ export default function RaceDashboardPage() {
                 {/* Schedule Section */}
                 {riderSchedule.length > 0 && (
                   <div className="mb-6">
-                    <div className="text-[#ff6b2c] text-xs font-semibold tracking-wider mb-3 flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-[#ff6b2c]" />
+                    <div className="text-brand-orange text-xs font-semibold tracking-wider mb-3 flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-brand-orange" />
                       SCHEDULE
                     </div>
                     <div className="space-y-2">
@@ -2607,10 +2607,10 @@ export default function RaceDashboardPage() {
                           <div
                             key={item.id}
                             className={`rounded-xl px-4 py-3 flex items-center gap-3 ${
-                              hasHighRain ? "bg-[#1a2a3a]" : "bg-[#252525]"
+                              hasHighRain ? "bg-[#1a2a3a]" : "bg-app-elevated"
                             }`}
                           >
-                            <div className="text-[#888888] font-mono text-sm w-12 flex-shrink-0">
+                            <div className="text-text-muted font-mono text-sm w-12 flex-shrink-0">
                               {item.time ? formatTime(item.time) : "--:--"}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -2621,7 +2621,7 @@ export default function RaceDashboardPage() {
                                 {WeatherIcon && (
                                   <WeatherIcon
                                     size={14}
-                                    className={hasHighRain ? "text-[#6ba3d6]" : "text-[#888888]"}
+                                    className={hasHighRain ? "text-[#6ba3d6]" : "text-text-muted"}
                                   />
                                 )}
                                 <span className="text-white text-sm font-medium">{hourWeather.temp}°</span>
@@ -2637,25 +2637,25 @@ export default function RaceDashboardPage() {
                 {/* Todos Section */}
                 {riderTodos.length > 0 && (
                   <div className="mb-6">
-                    <div className="text-[#ff6b2c] text-xs font-semibold tracking-wider mb-3 flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-[#ff6b2c]" />
+                    <div className="text-brand-orange text-xs font-semibold tracking-wider mb-3 flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-brand-orange" />
                       TODOS
                     </div>
                     <div className="space-y-2">
                       {riderTodos.map(item => (
                         <div
                           key={item.id}
-                          className="bg-[#252525] rounded-xl px-4 py-3 flex items-center gap-3"
+                          className="bg-app-elevated rounded-xl px-4 py-3 flex items-center gap-3"
                         >
                           <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 ${
                             item.completed
-                              ? "bg-[#ff6b2c] border-[#ff6b2c]"
-                              : "border-[#555555]"
+                              ? "bg-brand-orange border-brand-orange"
+                              : "border-text-muted"
                           }`}>
                             {item.completed && <Check size={12} className="text-white" />}
                           </div>
                           <div className={`flex-1 text-sm ${
-                            item.completed ? "text-[#666666] line-through" : "text-white"
+                            item.completed ? "text-text-muted line-through" : "text-white"
                           }`}>
                             {item.description}
                           </div>
@@ -2668,16 +2668,16 @@ export default function RaceDashboardPage() {
                 {/* Empty State */}
                 {riderSchedule.length === 0 && riderTodos.length === 0 && (
                   <div className="text-center py-12">
-                    <div className="w-16 h-16 rounded-full bg-[#252525] flex items-center justify-center mx-auto mb-4">
-                      <User size={32} className="text-[#555555]" />
+                    <div className="w-16 h-16 rounded-full bg-app-elevated flex items-center justify-center mx-auto mb-4">
+                      <User size={32} className="text-text-muted" />
                     </div>
-                    <div className="text-[#888888]">No items for {selectedRider} today</div>
+                    <div className="text-text-muted">No items for {selectedRider} today</div>
                   </div>
                 )}
               </div>
 
               {/* Footer - Share Button */}
-              <div className="p-4 border-t border-[#2a2a2a]">
+              <div className="p-4 border-t border-chrome-strong">
                 <button
                   onClick={() => shareRiderDay(selectedRider)}
                   className="w-full py-3 rounded-xl font-semibold text-white bg-[#25D366] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"

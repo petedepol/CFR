@@ -1,43 +1,52 @@
 // SpecSection.jsx - Collapsible section for bike spec form
 // Supports theme prop: "light" (2026 Livery) or "dark" (Kit Theme)
-// Instant expand/collapse - no animations
+// Spring-animated expand/collapse with height transition
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+
+const spring = { type: "spring", stiffness: 400, damping: 30 };
 
 export function SpecSection({ title, defaultOpen = false, children, theme = "light" }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const isDark = theme === "dark";
 
-  // Theme-specific colors
+  // Theme-specific colors — mapped to tokens.css values
   const colors = isDark
     ? {
-        container: "bg-[#1e1e1e] border-[#2a2a2a] ring-[rgba(255,255,255,0.05)]",
+        container: "border-glass-border ring-chrome-subtle",
         shadow: "shadow-[0_10px_28px_rgba(0,0,0,0.40)]",
-        headerActive: "active:bg-[rgba(255,255,255,0.03)]",
-        title: "text-[#ff6b2c]",
-        chevron: "text-[#666666]",
-        contentBg: "bg-[rgba(255,255,255,0.02)]",
+        glass: {
+          background: "rgba(24,44,41,0.72)",
+          backdropFilter: "blur(12px) saturate(150%)",
+          WebkitBackdropFilter: "blur(12px) saturate(150%)",
+        },
+        headerActive: "active:bg-overlay-hover",
+        title: "text-brand-orange",
+        chevron: "text-text-muted",
+        contentBg: "bg-[rgba(255,255,255,0.05)]",
       }
     : {
-        container: "bg-[rgba(232,228,220,0.75)] border-[rgba(0,0,0,0.08)] ring-[rgba(30,51,49,0.12)]",
+        container: "bg-light-surface border-[rgba(0,0,0,0.08)] ring-[rgba(30,51,49,0.12)]",
         shadow: "shadow-[0_10px_28px_rgba(0,0,0,0.10)]",
         headerActive: "active:bg-[rgba(30,51,49,0.04)]",
-        title: "text-[#5A7A70]",
-        chevron: "text-[#8A9A94]",
+        title: "text-text-accent-light",
+        chevron: "text-text-muted",
         contentBg: "bg-[rgba(30,51,49,0.03)]",
       };
 
   return (
     <div
       className={`
-        rounded-[26px] overflow-hidden
-        backdrop-blur-sm border ring-1
+        rounded-2xl overflow-hidden
+        border ring-1
         ${colors.container}
         ${colors.shadow}
       `}
       style={{
-        borderLeft: isOpen ? (isDark ? "3px solid #ff6b2c" : "3px solid #e94e1b") : undefined,
+        ...(isDark ? colors.glass : {}),
+        borderLeft: isOpen ? `3px solid var(--brand-orange)` : undefined,
       }}
     >
       {/* Header - tap to toggle */}
@@ -49,20 +58,35 @@ export function SpecSection({ title, defaultOpen = false, children, theme = "lig
         <span className={`text-xs font-semibold tracking-[0.15em] uppercase ${colors.title}`}>
           {title}
         </span>
-        <ChevronDown
-          size={16}
-          className={isOpen ? (isDark ? "text-[#ff6b2c] rotate-180" : "text-[#e94e1b] rotate-180") : colors.chevron}
-        />
+        <motion.div
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={spring}
+        >
+          <ChevronDown
+            size={16}
+            className={isOpen ? "text-brand-orange" : colors.chevron}
+          />
+        </motion.div>
       </button>
 
-      {/* Content - instant show/hide */}
-      {isOpen && (
-        <div className="px-4 pb-4 pt-1">
-          <div className={`p-3 rounded-xl ${colors.contentBg}`}>
-            {children}
-          </div>
-        </div>
-      )}
+      {/* Content - spring animated expand/collapse */}
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={spring}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 pt-1">
+              <div className={`p-3 rounded-xl ${colors.contentBg}`}>
+                {children}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

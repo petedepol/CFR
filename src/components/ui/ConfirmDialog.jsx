@@ -22,7 +22,7 @@ export function ConfirmDialog({
 
   const confirmStyles = {
     danger: "bg-red-600 hover:bg-red-700 text-white",
-    primary: "bg-[#ff6b2c] hover:bg-[#e55a1f] text-white",
+    primary: "bg-brand-orange hover:bg-brand-orange-lo text-white",
   };
 
   return (
@@ -30,9 +30,16 @@ export function ConfirmDialog({
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 bg-black/60 z-50" />
         <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 outline-none">
-          <div className="bg-[#1e1e1e] rounded-t-[20px] p-6 pb-8 border-t border-[#2a2a2a]">
+          <div
+            className="rounded-t-[20px] p-6 pb-8 border-t border-glass-border"
+            style={{
+              background: "var(--glass-sheet)",
+              backdropFilter: "blur(20px) saturate(180%)",
+              WebkitBackdropFilter: "blur(20px) saturate(180%)",
+            }}
+          >
             {/* Drag handle */}
-            <div className="w-10 h-1 bg-[#444] rounded-full mx-auto mb-6" />
+            <div className="w-10 h-1 bg-text-muted rounded-full mx-auto mb-6" />
 
             {/* Icon */}
             <div className="flex justify-center mb-4">
@@ -44,13 +51,13 @@ export function ConfirmDialog({
             </div>
 
             {/* Title */}
-            <Drawer.Title className="text-lg font-semibold text-white text-center mb-2">
+            <Drawer.Title className="text-lg font-semibold text-text-primary text-center mb-2">
               {title}
             </Drawer.Title>
 
             {/* Message */}
             {message && (
-              <Drawer.Description className="text-sm text-[#888] text-center mb-6 max-w-[300px] mx-auto">
+              <Drawer.Description className="text-sm text-text-muted text-center mb-6 max-w-[300px] mx-auto">
                 {message}
               </Drawer.Description>
             )}
@@ -59,7 +66,7 @@ export function ConfirmDialog({
             <div className="flex gap-3">
               <button
                 onClick={onClose}
-                className="flex-1 py-3 px-4 rounded-xl font-semibold text-sm text-white bg-transparent border border-[#444] hover:bg-[#252525] transition active:scale-[0.98]"
+                className="flex-1 py-3 px-4 rounded-xl font-semibold text-sm text-text-primary bg-transparent border border-text-muted hover:bg-app-elevated transition active:scale-[0.98]"
               >
                 {cancelText}
               </button>

@@ -43,6 +43,7 @@ export function BikeSettingsModal({
           {/* Header */}
           <div className="p-4 border-b border-black/10 dark:border-white/[0.08] rounded-t-[32px] flex-none">
             <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-black/10 dark:bg-white/20 mb-6" />
+            <Drawer.Title className="sr-only">{rider.name}&apos;s Settings</Drawer.Title>
             <div className="flex items-center justify-between px-2">
               <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
                 {rider.name}&apos;s Settings

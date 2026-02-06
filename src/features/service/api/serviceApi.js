@@ -204,6 +204,8 @@ export async function fetchLeaderboardData() {
  * Admin: delete a service log entry
  */
 export async function deleteServiceLog(id) {
+  if (!id) throw new Error("deleteServiceLog: id is required");
+
   return withRetry(async () => {
     const { error } = await supabase
       .from("service_logs")

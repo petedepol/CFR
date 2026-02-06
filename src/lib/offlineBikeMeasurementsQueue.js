@@ -38,25 +38,26 @@ function isOnline() {
   return typeof navigator === "undefined" ? true : navigator.onLine !== false;
 }
 
-// Prevent concurrent flushes (especially on iOS focus/online storms)
+// Prevent concurrent flushes across tabs (especially on iOS focus/online storms).
+// Uses localStorage so the lock is shared across all tabs (queue is also in localStorage).
 const LOCK_KEY = "cfr_offline_queue_lock_v1";
 function acquireLock(ttlMs = 15000) {
   const now = Date.now();
   try {
-    const raw = sessionStorage.getItem(LOCK_KEY);
+    const raw = localStorage.getItem(LOCK_KEY);
     const cur = raw ? JSON.parse(raw) : null;
     if (cur && cur.expiresAt && cur.expiresAt > now) return false;
 
-    sessionStorage.setItem(LOCK_KEY, JSON.stringify({ expiresAt: now + ttlMs }));
+    localStorage.setItem(LOCK_KEY, JSON.stringify({ expiresAt: now + ttlMs }));
     return true;
   } catch {
-    return true; // if sessionStorage fails, just run
+    return true; // if localStorage fails, just run
   }
 }
 
 function releaseLock() {
   try {
-    sessionStorage.removeItem(LOCK_KEY);
+    localStorage.removeItem(LOCK_KEY);
   } catch {
     // ignore
   }
@@ -130,9 +131,9 @@ export async function flushBikeMeasurementsQueue({ max = 25 } = {}) {
         return { sent, remaining: q.length, error };
       }
 
-      // Success: drop first item
-      q = q.slice(1);
+      // Success: re-read queue (another tab may have enqueued) and drop the sent item by id
       sent += 1;
+      q = readQueue().filter((it) => it.id !== item.id);
       writeQueue(q);
       notify();
     }

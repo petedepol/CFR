@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import RequireAuth from "../features/auth/RequireAuth";
 import LoginPage from "../features/auth/LoginPage";
+import RouteErrorBoundary from "../components/RouteErrorBoundary";
 
 // V3 Pages (main app) - lazy loaded with preload capability
 import V3Layout from "../features/v3/V3Layout";
@@ -62,6 +63,7 @@ export const router = createBrowserRouter([
         <V3Layout />
       </RequireAuth>
     ),
+    errorElement: <RouteErrorBoundary />,
     children: [
       { index: true, element: <LandingPlayground /> },
       { path: "spec", element: <BikeSpecPage /> },

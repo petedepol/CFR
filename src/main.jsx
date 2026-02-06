@@ -1,12 +1,12 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
-import "./styles/tokens.css";
 import "./index.css";
 
 import { router, preloadRoutes } from "./app/router.jsx";
 import { AuthProvider } from "./features/auth/AuthProvider.jsx";
 import { ToastProvider } from "./components/ToastProvider.jsx";
+import { installGlobalDiagnosticsHandlers } from "./lib/diagnostics.js";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -17,6 +17,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     </AuthProvider>
   </React.StrictMode>
 );
+
+// Capture uncaught errors & promise rejections to localStorage diagnostics
+installGlobalDiagnosticsHandlers();
 
 // Preload critical routes after initial render for faster navigation
 preloadRoutes();

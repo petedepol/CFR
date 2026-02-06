@@ -218,7 +218,7 @@ export default function NeoSettingsPage() {
 
   // Theme-specific colors
   const theme = isDark ? "dark" : "light";
-  const pageBackground = isDark ? "#121212" : "rgba(232,228,220,1)";
+  const pageBackground = isDark ? "var(--bg-app)" : "rgba(232,228,220,1)";
   const pageGradient = isDark
     ? "none"
     : "radial-gradient(520px 360px at 50% 0, rgba(30,51,49,0.30), rgba(30,51,49,0.12) 35%, transparent 70%)";
@@ -237,7 +237,7 @@ export default function NeoSettingsPage() {
         {/* Header */}
         <header className={`sticky top-0 z-40 px-4 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))] flex items-center gap-3 backdrop-blur-sm border-b ${
           isDark
-            ? "bg-[rgba(18,18,18,0.85)] border-[#2a2a2a]"
+            ? "bg-[rgba(14,28,27,0.85)] border-chrome-strong"
             : "bg-[rgba(232,228,220,0.85)] border-[rgba(0,0,0,0.08)]"
         }`}>
           <button
@@ -245,19 +245,19 @@ export default function NeoSettingsPage() {
             className={`p-2 -ml-2 rounded-xl ${
               isDark
                 ? "text-white active:bg-[rgba(255,255,255,0.06)]"
-                : "text-[#5A7A70] active:bg-[rgba(30,51,49,0.06)]"
+                : "text-text-accent-light active:bg-[rgba(30,51,49,0.06)]"
             }`}
           >
             <ArrowLeft size={24} />
           </button>
-          <h1 className={`text-lg font-bold ${isDark ? "text-white" : "text-[#1e3331]"}`}>
+          <h1 className={`text-lg font-bold ${isDark ? "text-white" : "text-brand-green"}`}>
             Neo Settings
           </h1>
         </header>
 
         {/* Rider Selection */}
         <div className="p-6">
-          <p className={`text-center mb-6 ${isDark ? "text-[#888888]" : "text-[#5A7A70]"}`}>
+          <p className={`text-center mb-6 ${isDark ? "text-text-muted" : "text-text-accent-light"}`}>
             Select a rider to view shock tunes
           </p>
 
@@ -308,7 +308,7 @@ export default function NeoSettingsPage() {
       {/* Header */}
       <header className={`sticky top-0 z-40 px-4 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))] flex items-center justify-between backdrop-blur-sm border-b ${
         isDark
-          ? "bg-[rgba(18,18,18,0.85)] border-[#2a2a2a]"
+          ? "bg-[rgba(14,28,27,0.85)] border-chrome-strong"
           : "bg-[rgba(232,228,220,0.85)] border-[rgba(0,0,0,0.08)]"
       }`}>
         <div className="flex items-center gap-3">
@@ -317,12 +317,12 @@ export default function NeoSettingsPage() {
             className={`p-2 -ml-2 rounded-xl ${
               isDark
                 ? "text-white active:bg-[rgba(255,255,255,0.06)]"
-                : "text-[#5A7A70] active:bg-[rgba(30,51,49,0.06)]"
+                : "text-text-accent-light active:bg-[rgba(30,51,49,0.06)]"
             }`}
           >
             <ArrowLeft size={24} />
           </button>
-          <h1 className={`text-lg font-bold ${isDark ? "text-white" : "text-[#1e3331]"}`}>
+          <h1 className={`text-lg font-bold ${isDark ? "text-white" : "text-brand-green"}`}>
             Neo Settings
           </h1>
         </div>
@@ -332,8 +332,8 @@ export default function NeoSettingsPage() {
           onClick={() => setRiderPickerOpen(true)}
           className={`flex items-center gap-2 px-3 py-2 rounded-xl ${
             isDark
-              ? "bg-[#1e1e1e] text-white active:bg-[#252525]"
-              : "bg-[rgba(30,51,49,0.06)] text-[#1e3331] active:bg-[rgba(30,51,49,0.10)]"
+              ? "bg-app-surface text-white active:bg-app-elevated"
+              : "bg-[rgba(30,51,49,0.06)] text-brand-green active:bg-[rgba(30,51,49,0.10)]"
           }`}
         >
           <img
@@ -342,7 +342,7 @@ export default function NeoSettingsPage() {
             className="w-6 h-6 rounded-full object-cover"
           />
           <span className="font-medium text-sm">{rider}</span>
-          <ChevronDown size={16} className={isDark ? "text-[#888888]" : "text-[#8A9A94]"} />
+          <ChevronDown size={16} className={isDark ? "text-text-muted" : "text-text-muted"} />
         </button>
       </header>
 
@@ -382,8 +382,8 @@ export default function NeoSettingsPage() {
           className="
             w-full py-4 rounded-2xl font-bold text-white
             flex items-center justify-center gap-2
-            bg-[#ff6b2c]
-            shadow-[0_8px_24px_rgba(255,107,44,0.40)]
+            bg-brand-orange
+            shadow-[0_8px_24px_rgba(233,78,27,0.40)]
             active:scale-[0.98] transition-transform
           "
         >
@@ -398,11 +398,11 @@ export default function NeoSettingsPage() {
           <Drawer.Overlay className={`fixed inset-0 backdrop-blur-sm z-50 ${isDark ? "bg-black/60" : "bg-black/40"}`} />
           <Drawer.Content
             className={`flex flex-col rounded-t-[32px] fixed bottom-0 left-0 right-0 z-50 outline-none border-t ${
-              isDark ? "border-[#2a2a2a]" : "border-[rgba(0,0,0,0.08)]"
+              isDark ? "border-chrome-strong" : "border-[rgba(0,0,0,0.08)]"
             }`}
             style={{
               background: isDark
-                ? "#1e1e1e"
+                ? "var(--bg-surface)"
                 : "radial-gradient(400px 300px at 50% 100%, rgba(30,51,49,0.15), transparent 70%)," +
                   "rgba(232,228,220,0.98)",
             }}
@@ -410,9 +410,10 @@ export default function NeoSettingsPage() {
             {/* Drag handle */}
             <div className="p-4 rounded-t-[32px] flex-none">
               <div className={`mx-auto w-12 h-1.5 flex-shrink-0 rounded-full ${
-                isDark ? "bg-[#444444]" : "bg-[rgba(30,51,49,0.15)]"
+                isDark ? "bg-text-muted" : "bg-[rgba(30,51,49,0.15)]"
               }`} />
             </div>
+            <Drawer.Title className="sr-only">Select Rider</Drawer.Title>
 
             {/* Rider Grid - Pyramid Layout */}
             <div className="px-4 py-6">
@@ -471,29 +472,30 @@ export default function NeoSettingsPage() {
           <Drawer.Overlay className={`fixed inset-0 backdrop-blur-sm z-50 ${isDark ? "bg-black/60" : "bg-black/40"}`} />
           <Drawer.Content
             className={`flex flex-col rounded-t-[32px] fixed bottom-0 left-0 right-0 z-50 outline-none border-t ${
-              isDark ? "border-[#2a2a2a]" : "border-[rgba(0,0,0,0.08)]"
+              isDark ? "border-chrome-strong" : "border-[rgba(0,0,0,0.08)]"
             }`}
             style={{
-              background: isDark ? "#1e1e1e" : "rgba(232,228,220,0.98)",
+              background: isDark ? "var(--bg-surface)" : "rgba(232,228,220,0.98)",
               maxHeight: "90vh",
             }}
           >
             <div className="p-4 overflow-y-auto">
               {/* Drag handle */}
               <div className={`mx-auto w-12 h-1.5 rounded-full mb-4 ${
-                isDark ? "bg-[#444444]" : "bg-[rgba(30,51,49,0.15)]"
+                isDark ? "bg-text-muted" : "bg-[rgba(30,51,49,0.15)]"
               }`} />
+              <Drawer.Title className="sr-only">Import Neo Tune</Drawer.Title>
 
               <div className="flex items-center justify-between mb-4">
-                <h2 className={`text-lg font-bold ${isDark ? "text-white" : "text-[#1e3331]"}`}>
+                <h2 className={`text-lg font-bold ${isDark ? "text-white" : "text-brand-green"}`}>
                   Import Neo Tune
                 </h2>
                 <button
                   onClick={() => setImportModalOpen(false)}
                   className={`p-2 rounded-full ${
                     isDark
-                      ? "bg-[#252525] text-[#888888]"
-                      : "bg-[rgba(30,51,49,0.08)] text-[#5A7A70]"
+                      ? "bg-app-elevated text-text-muted"
+                      : "bg-[rgba(30,51,49,0.08)] text-text-accent-light"
                   }`}
                 >
                   <X size={20} />
@@ -502,7 +504,7 @@ export default function NeoSettingsPage() {
 
               {/* File Input / Preview */}
               <div className="mb-4">
-                <label className={`block text-sm font-medium mb-2 ${isDark ? "text-[#888888]" : "text-[#1e3331]"}`}>
+                <label className={`block text-sm font-medium mb-2 ${isDark ? "text-text-muted" : "text-brand-green"}`}>
                   Screenshot *
                 </label>
                 {importPreview ? (
@@ -511,7 +513,7 @@ export default function NeoSettingsPage() {
                       src={importPreview}
                       alt="Preview"
                       className={`w-full rounded-2xl object-contain max-h-64 ${
-                        isDark ? "bg-[#252525]" : "bg-[rgba(30,51,49,0.06)]"
+                        isDark ? "bg-app-elevated" : "bg-[rgba(30,51,49,0.06)]"
                       }`}
                     />
                     <button
@@ -530,8 +532,8 @@ export default function NeoSettingsPage() {
                     onClick={() => fileInputRef.current?.click()}
                     className={`w-full py-12 rounded-2xl border-2 border-dashed flex flex-col items-center gap-2 transition-colors ${
                       isDark
-                        ? "border-[#333333] text-[#888888] hover:border-[#444444]"
-                        : "border-[rgba(30,51,49,0.20)] text-[#5A7A70] hover:border-[rgba(30,51,49,0.35)]"
+                        ? "border-chrome-strong text-text-muted hover:border-[#444444]"
+                        : "border-[rgba(30,51,49,0.20)] text-text-accent-light hover:border-[rgba(30,51,49,0.35)]"
                     }`}
                   >
                     <Upload size={32} />
@@ -549,7 +551,7 @@ export default function NeoSettingsPage() {
 
               {/* Tune Name */}
               <div className="mb-4">
-                <label className={`block text-sm font-medium mb-2 ${isDark ? "text-[#888888]" : "text-[#1e3331]"}`}>
+                <label className={`block text-sm font-medium mb-2 ${isDark ? "text-text-muted" : "text-brand-green"}`}>
                   Tune Name *
                 </label>
                 <input
@@ -559,15 +561,15 @@ export default function NeoSettingsPage() {
                   placeholder="e.g., Race - Leogang"
                   className={`w-full px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 ${
                     isDark
-                      ? "bg-[#252525] border-[#333333] text-white placeholder:text-[#666666] focus:ring-[rgba(255,107,44,0.25)]"
-                      : "bg-[rgba(255,255,255,0.55)] border-[rgba(0,0,0,0.08)] text-[#1e3331] placeholder:text-[#8A9A94] focus:ring-[rgba(233,78,27,0.25)]"
+                      ? "bg-app-elevated border-chrome-strong text-white placeholder:text-text-muted focus:ring-[rgba(233,78,27,0.25)]"
+                      : "bg-[rgba(255,255,255,0.55)] border-[rgba(0,0,0,0.08)] text-brand-green placeholder:text-text-muted focus:ring-[rgba(233,78,27,0.25)]"
                   }`}
                 />
               </div>
 
               {/* Notes */}
               <div className="mb-6">
-                <label className={`block text-sm font-medium mb-2 ${isDark ? "text-[#888888]" : "text-[#1e3331]"}`}>
+                <label className={`block text-sm font-medium mb-2 ${isDark ? "text-text-muted" : "text-brand-green"}`}>
                   Notes (optional)
                 </label>
                 <textarea
@@ -577,8 +579,8 @@ export default function NeoSettingsPage() {
                   rows={3}
                   className={`w-full px-4 py-3 rounded-xl resize-none border focus:outline-none focus:ring-2 ${
                     isDark
-                      ? "bg-[#252525] border-[#333333] text-white placeholder:text-[#666666] focus:ring-[rgba(255,107,44,0.25)]"
-                      : "bg-[rgba(255,255,255,0.55)] border-[rgba(0,0,0,0.08)] text-[#1e3331] placeholder:text-[#8A9A94] focus:ring-[rgba(233,78,27,0.25)]"
+                      ? "bg-app-elevated border-chrome-strong text-white placeholder:text-text-muted focus:ring-[rgba(233,78,27,0.25)]"
+                      : "bg-[rgba(255,255,255,0.55)] border-[rgba(0,0,0,0.08)] text-brand-green placeholder:text-text-muted focus:ring-[rgba(233,78,27,0.25)]"
                   }`}
                 />
               </div>
@@ -590,8 +592,8 @@ export default function NeoSettingsPage() {
                 className="
                   w-full py-4 rounded-2xl font-bold text-white
                   flex items-center justify-center gap-2
-                  bg-[#ff6b2c]
-                  shadow-[0_8px_20px_rgba(255,107,44,0.35)]
+                  bg-brand-orange
+                  shadow-[0_8px_20px_rgba(233,78,27,0.35)]
                   transition-all disabled:opacity-50
                 "
               >
@@ -670,21 +672,22 @@ export default function NeoSettingsPage() {
           <Drawer.Overlay className={`fixed inset-0 backdrop-blur-sm z-50 ${isDark ? "bg-black/60" : "bg-black/40"}`} />
           <Drawer.Content
             className={`flex flex-col rounded-t-[32px] fixed bottom-0 left-0 right-0 z-50 outline-none border-t ${
-              isDark ? "border-[#2a2a2a]" : "border-[rgba(0,0,0,0.08)]"
+              isDark ? "border-chrome-strong" : "border-[rgba(0,0,0,0.08)]"
             }`}
-            style={{ background: isDark ? "#1e1e1e" : "rgba(232,228,220,0.98)" }}
+            style={{ background: isDark ? "var(--bg-surface)" : "rgba(232,228,220,0.98)" }}
           >
             <div className="p-4">
               {/* Drag handle */}
               <div className={`mx-auto w-12 h-1.5 rounded-full mb-4 ${
-                isDark ? "bg-[#444444]" : "bg-[rgba(30,51,49,0.15)]"
+                isDark ? "bg-text-muted" : "bg-[rgba(30,51,49,0.15)]"
               }`} />
-              <h2 className={`text-lg font-bold mb-4 ${isDark ? "text-white" : "text-[#1e3331]"}`}>
+              <Drawer.Title className="sr-only">Edit Tune</Drawer.Title>
+              <h2 className={`text-lg font-bold mb-4 ${isDark ? "text-white" : "text-brand-green"}`}>
                 Edit Tune
               </h2>
 
               <div className="mb-4">
-                <label className={`block text-sm font-medium mb-2 ${isDark ? "text-[#888888]" : "text-[#1e3331]"}`}>
+                <label className={`block text-sm font-medium mb-2 ${isDark ? "text-text-muted" : "text-brand-green"}`}>
                   Tune Name
                 </label>
                 <input
@@ -695,14 +698,14 @@ export default function NeoSettingsPage() {
                   }
                   className={`w-full px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 ${
                     isDark
-                      ? "bg-[#252525] border-[#333333] text-white placeholder:text-[#666666] focus:ring-[rgba(255,107,44,0.25)]"
-                      : "bg-[rgba(255,255,255,0.55)] border-[rgba(0,0,0,0.08)] text-[#1e3331] placeholder:text-[#8A9A94] focus:ring-[rgba(233,78,27,0.25)]"
+                      ? "bg-app-elevated border-chrome-strong text-white placeholder:text-text-muted focus:ring-[rgba(233,78,27,0.25)]"
+                      : "bg-[rgba(255,255,255,0.55)] border-[rgba(0,0,0,0.08)] text-brand-green placeholder:text-text-muted focus:ring-[rgba(233,78,27,0.25)]"
                   }`}
                 />
               </div>
 
               <div className="mb-6">
-                <label className={`block text-sm font-medium mb-2 ${isDark ? "text-[#888888]" : "text-[#1e3331]"}`}>
+                <label className={`block text-sm font-medium mb-2 ${isDark ? "text-text-muted" : "text-brand-green"}`}>
                   Notes
                 </label>
                 <textarea
@@ -713,8 +716,8 @@ export default function NeoSettingsPage() {
                   rows={3}
                   className={`w-full px-4 py-3 rounded-xl resize-none border focus:outline-none focus:ring-2 ${
                     isDark
-                      ? "bg-[#252525] border-[#333333] text-white placeholder:text-[#666666] focus:ring-[rgba(255,107,44,0.25)]"
-                      : "bg-[rgba(255,255,255,0.55)] border-[rgba(0,0,0,0.08)] text-[#1e3331] placeholder:text-[#8A9A94] focus:ring-[rgba(233,78,27,0.25)]"
+                      ? "bg-app-elevated border-chrome-strong text-white placeholder:text-text-muted focus:ring-[rgba(233,78,27,0.25)]"
+                      : "bg-[rgba(255,255,255,0.55)] border-[rgba(0,0,0,0.08)] text-brand-green placeholder:text-text-muted focus:ring-[rgba(233,78,27,0.25)]"
                   }`}
                 />
               </div>
@@ -723,8 +726,8 @@ export default function NeoSettingsPage() {
                 onClick={handleEditSave}
                 className="
                   w-full py-4 rounded-2xl font-bold text-white
-                  bg-[#ff6b2c]
-                  shadow-[0_8px_20px_rgba(255,107,44,0.35)]
+                  bg-brand-orange
+                  shadow-[0_8px_20px_rgba(233,78,27,0.35)]
                 "
               >
                 Save Changes
@@ -743,19 +746,20 @@ export default function NeoSettingsPage() {
           <Drawer.Overlay className={`fixed inset-0 backdrop-blur-sm z-50 ${isDark ? "bg-black/60" : "bg-black/40"}`} />
           <Drawer.Content
             className={`flex flex-col rounded-t-[32px] fixed bottom-0 left-0 right-0 z-50 outline-none border-t ${
-              isDark ? "border-[#2a2a2a]" : "border-[rgba(0,0,0,0.08)]"
+              isDark ? "border-chrome-strong" : "border-[rgba(0,0,0,0.08)]"
             }`}
-            style={{ background: isDark ? "#1e1e1e" : "rgba(232,228,220,0.98)" }}
+            style={{ background: isDark ? "var(--bg-surface)" : "rgba(232,228,220,0.98)" }}
           >
             <div className="p-4">
               {/* Drag handle */}
               <div className={`mx-auto w-12 h-1.5 rounded-full mb-4 ${
-                isDark ? "bg-[#444444]" : "bg-[rgba(30,51,49,0.15)]"
+                isDark ? "bg-text-muted" : "bg-[rgba(30,51,49,0.15)]"
               }`} />
-              <h2 className={`text-lg font-bold mb-2 ${isDark ? "text-white" : "text-[#1e3331]"}`}>
+              <Drawer.Title className="sr-only">Delete Tune</Drawer.Title>
+              <h2 className={`text-lg font-bold mb-2 ${isDark ? "text-white" : "text-brand-green"}`}>
                 Delete Tune?
               </h2>
-              <p className={`mb-6 ${isDark ? "text-[#888888]" : "text-[#5A7A70]"}`}>
+              <p className={`mb-6 ${isDark ? "text-text-muted" : "text-text-accent-light"}`}>
                 This will permanently delete "{deleteConfirm?.full_spec?.tune_name}". This
                 action cannot be undone.
               </p>
@@ -765,8 +769,8 @@ export default function NeoSettingsPage() {
                   onClick={() => setDeleteConfirm(null)}
                   className={`flex-1 py-3 rounded-xl font-semibold ${
                     isDark
-                      ? "bg-[#252525] text-white"
-                      : "bg-[rgba(30,51,49,0.08)] text-[#1e3331]"
+                      ? "bg-app-elevated text-white"
+                      : "bg-[rgba(30,51,49,0.08)] text-brand-green"
                   }`}
                 >
                   Cancel

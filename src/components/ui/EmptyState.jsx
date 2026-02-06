@@ -48,11 +48,11 @@ export function EmptyState({
       {IconComponent && (
         <div
           className={`${compact ? "mb-2" : "mb-4"} rounded-full p-3`}
-          style={{ backgroundColor: "rgba(255, 107, 44, 0.1)" }}
+          style={{ backgroundColor: "rgba(233, 78, 27, 0.1)" }}
         >
           <IconComponent
             size={compact ? 24 : 32}
-            className="text-[#888]"
+            className="text-text-muted"
             strokeWidth={1.5}
           />
         </div>
@@ -60,7 +60,7 @@ export function EmptyState({
 
       {title && (
         <h3
-          className={`font-semibold text-white ${
+          className={`font-semibold text-text-primary ${
             compact ? "text-sm" : "text-base"
           }`}
         >
@@ -70,7 +70,7 @@ export function EmptyState({
 
       {subtitle && (
         <p
-          className={`text-[#888] mt-1 max-w-[240px] ${
+          className={`text-text-muted mt-1 max-w-[240px] ${
             compact ? "text-xs" : "text-sm"
           }`}
         >

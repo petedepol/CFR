@@ -116,16 +116,16 @@ export function JigCompareModal({ open, onClose, defaultRider, defaultBike }) {
   // Calculate delta
   function getDelta(val1, val2) {
     if (val1 === null || val1 === undefined || val2 === null || val2 === undefined) {
-      return { value: null, display: "—", color: "#666" };
+      return { value: null, display: "—", color: "var(--text-muted)" };
     }
     const n1 = Number(val1);
     const n2 = Number(val2);
     if (!Number.isFinite(n1) || !Number.isFinite(n2)) {
-      return { value: null, display: "—", color: "#666" };
+      return { value: null, display: "—", color: "var(--text-muted)" };
     }
     const diff = n2 - n1;
     if (diff === 0) {
-      return { value: 0, display: "—", color: "#666" };
+      return { value: 0, display: "—", color: "var(--text-muted)" };
     }
     const sign = diff > 0 ? "+" : "";
     const arrow = diff > 0 ? "↑" : "↓";
@@ -143,18 +143,18 @@ export function JigCompareModal({ open, onClose, defaultRider, defaultBike }) {
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 bg-black/60 z-50" />
         <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 outline-none max-h-[85dvh] flex flex-col">
-          <div className="bg-[#1e1e1e] rounded-t-[20px] flex flex-col max-h-[85dvh]">
+          <div className="bg-app-surface rounded-t-[20px] flex flex-col max-h-[85dvh]">
             {/* Drag handle */}
-            <div className="w-10 h-1 bg-[#444] rounded-full mx-auto mt-3 mb-2 flex-shrink-0" />
+            <div className="w-10 h-1 bg-text-muted rounded-full mx-auto mt-3 mb-2 flex-shrink-0" />
 
             {/* Header */}
-            <div className="flex items-center justify-between px-5 pb-4 border-b border-[#2a2a2a] flex-shrink-0">
+            <div className="flex items-center justify-between px-5 pb-4 border-b border-chrome-strong flex-shrink-0">
               <Drawer.Title className="text-lg font-bold text-white">
                 Compare JIG
               </Drawer.Title>
               <button
                 onClick={onClose}
-                className="p-2 rounded-full bg-[#252525] text-white/60 hover:text-white active:scale-95 transition"
+                className="p-2 rounded-full bg-app-elevated text-white/60 hover:text-white active:scale-95 transition"
               >
                 <X size={18} />
               </button>
@@ -164,24 +164,24 @@ export function JigCompareModal({ open, onClose, defaultRider, defaultBike }) {
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
               {/* Bike 1 Selection */}
               <div className="space-y-2">
-                <div className="text-xs font-semibold text-[#888] uppercase tracking-wider">Bike 1</div>
+                <div className="text-xs font-semibold text-text-muted uppercase tracking-wider">Bike 1</div>
                 <div className="flex gap-2">
                   {/* Rider 1 Dropdown */}
                   <div className="flex-1 relative">
                     <button
                       onClick={() => { setRider1Open(!rider1Open); setBike1Open(false); }}
-                      className="w-full px-3 py-2.5 rounded-xl bg-[#252525] border border-[#333] text-white text-sm font-medium flex items-center justify-between focus:border-[#ff6b2c] transition"
+                      className="w-full px-3 py-2.5 rounded-xl bg-app-elevated border border-chrome-strong text-white text-sm font-medium flex items-center justify-between focus:border-brand-orange transition"
                     >
                       {rider1}
-                      <ChevronDown size={16} className="text-[#666]" />
+                      <ChevronDown size={16} className="text-text-muted" />
                     </button>
                     {rider1Open && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-[#252525] border border-[#333] rounded-xl overflow-hidden z-10 shadow-xl">
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-app-elevated border border-chrome-strong rounded-xl overflow-hidden z-10 shadow-xl">
                         {RIDERS.map((r) => (
                           <button
                             key={r.id}
                             onClick={() => { setRider1(r.name); setRider1Open(false); }}
-                            className={`w-full px-3 py-2 text-left text-sm hover:bg-[#333] transition ${rider1 === r.name ? "text-[#ff6b2c] font-medium" : "text-white"}`}
+                            className={`w-full px-3 py-2 text-left text-sm hover:bg-chrome-strong transition ${rider1 === r.name ? "text-brand-orange font-medium" : "text-white"}`}
                           >
                             {r.name}
                           </button>
@@ -193,18 +193,18 @@ export function JigCompareModal({ open, onClose, defaultRider, defaultBike }) {
                   <div className="flex-1 relative">
                     <button
                       onClick={() => { setBike1Open(!bike1Open); setRider1Open(false); }}
-                      className="w-full px-3 py-2.5 rounded-xl bg-[#252525] border border-[#333] text-white text-sm font-medium flex items-center justify-between focus:border-[#ff6b2c] transition"
+                      className="w-full px-3 py-2.5 rounded-xl bg-app-elevated border border-chrome-strong text-white text-sm font-medium flex items-center justify-between focus:border-brand-orange transition"
                     >
                       {getBikeLabel(bike1)}
-                      <ChevronDown size={16} className="text-[#666]" />
+                      <ChevronDown size={16} className="text-text-muted" />
                     </button>
                     {bike1Open && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-[#252525] border border-[#333] rounded-xl overflow-hidden z-10 shadow-xl">
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-app-elevated border border-chrome-strong rounded-xl overflow-hidden z-10 shadow-xl">
                         {BIKE_TYPES.map((b) => (
                           <button
                             key={b.id}
                             onClick={() => { setBike1(b.id); setBike1Open(false); }}
-                            className={`w-full px-3 py-2 text-left text-sm hover:bg-[#333] transition ${bike1 === b.id ? "text-[#ff6b2c] font-medium" : "text-white"}`}
+                            className={`w-full px-3 py-2 text-left text-sm hover:bg-chrome-strong transition ${bike1 === b.id ? "text-brand-orange font-medium" : "text-white"}`}
                           >
                             {b.label}
                           </button>
@@ -219,7 +219,7 @@ export function JigCompareModal({ open, onClose, defaultRider, defaultBike }) {
               <div className="flex justify-center">
                 <button
                   onClick={handleSwap}
-                  className="p-2 rounded-lg bg-[#252525] text-[#888] hover:text-white active:scale-95 transition"
+                  className="p-2 rounded-lg bg-app-elevated text-text-muted hover:text-white active:scale-95 transition"
                   title="Swap selections"
                 >
                   <ArrowUpDown size={18} />
@@ -228,24 +228,24 @@ export function JigCompareModal({ open, onClose, defaultRider, defaultBike }) {
 
               {/* Bike 2 Selection */}
               <div className="space-y-2">
-                <div className="text-xs font-semibold text-[#888] uppercase tracking-wider">Bike 2</div>
+                <div className="text-xs font-semibold text-text-muted uppercase tracking-wider">Bike 2</div>
                 <div className="flex gap-2">
                   {/* Rider 2 Dropdown */}
                   <div className="flex-1 relative">
                     <button
                       onClick={() => { setRider2Open(!rider2Open); setBike2Open(false); }}
-                      className="w-full px-3 py-2.5 rounded-xl bg-[#252525] border border-[#333] text-white text-sm font-medium flex items-center justify-between focus:border-[#ff6b2c] transition"
+                      className="w-full px-3 py-2.5 rounded-xl bg-app-elevated border border-chrome-strong text-white text-sm font-medium flex items-center justify-between focus:border-brand-orange transition"
                     >
                       {rider2}
-                      <ChevronDown size={16} className="text-[#666]" />
+                      <ChevronDown size={16} className="text-text-muted" />
                     </button>
                     {rider2Open && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-[#252525] border border-[#333] rounded-xl overflow-hidden z-10 shadow-xl">
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-app-elevated border border-chrome-strong rounded-xl overflow-hidden z-10 shadow-xl">
                         {RIDERS.map((r) => (
                           <button
                             key={r.id}
                             onClick={() => { setRider2(r.name); setRider2Open(false); }}
-                            className={`w-full px-3 py-2 text-left text-sm hover:bg-[#333] transition ${rider2 === r.name ? "text-[#ff6b2c] font-medium" : "text-white"}`}
+                            className={`w-full px-3 py-2 text-left text-sm hover:bg-chrome-strong transition ${rider2 === r.name ? "text-brand-orange font-medium" : "text-white"}`}
                           >
                             {r.name}
                           </button>
@@ -257,18 +257,18 @@ export function JigCompareModal({ open, onClose, defaultRider, defaultBike }) {
                   <div className="flex-1 relative">
                     <button
                       onClick={() => { setBike2Open(!bike2Open); setRider2Open(false); }}
-                      className="w-full px-3 py-2.5 rounded-xl bg-[#252525] border border-[#333] text-white text-sm font-medium flex items-center justify-between focus:border-[#ff6b2c] transition"
+                      className="w-full px-3 py-2.5 rounded-xl bg-app-elevated border border-chrome-strong text-white text-sm font-medium flex items-center justify-between focus:border-brand-orange transition"
                     >
                       {getBikeLabel(bike2)}
-                      <ChevronDown size={16} className="text-[#666]" />
+                      <ChevronDown size={16} className="text-text-muted" />
                     </button>
                     {bike2Open && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-[#252525] border border-[#333] rounded-xl overflow-hidden z-10 shadow-xl">
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-app-elevated border border-chrome-strong rounded-xl overflow-hidden z-10 shadow-xl">
                         {BIKE_TYPES.map((b) => (
                           <button
                             key={b.id}
                             onClick={() => { setBike2(b.id); setBike2Open(false); }}
-                            className={`w-full px-3 py-2 text-left text-sm hover:bg-[#333] transition ${bike2 === b.id ? "text-[#ff6b2c] font-medium" : "text-white"}`}
+                            className={`w-full px-3 py-2 text-left text-sm hover:bg-chrome-strong transition ${bike2 === b.id ? "text-brand-orange font-medium" : "text-white"}`}
                           >
                             {b.label}
                           </button>
@@ -281,7 +281,7 @@ export function JigCompareModal({ open, onClose, defaultRider, defaultBike }) {
 
               {/* Same selection warning */}
               {isSameSelection && (
-                <div className="text-center text-sm text-[#888] py-2">
+                <div className="text-center text-sm text-text-muted py-2">
                   Select two different bikes to compare
                 </div>
               )}
@@ -291,7 +291,7 @@ export function JigCompareModal({ open, onClose, defaultRider, defaultBike }) {
                 onClick={handleCompare}
                 disabled={isSameSelection || loading}
                 className="w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: "#ff6b2c", color: "#fff" }}
+                style={{ backgroundColor: "var(--brand-orange)", color: "var(--text-primary)" }}
               >
                 {loading ? "Loading..." : "Compare"}
               </button>
@@ -303,24 +303,24 @@ export function JigCompareModal({ open, onClose, defaultRider, defaultBike }) {
 
               {/* Comparison Table */}
               {compared && !loading && (
-                <div className="mt-4 rounded-xl overflow-hidden border border-[#2a2a2a]">
+                <div className="mt-4 rounded-xl overflow-hidden border border-chrome-strong">
                   {/* Table Header */}
-                  <div className="grid grid-cols-4 bg-[#252525] text-xs font-semibold">
-                    <div className="p-3 text-[#888]"></div>
+                  <div className="grid grid-cols-4 bg-app-elevated text-xs font-semibold">
+                    <div className="p-3 text-text-muted"></div>
                     <div className="p-3 text-white text-center">
                       <div className="truncate">{rider1}</div>
-                      <div className="text-[#888] text-[10px] font-normal">{getBikeLabel(bike1)}</div>
+                      <div className="text-text-muted text-[10px] font-normal">{getBikeLabel(bike1)}</div>
                     </div>
                     <div className="p-3 text-white text-center">
                       <div className="truncate">{rider2}</div>
-                      <div className="text-[#888] text-[10px] font-normal">{getBikeLabel(bike2)}</div>
+                      <div className="text-text-muted text-[10px] font-normal">{getBikeLabel(bike2)}</div>
                     </div>
-                    <div className="p-3 text-[#888] text-center">Δ</div>
+                    <div className="p-3 text-text-muted text-center">Δ</div>
                   </div>
 
                   {/* No data messages */}
                   {!data1 && !data2 ? (
-                    <div className="p-4 text-center text-sm text-[#888]">
+                    <div className="p-4 text-center text-sm text-text-muted">
                       No jig data for either bike
                     </div>
                   ) : (
@@ -340,16 +340,16 @@ export function JigCompareModal({ open, onClose, defaultRider, defaultBike }) {
                         return (
                           <div
                             key={row.key}
-                            className={`grid grid-cols-4 text-sm ${i % 2 === 0 ? "bg-[#1e1e1e]" : "bg-[#1a1a1a]"} border-t border-[#2a2a2a]`}
+                            className={`grid grid-cols-4 text-sm ${i % 2 === 0 ? "bg-app-surface" : "bg-app-bg"} border-t border-chrome-strong`}
                           >
-                            <div className="p-3 text-[#888] text-xs">{row.label}</div>
+                            <div className="p-3 text-text-muted text-xs">{row.label}</div>
                             <div className="p-3 text-white text-center font-mono">
                               {row.isDate ? formatDate(val1) : formatValue(val1)}
                             </div>
                             <div className="p-3 text-white text-center font-mono">
                               {row.isDate ? formatDate(val2) : formatValue(val2)}
                             </div>
-                            <div className="p-3 text-center font-mono text-sm" style={{ color: delta?.color || "#666" }}>
+                            <div className="p-3 text-center font-mono text-sm" style={{ color: delta?.color || "var(--text-muted)" }}>
                               {row.showDelta ? delta?.display : (
                                 row.key === "location" ? (
                                   val1 === val2 ? "same" : (val1 && val2 ? "diff" : "—")
@@ -362,12 +362,12 @@ export function JigCompareModal({ open, onClose, defaultRider, defaultBike }) {
 
                       {/* No data warnings */}
                       {!data1 && (
-                        <div className="p-3 text-center text-xs text-[#888] bg-[#1a1a1a] border-t border-[#2a2a2a]">
+                        <div className="p-3 text-center text-xs text-text-muted bg-app-bg border-t border-chrome-strong">
                           No jig data for {rider1} {getBikeLabel(bike1)}
                         </div>
                       )}
                       {!data2 && (
-                        <div className="p-3 text-center text-xs text-[#888] bg-[#1a1a1a] border-t border-[#2a2a2a]">
+                        <div className="p-3 text-center text-xs text-text-muted bg-app-bg border-t border-chrome-strong">
                           No jig data for {rider2} {getBikeLabel(bike2)}
                         </div>
                       )}

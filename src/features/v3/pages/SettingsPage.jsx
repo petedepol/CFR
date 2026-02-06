@@ -330,16 +330,16 @@ export default function SettingsPage() {
 
   // Colors
   const colors = {
-    pageBg: "#121212",
-    cardBg: "#1e1e1e",
-    cardBorder: "#2a2a2a",
-    inputBg: "#252525",
-    primary: "#ff6b2c",
-    text: "#ffffff",
-    textMuted: "#888888",
-    textDim: "#666666",
-    success: "#4ade80",
-    warning: "#f59e0b",
+    pageBg: "var(--bg-app)",
+    cardBg: "var(--bg-surface)",
+    cardBorder: "rgba(255,255,255,0.14)",
+    inputBg: "var(--bg-elevated)",
+    primary: "var(--brand-orange)",
+    text: "var(--text-primary)",
+    textMuted: "var(--text-muted)",
+    textDim: "var(--text-muted)",
+    success: "var(--status-success)",
+    warning: "var(--status-warning)",
   };
 
   return (
@@ -348,7 +348,7 @@ export default function SettingsPage() {
       style={{ backgroundColor: colors.pageBg }}
     >
       {/* Header */}
-      <header className="sticky top-0 z-40 backdrop-blur-sm border-b border-[#2a2a2a] bg-[rgba(18,18,18,0.85)] pt-[env(safe-area-inset-top)]">
+      <header className="sticky top-0 z-40 backdrop-blur-sm border-b border-chrome-strong bg-[rgba(14,28,27,0.85)] pt-[env(safe-area-inset-top)]">
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
           <button
             onClick={() => navigate("/v3")}
@@ -775,7 +775,7 @@ export default function SettingsPage() {
                     value={coachEmails}
                     onChange={(e) => setCoachEmails(e.target.value)}
                     placeholder="email1@team.com, email2@team.com"
-                    className="w-full bg-transparent text-sm text-white placeholder-[#666] outline-none"
+                    className="w-full bg-transparent text-sm text-white placeholder-text-muted outline-none"
                   />
                   <div className="text-[10px] mt-2" style={{ color: colors.textDim }}>
                     Receives: Jig changes, Race setup (full)
@@ -792,7 +792,7 @@ export default function SettingsPage() {
                     value={mechanicEmails}
                     onChange={(e) => setMechanicEmails(e.target.value)}
                     placeholder="email1@team.com, email2@team.com"
-                    className="w-full bg-transparent text-sm text-white placeholder-[#666] outline-none"
+                    className="w-full bg-transparent text-sm text-white placeholder-text-muted outline-none"
                   />
                   <div className="text-[10px] mt-2" style={{ color: colors.textDim }}>
                     Receives: Jig changes, Settings changes, Service summary
@@ -809,7 +809,7 @@ export default function SettingsPage() {
                     value={riderEmails}
                     onChange={(e) => setRiderEmails(e.target.value)}
                     placeholder="email1@team.com, email2@team.com"
-                    className="w-full bg-transparent text-sm text-white placeholder-[#666] outline-none"
+                    className="w-full bg-transparent text-sm text-white placeholder-text-muted outline-none"
                   />
                   <div className="text-[10px] mt-2" style={{ color: colors.textDim }}>
                     Receives: Service summary, Jig changes, Race settings

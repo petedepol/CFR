@@ -1,7 +1,7 @@
-// RidersModal.jsx - CFR Foundation styled bottom sheet rider grid
-// Supports theme prop: "light" (2026 Livery) or "dark" (Kit Theme)
+// RidersModal.jsx - Rider selection bottom sheet
+// Uses shared PickerSheet for consistent glass treatment
 
-import { Drawer } from "vaul";
+import { PickerSheet } from "./PickerSheet.jsx";
 
 export function RidersModal({ riders, isOpen, onClose, onSelectRider, theme = "light" }) {
   const isDark = theme === "dark";
@@ -10,165 +10,65 @@ export function RidersModal({ riders, isOpen, onClose, onSelectRider, theme = "l
   const topRow = riders.slice(0, 3);
   const bottomRow = riders.slice(3);
 
-  // Theme-specific colors
+  // Theme-specific card colors
   const colors = isDark
     ? {
-        // Dark Kit Theme
-        overlay: "bg-black/60",
-        container: "bg-[#1e1e1e] border-[#2a2a2a]",
-        handle: "bg-[#444444]",
-        headerText: "text-[#ff6b2c]",
-        cardOuter: "bg-[#252525] border-b-2 border-b-[#ff6b2c]",
-        cardRing: "ring-1 ring-[rgba(255,255,255,0.05)]",
-        cardActiveRing: "group-active:ring-[#ff6b2c] group-active:ring-2",
-        cardInner: "bg-[#1e1e1e] border-[rgba(255,255,255,0.08)]",
+        cardOuter: "bg-app-elevated border-b-2 border-b-brand-orange",
+        cardRing: "ring-1 ring-chrome-subtle",
+        cardActiveRing: "group-active:ring-brand-orange group-active:ring-2",
+        cardInner: "bg-app-surface border-chrome-subtle",
         cardShadow: "shadow-[0_10px_28px_rgba(0,0,0,0.50)]",
-        nameColor: "text-white",
-        nameHover: "group-hover:text-[#ff6b2c]",
+        nameColor: "text-text-primary",
+        nameHover: "group-hover:text-brand-orange",
       }
     : {
-        // Light 2026 Livery Theme
-        overlay: "bg-black/40",
-        container: "border-[rgba(0,0,0,0.08)]",
-        handle: "bg-[rgba(30,51,49,0.15)]",
-        headerText: "text-[#5A7A70] opacity-70",
         cardOuter: "bg-[rgba(30,51,49,0.12)]",
         cardRing: "ring-1 ring-[rgba(30,51,49,0.20)]",
-        cardActiveRing: "group-active:ring-[rgba(233,78,27,0.50)]",
-        cardInner: "bg-[#1e3331] border-[rgba(255,255,255,0.1)]",
+        cardActiveRing: "group-active:ring-ring-active",
+        cardInner: "bg-brand-green border-chrome-subtle",
         cardShadow: "shadow-[0_10px_28px_rgba(0,0,0,0.18)]",
-        nameColor: "text-[#1e3331]",
-        nameHover: "group-hover:text-[#e94e1b]",
+        nameColor: "text-brand-green",
+        nameHover: "group-hover:text-brand-orange",
       };
 
-  // Container background style
-  const containerStyle = isDark
-    ? { background: "#1e1e1e" }
-    : {
-        background:
-          "radial-gradient(400px 300px at 50% 100%, rgba(30,51,49,0.15), transparent 70%)," +
-          "rgba(232,228,220,0.98)",
-      };
+  const renderRow = (row) =>
+    row.map((rider) => (
+      <button
+        key={rider.id}
+        onClick={() => onSelectRider(rider)}
+        className="group flex flex-col items-center gap-2 transition-transform active:scale-95"
+      >
+        <div className={`
+          relative p-[2px] rounded-2xl backdrop-blur-sm border border-transparent transition-all
+          ${colors.cardOuter} ${colors.cardRing} ${colors.cardActiveRing} ${colors.cardShadow}
+        `}>
+          <div className={`w-[72px] h-[72px] rounded-xl overflow-hidden border ${colors.cardInner}`}>
+            {rider.image ? (
+              <img src={rider.image} alt={rider.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-[linear-gradient(180deg,var(--brand-orange-hi)_0%,var(--brand-orange)_100%)]">
+                <span className="text-lg font-bold text-white">{rider.initial}</span>
+              </div>
+            )}
+          </div>
+        </div>
+        <span className={`text-sm font-semibold transition-colors ${colors.nameColor} ${colors.nameHover}`}>
+          {rider.name}
+        </span>
+      </button>
+    ));
 
   return (
-    <Drawer.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <Drawer.Portal>
-        <Drawer.Overlay className={`fixed inset-0 backdrop-blur-sm z-50 ${colors.overlay}`} />
-        <Drawer.Content
-          className={`flex flex-col rounded-t-[20px] fixed bottom-0 left-0 right-0 z-50 outline-none border-t ${colors.container}`}
-          style={containerStyle}
-        >
-          {/* Header */}
-          <div className="p-4 rounded-t-[20px] flex-none">
-            <div className={`mx-auto w-12 h-1.5 flex-shrink-0 rounded-full ${colors.handle}`} />
-          </div>
-
-          {/* Instruction text */}
-          <div className="text-center pb-4">
-            <p className={`text-[10px] uppercase font-semibold tracking-[0.3em] ${colors.headerText}`}>
-              Tap Rider &rarr; Choose Bike
-            </p>
-          </div>
-
-          {/* Rider Grid - Pyramid Layout */}
-          <div className="px-4 pb-6">
-            {/* Top row - 3 riders */}
-            <div className="flex justify-center gap-4 mb-4">
-              {topRow.map((rider) => (
-                <button
-                  key={rider.id}
-                  onClick={() => onSelectRider(rider)}
-                  className="group flex flex-col items-center gap-2 transition-transform active:scale-95"
-                >
-                  {/* Card container */}
-                  <div className={`
-                    relative p-[2px] rounded-2xl
-                    ${colors.cardOuter}
-                    backdrop-blur-sm
-                    border border-transparent
-                    ${colors.cardRing}
-                    ${colors.cardActiveRing}
-                    ${colors.cardShadow}
-                    transition-all
-                  `}>
-                    <div className={`w-[72px] h-[72px] rounded-xl overflow-hidden border ${colors.cardInner}`}>
-                      {rider.image ? (
-                        <img
-                          src={rider.image}
-                          alt={rider.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className={`w-full h-full flex items-center justify-center ${
-                          isDark
-                            ? "bg-[linear-gradient(180deg,#ff8a50_0%,#ff6b2c_100%)]"
-                            : "bg-[linear-gradient(180deg,#f0714a_0%,#e94e1b_100%)]"
-                        }`}>
-                          <span className="text-lg font-bold text-white">
-                            {rider.initial}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <span className={`text-sm font-semibold transition-colors ${colors.nameColor} ${colors.nameHover}`}>
-                    {rider.name}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            {/* Bottom row - 2 riders, centered */}
-            <div className="flex justify-center gap-4">
-              {bottomRow.map((rider) => (
-                <button
-                  key={rider.id}
-                  onClick={() => onSelectRider(rider)}
-                  className="group flex flex-col items-center gap-2 transition-transform active:scale-95"
-                >
-                  {/* Card container */}
-                  <div className={`
-                    relative p-[2px] rounded-2xl
-                    ${colors.cardOuter}
-                    backdrop-blur-sm
-                    border border-transparent
-                    ${colors.cardRing}
-                    ${colors.cardActiveRing}
-                    ${colors.cardShadow}
-                    transition-all
-                  `}>
-                    <div className={`w-[72px] h-[72px] rounded-xl overflow-hidden border ${colors.cardInner}`}>
-                      {rider.image ? (
-                        <img
-                          src={rider.image}
-                          alt={rider.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className={`w-full h-full flex items-center justify-center ${
-                          isDark
-                            ? "bg-[linear-gradient(180deg,#ff8a50_0%,#ff6b2c_100%)]"
-                            : "bg-[linear-gradient(180deg,#f0714a_0%,#e94e1b_100%)]"
-                        }`}>
-                          <span className="text-lg font-bold text-white">
-                            {rider.initial}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <span className={`text-sm font-semibold transition-colors ${colors.nameColor} ${colors.nameHover}`}>
-                    {rider.name}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Bottom safe area padding */}
-          <div className="h-[env(safe-area-inset-bottom)]" />
-        </Drawer.Content>
-      </Drawer.Portal>
-    </Drawer.Root>
+    <PickerSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      instruction="Tap Rider &rarr; Choose Bike"
+      theme={theme}
+    >
+      <div className="px-4 pb-6">
+        <div className="flex justify-center gap-4 mb-4">{renderRow(topRow)}</div>
+        <div className="flex justify-center gap-4">{renderRow(bottomRow)}</div>
+      </div>
+    </PickerSheet>
   );
 }

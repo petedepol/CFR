@@ -85,7 +85,7 @@ export async function fetchLatestMtbSettingsWithCache(rider, { forceRefresh = fa
 
   if (!forceRefresh) {
     const cached = getCachedSettingsLatest(rider);
-    if (cached !== null) {
+    if (cached !== undefined) {
       // Background refresh
       fetchLatestMtbSettings(rider).catch(() => {});
       return { data: cached, fromCache: true };
@@ -120,7 +120,7 @@ export async function fetchMtbSettingsHistoryWithCache(rider, limit = 50, { forc
 
   if (!forceRefresh) {
     const cached = getCachedSettingsHistory(rider);
-    if (cached !== null) {
+    if (cached !== undefined) {
       // Background refresh
       fetchMtbSettingsHistory(rider, limit).catch(() => {});
       return { data: cached, fromCache: true };

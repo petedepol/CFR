@@ -1,9 +1,12 @@
 // SpecSection.jsx - Collapsible section for bike spec form
 // Supports theme prop: "light" (2026 Livery) or "dark" (Kit Theme)
-// Instant expand/collapse - no animations
+// Spring-animated expand/collapse with height transition
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+
+const spring = { type: "spring", stiffness: 400, damping: 30 };
 
 export function SpecSection({ title, defaultOpen = false, children, theme = "light" }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -12,8 +15,13 @@ export function SpecSection({ title, defaultOpen = false, children, theme = "lig
   // Theme-specific colors — mapped to tokens.css values
   const colors = isDark
     ? {
-        container: "bg-app-surface border-chrome-strong ring-chrome-subtle",
+        container: "border-glass-border ring-chrome-subtle",
         shadow: "shadow-[0_10px_28px_rgba(0,0,0,0.40)]",
+        glass: {
+          background: "var(--glass-tile)",
+          backdropFilter: "blur(12px) saturate(150%)",
+          WebkitBackdropFilter: "blur(12px) saturate(150%)",
+        },
         headerActive: "active:bg-overlay-hover",
         title: "text-brand-orange",
         chevron: "text-text-muted",
@@ -32,11 +40,12 @@ export function SpecSection({ title, defaultOpen = false, children, theme = "lig
     <div
       className={`
         rounded-2xl overflow-hidden
-        backdrop-blur-sm border ring-1
+        border ring-1
         ${colors.container}
         ${colors.shadow}
       `}
       style={{
+        ...(isDark ? colors.glass : {}),
         borderLeft: isOpen ? `3px solid var(--brand-orange)` : undefined,
       }}
     >
@@ -49,20 +58,35 @@ export function SpecSection({ title, defaultOpen = false, children, theme = "lig
         <span className={`text-xs font-semibold tracking-[0.15em] uppercase ${colors.title}`}>
           {title}
         </span>
-        <ChevronDown
-          size={16}
-          className={isOpen ? "text-brand-orange rotate-180" : colors.chevron}
-        />
+        <motion.div
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={spring}
+        >
+          <ChevronDown
+            size={16}
+            className={isOpen ? "text-brand-orange" : colors.chevron}
+          />
+        </motion.div>
       </button>
 
-      {/* Content - instant show/hide */}
-      {isOpen && (
-        <div className="px-4 pb-4 pt-1">
-          <div className={`p-3 rounded-xl ${colors.contentBg}`}>
-            {children}
-          </div>
-        </div>
-      )}
+      {/* Content - spring animated expand/collapse */}
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={spring}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 pt-1">
+              <div className={`p-3 rounded-xl ${colors.contentBg}`}>
+                {children}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

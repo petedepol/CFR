@@ -34,6 +34,7 @@
   /* Glass system */
   --color-glass-rail: var(--glass-rail);
   --color-glass-tile: var(--glass-tile);
+  --color-glass-sheet: var(--glass-sheet);
   --color-glass-border: var(--glass-border);
   --color-glass-highlight: var(--glass-highlight);
   --color-ring-active: var(--ring-active);

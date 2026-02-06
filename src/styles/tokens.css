@@ -31,6 +31,7 @@
   /* Glass - double layer dock system */
   --glass-rail: rgba(30,51,49,0.55);
   --glass-tile: rgba(16,26,25,0.35);
+  --glass-sheet: rgba(20,38,36,0.80);
   --glass-border: rgba(255,255,255,0.10);
   --glass-highlight: rgba(255,255,255,0.10);
 

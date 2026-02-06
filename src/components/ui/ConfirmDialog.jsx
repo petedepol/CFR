@@ -30,7 +30,14 @@ export function ConfirmDialog({
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 bg-black/60 z-50" />
         <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 outline-none">
-          <div className="bg-app-surface rounded-t-[20px] p-6 pb-8 border-t border-chrome-strong">
+          <div
+            className="rounded-t-[20px] p-6 pb-8 border-t border-glass-border"
+            style={{
+              background: "var(--glass-sheet)",
+              backdropFilter: "blur(20px) saturate(180%)",
+              WebkitBackdropFilter: "blur(20px) saturate(180%)",
+            }}
+          >
             {/* Drag handle */}
             <div className="w-10 h-1 bg-text-muted rounded-full mx-auto mb-6" />
 

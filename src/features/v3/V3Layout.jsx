@@ -19,8 +19,8 @@ const RIDERS = [
 
 function LoadingFallback() {
   return (
-    <div className="min-h-dvh bg-[#121f1e] flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-[#e94e1b]/30 border-t-[#e94e1b] rounded-full animate-spin" />
+    <div className="min-h-dvh bg-brand-green-lo flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-brand-orange/30 border-t-brand-orange rounded-full animate-spin" />
     </div>
   );
 }
@@ -32,10 +32,12 @@ export default function V3Layout() {
   // Theme state - dark mode only (light mode removed)
   const isDark = true;
 
-  // Riders modal state
+  // Modal open/close state (separate from data so vaul can animate close)
   const [isRidersModalOpen, setIsRidersModalOpen] = useState(false);
+  const [isBikePickerOpen, setIsBikePickerOpen] = useState(false);
+  const [isActionPickerOpen, setIsActionPickerOpen] = useState(false);
 
-  // Riders tab flow: rider -> bike type -> action
+  // Riders tab flow data: rider -> bike type -> action
   const [riderForBikeFlow, setRiderForBikeFlow] = useState(null);
   const [selectedBikeType, setSelectedBikeType] = useState(null);
 
@@ -45,6 +47,8 @@ export default function V3Layout() {
     window.scrollTo(0, 0);
     // Close all modals when route changes
     setIsRidersModalOpen(false);
+    setIsBikePickerOpen(false);
+    setIsActionPickerOpen(false);
     setRiderForBikeFlow(null);
     setSelectedBikeType(null);
     // Remove navigating class after route change completes
@@ -58,6 +62,8 @@ export default function V3Layout() {
       document.body.classList.add('navigating-back');
       // Also close modal state
       setIsRidersModalOpen(false);
+      setIsBikePickerOpen(false);
+      setIsActionPickerOpen(false);
       setRiderForBikeFlow(null);
       setSelectedBikeType(null);
     };
@@ -93,7 +99,7 @@ export default function V3Layout() {
 
   // Derive active tab from current path or modal state
   const getActiveTab = () => {
-    if (isRidersModalOpen || riderForBikeFlow || selectedBikeType) return "riders";
+    if (isRidersModalOpen || isBikePickerOpen || isActionPickerOpen) return "riders";
     if (location.pathname.startsWith("/v3/spec")) return "riders";
     if (location.pathname.startsWith("/v3/jig")) return "riders";
     if (location.pathname.startsWith("/v3/service")) return "riders";
@@ -132,10 +138,12 @@ export default function V3Layout() {
   const handleRiderForBikeFlow = (rider) => {
     setIsRidersModalOpen(false);
     setRiderForBikeFlow(rider);
+    setIsBikePickerOpen(true);
   };
 
   const handleSelectBikeType = (bikeType) => {
     setSelectedBikeType(bikeType);
+    setIsActionPickerOpen(true);
   };
 
   const handleSelectAction = (action) => {
@@ -147,17 +155,25 @@ export default function V3Layout() {
       navigate(`/v3/service?rider=${encodeURIComponent(riderForBikeFlow?.name)}&bike=${selectedBikeType}`);
     }
 
-    // Reset the flow
-    setSelectedBikeType(null);
-    setRiderForBikeFlow(null);
+    // Close drawers first, then clear data after animation
+    setIsActionPickerOpen(false);
+    setIsBikePickerOpen(false);
+    setTimeout(() => {
+      setSelectedBikeType(null);
+      setRiderForBikeFlow(null);
+    }, 300);
   };
 
   const handleCloseBikeTypePicker = () => {
-    setRiderForBikeFlow(null);
+    setIsBikePickerOpen(false);
+    // Clear data after vaul close animation completes
+    setTimeout(() => setRiderForBikeFlow(null), 300);
   };
 
   const handleCloseActionPicker = () => {
-    setSelectedBikeType(null);
+    setIsActionPickerOpen(false);
+    // Clear data after vaul close animation completes
+    setTimeout(() => setSelectedBikeType(null), 300);
   };
 
   const handleCloseRidersModal = () => {
@@ -182,7 +198,7 @@ export default function V3Layout() {
 
       <BikeTypePicker
         rider={riderForBikeFlow}
-        isOpen={!!riderForBikeFlow}
+        isOpen={isBikePickerOpen}
         onClose={handleCloseBikeTypePicker}
         onSelectBike={handleSelectBikeType}
         theme={isDark ? "dark" : "light"}
@@ -191,16 +207,14 @@ export default function V3Layout() {
       <ActionPicker
         rider={riderForBikeFlow}
         bikeType={selectedBikeType}
-        isOpen={!!selectedBikeType}
+        isOpen={isActionPickerOpen}
         onClose={handleCloseActionPicker}
         onSelectAction={handleSelectAction}
         theme={isDark ? "dark" : "light"}
       />
 
-      {/* Bottom Navigation disabled - using inline nav in LandingPlayground for dark theme testing */}
-      {/* {(location.pathname === "/v3" || location.pathname === "/v3/") && (
-        <BottomNav activeTab={getActiveTab()} onTabChange={handleTabChange} />
-      )} */}
+      {/* Glass dock navigation - shown on all V3 pages */}
+      <BottomNav activeTab={getActiveTab()} onTabChange={handleTabChange} />
     </div>
   );
 }

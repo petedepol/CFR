@@ -112,6 +112,8 @@ export default function V3Layout() {
 
   // Handle tab changes
   const handleTabChange = (tab) => {
+    // Clear any stale swipe-back CSS hiding class before opening modals
+    document.body.classList.remove('navigating-back');
     if (tab === "admin") {
       navigate("/v3/settings");
       return;

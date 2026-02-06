@@ -375,6 +375,7 @@ export default function ServicePage() {
               <button
                 onClick={() => setLeaderboardDrawerOpen(true)}
                 className={`p-2 rounded-full active:scale-95 transition ${colors.backBtn}`}
+                aria-label="Leaderboard"
                 title="Leaderboard"
               >
                 <Trophy size={18} />
@@ -492,6 +493,7 @@ export default function ServicePage() {
             <div className="p-4 rounded-t-[20px] flex-none">
               <div className={`mx-auto w-12 h-1.5 flex-shrink-0 rounded-full ${colors.modalHandle}`} />
             </div>
+            <Drawer.Title className="sr-only">Select Rider</Drawer.Title>
 
             <div className="text-center pb-4">
               <p className={`text-[10px] uppercase font-semibold tracking-[0.3em] ${colors.modalHeader}`}>
@@ -551,6 +553,7 @@ export default function ServicePage() {
             <div className="p-4 rounded-t-[32px] flex-none">
               <div className={`mx-auto w-12 h-1.5 flex-shrink-0 rounded-full ${isDark ? "bg-text-muted" : "bg-[rgba(30,51,49,0.15)]"}`} />
             </div>
+            <Drawer.Title className="sr-only">Select Bike Type</Drawer.Title>
 
             <div className="text-center pb-4">
               <p className={`text-[10px] uppercase font-semibold tracking-[0.3em] ${isDark ? "text-brand-orange" : "text-text-accent-light opacity-70"}`}>
@@ -594,6 +597,7 @@ export default function ServicePage() {
             <div className="p-4 rounded-t-[20px] flex-none">
               <div className={`mx-auto w-12 h-1.5 flex-shrink-0 rounded-full ${colors.modalHandle}`} />
             </div>
+            <Drawer.Title className="sr-only">Service History</Drawer.Title>
 
             <div className="px-4 pb-4">
               <div className="flex items-center justify-between mb-4">
@@ -722,6 +726,7 @@ export default function ServicePage() {
             <div className="p-4 rounded-t-[20px] flex-none">
               <div className={`mx-auto w-12 h-1.5 flex-shrink-0 rounded-full ${colors.modalHandle}`} />
             </div>
+            <Drawer.Title className="sr-only">Leaderboard</Drawer.Title>
 
             <div className="px-4 pb-4">
               <div className="flex items-center gap-2 mb-4">

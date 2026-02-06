@@ -44,6 +44,7 @@ export function PickerSheet({ isOpen, onClose, instruction, theme = "light", chi
           <div className="p-4 rounded-t-[20px] flex-none">
             <div className={`mx-auto w-12 h-1.5 flex-shrink-0 rounded-full ${colors.handle}`} />
           </div>
+          <Drawer.Title className="sr-only">{instruction || "Select an option"}</Drawer.Title>
 
           {/* Instruction text */}
           {instruction && (

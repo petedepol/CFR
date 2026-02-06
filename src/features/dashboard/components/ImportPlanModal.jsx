@@ -97,6 +97,7 @@ export function ImportPlanModal({ isOpen, onClose, onImport, currentDate, existi
               <div className={`w-10 h-1 rounded-full ${handleColor}`} />
             </div>
 
+            <Drawer.Title className="sr-only">Import Plan</Drawer.Title>
             <div className="px-6 pb-8 overflow-y-auto" style={{ maxHeight: "80vh" }}>
               {/* Title */}
               <h2 className={`text-lg font-bold ${titleColor} text-center mb-6`}>

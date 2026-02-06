@@ -413,6 +413,7 @@ export default function NeoSettingsPage() {
                 isDark ? "bg-text-muted" : "bg-[rgba(30,51,49,0.15)]"
               }`} />
             </div>
+            <Drawer.Title className="sr-only">Select Rider</Drawer.Title>
 
             {/* Rider Grid - Pyramid Layout */}
             <div className="px-4 py-6">
@@ -483,6 +484,7 @@ export default function NeoSettingsPage() {
               <div className={`mx-auto w-12 h-1.5 rounded-full mb-4 ${
                 isDark ? "bg-text-muted" : "bg-[rgba(30,51,49,0.15)]"
               }`} />
+              <Drawer.Title className="sr-only">Import Neo Tune</Drawer.Title>
 
               <div className="flex items-center justify-between mb-4">
                 <h2 className={`text-lg font-bold ${isDark ? "text-white" : "text-brand-green"}`}>
@@ -679,6 +681,7 @@ export default function NeoSettingsPage() {
               <div className={`mx-auto w-12 h-1.5 rounded-full mb-4 ${
                 isDark ? "bg-text-muted" : "bg-[rgba(30,51,49,0.15)]"
               }`} />
+              <Drawer.Title className="sr-only">Edit Tune</Drawer.Title>
               <h2 className={`text-lg font-bold mb-4 ${isDark ? "text-white" : "text-brand-green"}`}>
                 Edit Tune
               </h2>
@@ -752,6 +755,7 @@ export default function NeoSettingsPage() {
               <div className={`mx-auto w-12 h-1.5 rounded-full mb-4 ${
                 isDark ? "bg-text-muted" : "bg-[rgba(30,51,49,0.15)]"
               }`} />
+              <Drawer.Title className="sr-only">Delete Tune</Drawer.Title>
               <h2 className={`text-lg font-bold mb-2 ${isDark ? "text-white" : "text-brand-green"}`}>
                 Delete Tune?
               </h2>

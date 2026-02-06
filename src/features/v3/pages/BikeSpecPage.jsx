@@ -905,6 +905,7 @@ export default function BikeSpecPage() {
               }`} />
             </div>
 
+            <Drawer.Title className="sr-only">Select Rider</Drawer.Title>
             {/* Instruction text */}
             <div className="text-center pb-4">
               <p className={`text-[10px] uppercase font-semibold tracking-[0.3em] ${
@@ -975,6 +976,7 @@ export default function BikeSpecPage() {
               }`} />
             </div>
 
+            <Drawer.Title className="sr-only">Select Bike Type</Drawer.Title>
             {/* Instruction text */}
             <div className="text-center pb-4">
               <p className={`text-[10px] uppercase font-semibold tracking-[0.3em] ${

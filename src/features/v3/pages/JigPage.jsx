@@ -670,6 +670,7 @@ export default function JigPage() {
               <button
                 onClick={() => setCompareModalOpen(true)}
                 className={`p-2 rounded-full active:scale-95 transition ${colors.backBtn}`}
+                aria-label="Compare JIG measurements"
                 title="Compare JIG"
               >
                 <Columns size={18} strokeWidth={2} />
@@ -1069,6 +1070,7 @@ export default function JigPage() {
             <div className="p-4 rounded-t-[20px] flex-none">
               <div className={`mx-auto w-12 h-1.5 flex-shrink-0 rounded-full ${colors.modalHandle}`} />
             </div>
+            <Drawer.Title className="sr-only">Select Rider</Drawer.Title>
 
             <div className="text-center pb-4">
               <p className={`text-[10px] uppercase font-semibold tracking-[0.3em] ${colors.modalHeader}`}>
@@ -1133,6 +1135,7 @@ export default function JigPage() {
               }`} />
             </div>
 
+            <Drawer.Title className="sr-only">Select Bike Type</Drawer.Title>
             {/* Instruction text */}
             <div className="text-center pb-4">
               <p className={`text-[10px] uppercase font-semibold tracking-[0.3em] ${

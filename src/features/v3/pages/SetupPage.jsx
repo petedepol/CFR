@@ -1210,6 +1210,7 @@ export default function SetupPage() {
                                       ? "bg-app-elevated text-brand-orange border-chrome-strong hover:bg-chrome-strong"
                                       : "bg-[rgba(210,74,31,0.10)] text-brand-orange-lo border-[rgba(210,74,31,0.25)]"
                                 }`}
+                                aria-label="Edit entry"
                                 title="Edit (admin)"
                               >
                                 <Pencil size={14} />
@@ -1218,6 +1219,7 @@ export default function SetupPage() {
                               <button
                                 onClick={() => adminDeleteRow(row)}
                                 disabled={offline || !row?.id || savingAdmin}
+                                aria-label="Delete entry"
                                 className={`rounded-lg p-1.5 border transition active:scale-[0.97] ${
                                   offline || !row?.id || savingAdmin
                                     ? isDark
@@ -1366,6 +1368,7 @@ export default function SetupPage() {
                 isDark ? "bg-text-muted" : "bg-[rgba(30,51,49,0.15)]"
               }`} />
             </div>
+            <Drawer.Title className="sr-only">Select Rider</Drawer.Title>
 
             {/* Rider Grid - Pyramid Layout */}
             <div className="px-4 py-6">

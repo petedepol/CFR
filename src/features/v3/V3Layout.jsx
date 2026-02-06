@@ -213,8 +213,10 @@ export default function V3Layout() {
         theme={isDark ? "dark" : "light"}
       />
 
-      {/* Glass dock navigation - shown on all V3 pages */}
-      <BottomNav activeTab={getActiveTab()} onTabChange={handleTabChange} />
+      {/* Glass dock navigation - only on landing page to avoid overlapping data pages */}
+      {(location.pathname === "/v3" || location.pathname === "/v3/") && (
+        <BottomNav activeTab={getActiveTab()} onTabChange={handleTabChange} />
+      )}
     </div>
   );
 }

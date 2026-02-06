@@ -18,14 +18,14 @@ export function SpecSection({ title, defaultOpen = false, children, theme = "lig
         container: "border-glass-border ring-chrome-subtle",
         shadow: "shadow-[0_10px_28px_rgba(0,0,0,0.40)]",
         glass: {
-          background: "var(--glass-tile)",
+          background: "rgba(24,44,41,0.72)",
           backdropFilter: "blur(12px) saturate(150%)",
           WebkitBackdropFilter: "blur(12px) saturate(150%)",
         },
         headerActive: "active:bg-overlay-hover",
         title: "text-brand-orange",
         chevron: "text-text-muted",
-        contentBg: "bg-overlay-hover",
+        contentBg: "bg-[rgba(255,255,255,0.05)]",
       }
     : {
         container: "bg-light-surface border-[rgba(0,0,0,0.08)] ring-[rgba(30,51,49,0.12)]",

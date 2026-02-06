@@ -29,6 +29,7 @@ import { CachedDataBanner } from "../../../components/CachedDataBanner.jsx";
 import { SpecSection } from "../components/SpecSection.jsx";
 import { SpecField } from "../components/SpecField.jsx";
 import { Avatar } from "../components/Avatar.jsx";
+import { ConfirmDialog } from "../../../components/ui/ConfirmDialog.jsx";
 
 // Riders list (shared with other v3 pages)
 const RIDERS = [
@@ -284,6 +285,9 @@ export default function SetupPage() {
   // Offline cache state
   const [showingCached, setShowingCached] = useState(false);
 
+  // Pending delete confirmation (replaces window.confirm for iOS Safari)
+  const [pendingDeleteRow, setPendingDeleteRow] = useState(null);
+
   // Refs for fast iPhone entry
   const inputRefs = useRef({});
   const lastSaveRef = useRef({ at: 0, sig: "" });
@@ -529,14 +533,19 @@ export default function SetupPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  async function adminDeleteRow(row) {
+  function adminDeleteRow(row) {
     if (!isAdmin || !row?.id) return;
     if (offline) {
       toast.error("Admin deletes require being online");
       return;
     }
-    const ok = window.confirm("Delete this settings entry? This cannot be undone.");
-    if (!ok) return;
+    setPendingDeleteRow(row);
+  }
+
+  async function confirmDeleteRow() {
+    const row = pendingDeleteRow;
+    setPendingDeleteRow(null);
+    if (!row?.id) return;
     try {
       setSavingAdmin(true);
       await deleteMtbSettingsEntry(row.id);
@@ -1396,6 +1405,17 @@ export default function SetupPage() {
           </Drawer.Content>
         </Drawer.Portal>
       </Drawer.Root>
+
+      {/* Delete confirmation dialog (iOS-safe, replaces window.confirm) */}
+      <ConfirmDialog
+        open={!!pendingDeleteRow}
+        onClose={() => setPendingDeleteRow(null)}
+        onConfirm={confirmDeleteRow}
+        title="Delete this entry?"
+        message="This cannot be undone."
+        confirmText="Delete"
+        confirmVariant="danger"
+      />
     </div>
   );
 }

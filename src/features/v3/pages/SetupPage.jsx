@@ -1029,7 +1029,7 @@ export default function SetupPage() {
               isDark ? "bg-app-surface" : "bg-[rgba(30,51,49,0.04)]"
             }`} />
           ) : history.length ? (
-            <div className="space-y-2">
+            <div className="space-y-4">
               {history.map((row, idx) => {
                 const isLatest = idx === 0;
                 const id = row.id || `${row.timestamp}-${idx}`;
@@ -1067,11 +1067,16 @@ export default function SetupPage() {
                 return (
                   <div
                     key={id}
-                    className={`rounded-[26px] overflow-hidden backdrop-blur-sm ring-1 transition border ${borderClass} ${
+                    className={`rounded-[26px] overflow-hidden ring-1 transition border ${borderClass} ${
                       isDark
-                        ? "bg-app-surface ring-[rgba(255,255,255,0.05)] shadow-[0_10px_28px_rgba(0,0,0,0.40)]"
+                        ? "ring-[rgba(255,255,255,0.06)] shadow-[0_10px_28px_rgba(0,0,0,0.40)]"
                         : "bg-[rgba(232,228,220,0.75)] ring-[rgba(30,51,49,0.10)] shadow-[0_10px_28px_rgba(0,0,0,0.10)]"
                     }`}
+                    style={isDark ? {
+                      background: "rgba(24,44,41,0.65)",
+                      backdropFilter: "blur(12px) saturate(150%)",
+                      WebkitBackdropFilter: "blur(12px) saturate(150%)",
+                    } : undefined}
                   >
                     {/* Header row - clickable to expand */}
                     <div
@@ -1202,26 +1207,28 @@ export default function SetupPage() {
                     </div>
 
                     {/* Summary grid */}
-                    <div className="px-4 pb-4 grid grid-cols-2 gap-2 text-sm">
+                    <div className={`mx-4 mb-4 pt-3 border-t grid grid-cols-2 gap-2 text-sm ${
+                      isDark ? "border-[rgba(255,255,255,0.06)]" : "border-[rgba(0,0,0,0.06)]"
+                    }`}>
                       {summaryItems.map((it) => (
                         <div
                           key={it.label}
                           className={`p-2.5 rounded-xl ${
                             isDark
                               ? it.changed
-                                ? "bg-[rgba(233,78,27,0.15)] border border-[rgba(233,78,27,0.30)]"
-                                : "bg-app-elevated border border-chrome-strong"
+                                ? "bg-[rgba(233,78,27,0.12)] border border-[rgba(233,78,27,0.30)]"
+                                : "bg-[rgba(0,0,0,0.22)] border border-[rgba(255,255,255,0.06)]"
                               : it.changed
                                 ? "bg-[rgba(210,74,31,0.10)] border border-[rgba(210,74,31,0.25)] shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
                                 : "bg-[rgba(255,255,255,0.45)] border border-[rgba(0,0,0,0.06)] shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
                           }`}
                         >
-                          <div className={`text-[11px] ${
+                          <div className={`text-[11px] mb-0.5 ${
                             isDark
-                              ? it.changed ? "text-brand-orange" : "text-text-muted"
+                              ? it.changed ? "text-brand-orange" : "text-text-secondary"
                               : it.changed ? "text-brand-orange-lo" : "text-text-muted"
                           }`}>{it.label}</div>
-                          <div className={`font-semibold truncate tabular-nums font-mono ${isDark ? "text-white" : "text-[#1F3D36]"}`}>{it.value}</div>
+                          <div className={`font-semibold truncate tabular-nums font-mono ${isDark ? "text-text-primary" : "text-[#1F3D36]"}`}>{it.value}</div>
                         </div>
                       ))}
                     </div>
@@ -1240,19 +1247,19 @@ export default function SetupPage() {
                                 className={`p-2.5 rounded-xl ${k === "wheelset" ? "col-span-2" : ""} ${
                                   isDark
                                     ? expandedChanged
-                                      ? "bg-[rgba(233,78,27,0.15)] border border-[rgba(233,78,27,0.30)]"
-                                      : "bg-app-elevated border border-chrome-strong"
+                                      ? "bg-[rgba(233,78,27,0.12)] border border-[rgba(233,78,27,0.30)]"
+                                      : "bg-[rgba(0,0,0,0.22)] border border-[rgba(255,255,255,0.06)]"
                                     : expandedChanged
                                       ? "bg-[rgba(233,78,27,0.10)] border border-[rgba(233,78,27,0.25)] shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
                                       : "bg-[rgba(255,255,255,0.45)] border border-[rgba(0,0,0,0.06)] shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
                                 }`}
                               >
-                                <div className={`text-[11px] ${
+                                <div className={`text-[11px] mb-0.5 ${
                                   isDark
-                                    ? expandedChanged ? "text-brand-orange" : "text-text-muted"
+                                    ? expandedChanged ? "text-brand-orange" : "text-text-secondary"
                                     : expandedChanged ? "text-[#e94e1b]" : "text-text-muted"
                                 }`}>{labelize(k)}</div>
-                                <div className={`font-semibold break-words ${isDark ? "text-white" : "text-brand-green"}`}>{v}</div>
+                                <div className={`font-semibold break-words ${isDark ? "text-text-primary" : "text-brand-green"}`}>{v}</div>
                               </div>
                             );
                           })}
@@ -1263,8 +1270,8 @@ export default function SetupPage() {
                             className={`mt-3 p-2.5 rounded-xl ${
                               isDark
                                 ? isLatest && changes?.notesChanged
-                                  ? "bg-[rgba(233,78,27,0.15)] border border-[rgba(233,78,27,0.30)]"
-                                  : "bg-app-elevated border border-chrome-strong"
+                                  ? "bg-[rgba(233,78,27,0.12)] border border-[rgba(233,78,27,0.30)]"
+                                  : "bg-[rgba(0,0,0,0.22)] border border-[rgba(255,255,255,0.06)]"
                                 : isLatest && changes?.notesChanged
                                   ? "bg-[rgba(233,78,27,0.10)] border border-[rgba(233,78,27,0.25)] shadow-[0_1px_3px_rgba(0,0,0,0.02)]"
                                   : "bg-[rgba(255,255,255,0.45)] border border-[rgba(0,0,0,0.06)] shadow-[0_1px_3px_rgba(0,0,0,0.02)]"

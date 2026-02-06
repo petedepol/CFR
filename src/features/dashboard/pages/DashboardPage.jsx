@@ -75,14 +75,14 @@ export default function DashboardPage() {
     const planData = { ...plan.plan_data };
 
     if (type === "timeBlock") {
-      const blocks = planData.timeBlocks || [];
+      const blocks = [...(planData.timeBlocks || [])];
       const index = blocks.findIndex((b) => b.id === itemId);
       if (index !== -1) {
         blocks[index] = { ...blocks[index], pinned: !blocks[index].pinned };
         planData.timeBlocks = blocks;
       }
     } else if (type === "task") {
-      const tasks = planData.tasks || [];
+      const tasks = [...(planData.tasks || [])];
       const index = tasks.findIndex((t) => t.id === itemId);
       if (index !== -1) {
         tasks[index] = { ...tasks[index], pinned: !tasks[index].pinned };
@@ -103,7 +103,7 @@ export default function DashboardPage() {
     if (!plan?.id || !plan?.plan_data) return;
 
     const planData = { ...plan.plan_data };
-    const tasks = planData.tasks || [];
+    const tasks = [...(planData.tasks || [])];
     const index = tasks.findIndex((t) => t.id === taskId);
 
     if (index !== -1) {

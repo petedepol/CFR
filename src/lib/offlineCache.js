@@ -52,7 +52,8 @@ function notifyCacheUpdate(key) {
 
 export function getCachedRiders() {
   const entry = readCache(cacheKey("riders"));
-  return entry?.data ?? null;
+  if (!entry) return undefined;
+  return entry.data;
 }
 
 export function setCachedRiders(riders) {
@@ -71,7 +72,8 @@ export function getCachedRidersMeta() {
 export function getCachedSettingsLatest(rider) {
   if (!rider) return null;
   const entry = readCache(cacheKey("settings_latest", rider));
-  return entry?.data ?? null;
+  if (!entry) return undefined;
+  return entry.data;
 }
 
 export function setCachedSettingsLatest(rider, data) {
@@ -82,7 +84,8 @@ export function setCachedSettingsLatest(rider, data) {
 export function getCachedSettingsHistory(rider) {
   if (!rider) return null;
   const entry = readCache(cacheKey("settings_history", rider));
-  return entry?.data ?? null;
+  if (!entry) return undefined;
+  return entry.data;
 }
 
 export function setCachedSettingsHistory(rider, data, maxItems = 50) {
@@ -103,7 +106,8 @@ export function getCachedSettingsMeta(rider) {
 export function getCachedJigLatest(rider, bikeType) {
   if (!rider) return null;
   const entry = readCache(cacheKey("jig_latest", rider, bikeType || "race"));
-  return entry?.data ?? null;
+  if (!entry) return undefined;
+  return entry.data;
 }
 
 export function setCachedJigLatest(rider, bikeType, data) {
@@ -114,7 +118,8 @@ export function setCachedJigLatest(rider, bikeType, data) {
 export function getCachedJigHistory(rider, bikeType) {
   if (!rider) return null;
   const entry = readCache(cacheKey("jig_history", rider, bikeType || "race"));
-  return entry?.data ?? null;
+  if (!entry) return undefined;
+  return entry.data;
 }
 
 export function setCachedJigHistory(rider, bikeType, data, maxItems = 20) {
@@ -135,7 +140,8 @@ export function getCachedJigMeta(rider, bikeType) {
 export function getCachedSpecLatest(rider, bikeType) {
   if (!rider) return null;
   const entry = readCache(cacheKey("spec_latest", rider, bikeType || "race"));
-  return entry?.data ?? null;
+  if (!entry) return undefined;
+  return entry.data;
 }
 
 export function setCachedSpecLatest(rider, bikeType, data) {
@@ -146,7 +152,8 @@ export function setCachedSpecLatest(rider, bikeType, data) {
 export function getCachedSpecHistory(rider, bikeType) {
   if (!rider) return null;
   const entry = readCache(cacheKey("spec_history", rider, bikeType || "race"));
-  return entry?.data ?? null;
+  if (!entry) return undefined;
+  return entry.data;
 }
 
 export function setCachedSpecHistory(rider, bikeType, data, maxItems = 10) {

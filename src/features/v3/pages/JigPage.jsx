@@ -220,13 +220,15 @@ export default function JigPage() {
   }, [dirty]);
 
   // Load data on mount
-  async function load(currentApiBikeType, { silent = false, keepEdits = false } = {}) {
+  async function load(currentApiBikeType, { silent = false, keepEdits = false, signal } = {}) {
     if (!rider) return;
     if (!silent) setLoading(true);
 
     try {
       await ensureSession();
+      if (signal?.aborted) return;
       const latest = await fetchLatestQuick(rider, currentApiBikeType);
+      if (signal?.aborted) return;
       const latestAt = latest?.timestamp ? new Date(latest.timestamp).getTime() : 0;
 
       lastLoadedRef.current = latest || null;
@@ -256,6 +258,7 @@ export default function JigPage() {
         clearDraft(rider, bikeType);
       }
     } catch (e) {
+      if (signal?.aborted) return;
       const isOffline = e?.code === "OFFLINE" || (typeof navigator !== "undefined" && navigator.onLine === false);
       if (isOffline) {
         const cachedLatest = getCachedJigLatest(rider, bikeType);
@@ -277,19 +280,22 @@ export default function JigPage() {
         toast.error(e.message || "Failed to load JIG data");
       }
     } finally {
-      if (!silent) setLoading(false);
+      if (!signal?.aborted && !silent) setLoading(false);
     }
   }
 
-  async function loadHistory(currentApiBikeType, { silent = false } = {}) {
+  async function loadHistory(currentApiBikeType, { silent = false, signal } = {}) {
     if (!rider) return;
     if (!silent) setHistoryLoading(true);
 
     try {
       await ensureSession();
+      if (signal?.aborted) return;
       const rows = await fetchQuickHistory(rider, currentApiBikeType, 20);
+      if (signal?.aborted) return;
       setHistoryRows(Array.isArray(rows) ? rows : []);
     } catch (e) {
+      if (signal?.aborted) return;
       const isOffline = e?.code === "OFFLINE" || (typeof navigator !== "undefined" && navigator.onLine === false);
       if (isOffline) {
         const cachedHistory = getCachedJigHistory(rider, bikeType);
@@ -298,29 +304,33 @@ export default function JigPage() {
         }
       }
     } finally {
-      if (!silent) setHistoryLoading(false);
+      if (!signal?.aborted && !silent) setHistoryLoading(false);
     }
   }
 
   useEffect(() => {
-    load(apiBikeType);
-    loadHistory(apiBikeType);
+    const controller = new AbortController();
+    const { signal } = controller;
+
+    load(apiBikeType, { signal });
+    loadHistory(apiBikeType, { signal });
 
     const onVis = () => {
       if (document.visibilityState === "visible") {
-        load(apiBikeType, { silent: true, keepEdits: true });
-        loadHistory(apiBikeType, { silent: true });
+        load(apiBikeType, { silent: true, keepEdits: true, signal });
+        loadHistory(apiBikeType, { silent: true, signal });
       }
     };
     const onOnline = () => {
-      load(apiBikeType, { silent: true, keepEdits: true });
-      loadHistory(apiBikeType, { silent: true });
+      load(apiBikeType, { silent: true, keepEdits: true, signal });
+      loadHistory(apiBikeType, { silent: true, signal });
     };
 
     document.addEventListener("visibilitychange", onVis);
     window.addEventListener("online", onOnline);
 
     return () => {
+      controller.abort();
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("online", onOnline);
     };

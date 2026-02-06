@@ -178,13 +178,16 @@ export default function ServicePage() {
   }
 
   // Load recent history
-  async function loadRecentHistory() {
+  async function loadRecentHistory({ signal } = {}) {
     if (!rider) return;
     try {
       await ensureSession();
+      if (signal?.aborted) return;
       const data = await fetchRecentHistory(rider, bikeType, 5);
+      if (signal?.aborted) return;
       setRecentHistory(data);
     } catch (e) {
+      if (signal?.aborted) return;
       console.error("Failed to load recent history:", e);
     }
   }
@@ -267,7 +270,9 @@ export default function ServicePage() {
 
   // Load data on mount and when rider/bike changes
   useEffect(() => {
-    loadRecentHistory();
+    const controller = new AbortController();
+    loadRecentHistory({ signal: controller.signal });
+    return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rider, bikeType]);
 

@@ -119,7 +119,7 @@ export async function fetchRiders() {
 export async function fetchRidersWithCache({ forceRefresh = false } = {}) {
   if (!forceRefresh) {
     const cached = getCachedRiders();
-    if (cached !== null) {
+    if (cached !== undefined) {
       fetchRiders().catch(() => {});
       return { data: cached, fromCache: true };
     }
@@ -150,7 +150,7 @@ export async function fetchLatestQuick(rider, bikeType = "mtb") {
 export async function fetchLatestQuickWithCache(rider, bikeType = "mtb", { forceRefresh = false } = {}) {
   if (!forceRefresh) {
     const cached = getCachedJigLatest(rider, bikeType);
-    if (cached !== null) {
+    if (cached !== undefined) {
       fetchLatestQuick(rider, bikeType).catch(() => {});
       return { data: cached, fromCache: true };
     }
@@ -180,7 +180,7 @@ export async function fetchLatestFull(rider, bikeType = "mtb") {
 export async function fetchLatestFullWithCache(rider, bikeType = "mtb", { forceRefresh = false } = {}) {
   if (!forceRefresh) {
     const cached = getCachedSpecLatest(rider, bikeType);
-    if (cached !== null) {
+    if (cached !== undefined) {
       fetchLatestFull(rider, bikeType).catch(() => {});
       return { data: cached, fromCache: true };
     }
@@ -211,7 +211,7 @@ export async function fetchQuickHistory(rider, bikeType = "mtb", limit = 10) {
 export async function fetchQuickHistoryWithCache(rider, bikeType = "mtb", limit = 20, { forceRefresh = false } = {}) {
   if (!forceRefresh) {
     const cached = getCachedJigHistory(rider, bikeType);
-    if (cached !== null) {
+    if (cached !== undefined) {
       fetchQuickHistory(rider, bikeType, limit).catch(() => {});
       return { data: cached, fromCache: true };
     }
@@ -242,7 +242,7 @@ export async function fetchFullHistory(rider, bikeType = "mtb", limit = 10) {
 export async function fetchFullHistoryWithCache(rider, bikeType = "mtb", limit = 10, { forceRefresh = false } = {}) {
   if (!forceRefresh) {
     const cached = getCachedSpecHistory(rider, bikeType);
-    if (cached !== null) {
+    if (cached !== undefined) {
       fetchFullHistory(rider, bikeType, limit).catch(() => {});
       return { data: cached, fromCache: true };
     }

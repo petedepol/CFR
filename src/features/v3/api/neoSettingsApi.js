@@ -3,10 +3,7 @@
 
 import { supabase } from "../../../lib/supabaseClient.js";
 
-// Reuse the "settings_mtb" base type so we stay within the DB CHECK constraint.
-// Neo records are distinguished by bike_type = "neo".
-const TYPE = "settings_mtb";
-const BIKE_TYPE_NEO = "neo";
+const TYPE = "neo_settings";
 
 // Simple retry wrapper
 async function withRetry(fn, { tries = 2 } = {}) {
@@ -37,7 +34,6 @@ export async function fetchNeoSettingsByRider(rider) {
       .select("*")
       .eq("rider", rider)
       .eq("type", TYPE)
-      .eq("bike_type", BIKE_TYPE_NEO)
       .order("timestamp", { ascending: false });
 
     if (error) throw error;
@@ -55,7 +51,6 @@ export async function fetchNeoSettingsByRiderAndBike(rider, bikeType) {
       .select("*")
       .eq("rider", rider)
       .eq("type", TYPE)
-      .eq("bike_type", BIKE_TYPE_NEO)
       .order("timestamp", { ascending: false });
 
     if (error) throw error;
@@ -123,10 +118,9 @@ export async function insertNeoSettings({
     rider,
     mechanic,
     type: TYPE,
-    bike_type: BIKE_TYPE_NEO,
     timestamp: new Date().toISOString(),
     full_spec: {
-      kind: "neo_settings",
+      kind: TYPE,
       bike_type: bikeType,
       tune_name: tuneName,
       image_url: imageUrl,
@@ -248,7 +242,6 @@ export async function cleanupOldNeoSettings(rider, keepCount = 20) {
       .select("id, full_spec, timestamp")
       .eq("rider", rider)
       .eq("type", TYPE)
-      .eq("bike_type", BIKE_TYPE_NEO)
       .order("timestamp", { ascending: false });
 
     if (error) throw error;

@@ -70,6 +70,7 @@ export async function fetchLatestMtbSettings(rider) {
       .select("*")
       .eq("rider", rider)
       .eq("type", SETTINGS_TYPE)
+      .or("bike_type.is.null,bike_type.neq.neo")
       .order("timestamp", { ascending: false })
       .limit(1);
 
@@ -105,6 +106,7 @@ export async function fetchMtbSettingsHistory(rider, limit = 200) {
       .select("*")
       .eq("rider", rider)
       .eq("type", SETTINGS_TYPE)
+      .or("bike_type.is.null,bike_type.neq.neo")
       .order("timestamp", { ascending: false })
       .limit(limit);
 

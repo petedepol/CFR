@@ -72,30 +72,34 @@ export async function ensureSession() {
   }
 }
 
-function quickTypeForBikeType(bikeType) {
-  const k = String(bikeType || "mtb").toLowerCase();
-
-  // Handle prefixed formats
-  if (k === "quick_race" || k === "quick") return "quick"; // Race uses legacy "quick"
-  if (k.startsWith("quick_")) return k;
-
-  // Handle short names - Race uses legacy "quick" for backwards compatibility
-  if (k === "race" || k === "mtb") return "quick";
-  if (k === "training") return "quick_training";
-  if (k === "ebike") return "quick_ebike";
-  if (k === "road") return "quick_road";
-  if (k === "cx") return "quick_cx";
-
-  return "quick"; // Legacy default
+// Normalise any incoming bikeType string to a clean bike_type column value.
+function normalizeBikeType(bikeType) {
+  const k = String(bikeType || "race").toLowerCase();
+  if (k === "mtb" || k === "quick" || k === "full" || k === "quick_race") return "race";
+  if (k.startsWith("quick_")) return k.slice(6);  // "quick_training" → "training"
+  if (k.startsWith("full_")) return k.slice(5);   // "full_training"  → "training"
+  if (["race", "training", "ebike", "road", "cx"].includes(k)) return k;
+  return "race";
 }
 
-function fullTypeForBikeType(bikeType) {
-  const k = String(bikeType || "race").toLowerCase();
-  if (k === "training") return "full_training";
-  if (k === "ebike") return "full_ebike";
-  if (k === "road") return "full_road";
-  if (k === "cx") return "full_cx";
-  return "full"; // race + legacy (mtb) default
+// Build a Supabase query fragment that filters by bike_type, handling legacy
+// rows where bike_type is NULL (treated as "race").
+function applyBikeTypeFilter(query, bikeType) {
+  const bt = normalizeBikeType(bikeType);
+  if (bt === "race") {
+    return query.or("bike_type.eq.race,bike_type.is.null");
+  }
+  return query.eq("bike_type", bt);
+}
+
+// Base type is always "quick" — bike variant goes in the bike_type column.
+function quickTypeForBikeType() {
+  return "quick";
+}
+
+// Base type is always "full" — bike variant goes in the bike_type column.
+function fullTypeForBikeType() {
+  return "full";
 }
 
 // ---------- API ----------
@@ -129,14 +133,16 @@ export async function fetchRidersWithCache({ forceRefresh = false } = {}) {
 }
 
 export async function fetchLatestQuick(rider, bikeType = "mtb") {
-  const t = quickTypeForBikeType(bikeType);
-
   return withRetry(async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from("bike_measurements")
       .select("*")
       .eq("rider", rider)
-      .eq("type", t)
+      .eq("type", "quick");
+
+    query = applyBikeTypeFilter(query, bikeType);
+
+    const { data, error } = await query
       .order("timestamp", { ascending: false })
       .limit(1);
 
@@ -160,13 +166,16 @@ export async function fetchLatestQuickWithCache(rider, bikeType = "mtb", { force
 }
 
 export async function fetchLatestFull(rider, bikeType = "mtb") {
-  const t = fullTypeForBikeType(bikeType);
   return withRetry(async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from("bike_measurements")
       .select("*")
       .eq("rider", rider)
-      .eq("type", t)
+      .eq("type", "full");
+
+    query = applyBikeTypeFilter(query, bikeType);
+
+    const { data, error } = await query
       .order("timestamp", { ascending: false })
       .limit(1);
 
@@ -190,14 +199,16 @@ export async function fetchLatestFullWithCache(rider, bikeType = "mtb", { forceR
 }
 
 export async function fetchQuickHistory(rider, bikeType = "mtb", limit = 10) {
-  const t = quickTypeForBikeType(bikeType);
-
   return withRetry(async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from("bike_measurements")
       .select("*")
       .eq("rider", rider)
-      .eq("type", t)
+      .eq("type", "quick");
+
+    query = applyBikeTypeFilter(query, bikeType);
+
+    const { data, error } = await query
       .order("timestamp", { ascending: false })
       .limit(limit);
 
@@ -221,14 +232,16 @@ export async function fetchQuickHistoryWithCache(rider, bikeType = "mtb", limit 
 }
 
 export async function fetchFullHistory(rider, bikeType = "mtb", limit = 10) {
-  const t = fullTypeForBikeType(bikeType);
-
   return withRetry(async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from("bike_measurements")
       .select("*")
       .eq("rider", rider)
-      .eq("type", t)
+      .eq("type", "full");
+
+    query = applyBikeTypeFilter(query, bikeType);
+
+    const { data, error } = await query
       .order("timestamp", { ascending: false })
       .limit(limit);
 
@@ -265,16 +278,17 @@ export async function fetchHistory(rider, limit = 50) {
   });
 }
 
-// Used by the riders grid: keep MTB baseline (type="quick") to avoid mixing in rare Road/CX
+// Used by the riders grid: keep MTB baseline (type="quick", race bike) to avoid mixing in Road/CX
 export async function fetchLatestQuickMap(riderNames) {
   if (!Array.isArray(riderNames) || riderNames.length === 0) return {};
 
   return withRetry(async () => {
     const { data, error } = await supabase
       .from("bike_measurements")
-      .select("rider,type,timestamp,saddle_setback,height_4cm,height_15cm,location,notes")
+      .select("rider,type,bike_type,timestamp,saddle_setback,height_4cm,height_15cm,location,notes")
       .in("rider", riderNames)
       .eq("type", "quick")
+      .or("bike_type.eq.race,bike_type.is.null")
       .order("timestamp", { ascending: false });
 
     if (error) throw error;
@@ -300,8 +314,6 @@ export async function insertQuick({
   bikeType = "mtb",
   dedupeSig = "",
 }) {
-  const type = quickTypeForBikeType(bikeType);
-
   const payload = {
     rider,
     mechanic,
@@ -311,7 +323,8 @@ export async function insertQuick({
     notes,
     location,
     timestamp: new Date().toISOString(),
-    type,
+    type: "quick",
+    bike_type: normalizeBikeType(bikeType),
   };
 
   try {
@@ -345,11 +358,11 @@ export async function insertQuick({
 }
 
 export async function insertFull({ rider, mechanic, fullSpec, bikeType = "mtb", dedupeSig = "" }) {
-  const type = fullTypeForBikeType(bikeType);
   const payload = {
     rider,
     mechanic,
-    type,
+    type: "full",
+    bike_type: normalizeBikeType(bikeType),
     full_spec: fullSpec,
     timestamp: new Date().toISOString(),
   };

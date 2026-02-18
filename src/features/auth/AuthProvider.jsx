@@ -166,6 +166,9 @@ export function AuthProvider({ children }) {
       displayName,
       role,
       isAdmin: role === "admin",
+      isRider: role === "rider",
+      // When role is "rider", displayName is the rider's name from allowed_users
+      riderName: role === "rider" ? displayName : null,
 
       setDisplayName: (name) => {
         const next = (name || "").trim() || DEFAULT_DISPLAY_NAME;

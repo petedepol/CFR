@@ -24,6 +24,7 @@ const RaceDashboardPage = lazyWithPreload(() => import("../features/v3/pages/Rac
 const ServicePage = lazyWithPreload(() => import("../features/v3/pages/ServicePage"));
 const DashboardPage = lazyWithPreload(() => import("../features/dashboard/pages/DashboardPage"));
 const SettingsPage = lazyWithPreload(() => import("../features/v3/pages/SettingsPage"));
+const RiderPortalPage = lazyWithPreload(() => import("../features/v3/pages/RiderPortalPage"));
 
 // Preload critical routes after initial render
 export function preloadRoutes() {
@@ -74,6 +75,7 @@ export const router = createBrowserRouter([
       { path: "service", element: <ServicePage /> },
       { path: "dashboard", element: <DashboardPage /> },
       { path: "settings", element: <SettingsPage /> },
+      { path: "rider", element: <RiderPortalPage /> },
     ],
   },
 

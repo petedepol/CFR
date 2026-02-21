@@ -7,6 +7,7 @@ import { BottomNav } from "./components/BottomNav";
 import { RidersModal } from "./components/RidersModal";
 import { BikeTypePicker } from "./components/BikeTypePicker";
 import { ActionPicker } from "./components/ActionPicker";
+import { useAuth } from "../auth/AuthProvider.jsx";
 
 // Real CFR riders
 const RIDERS = [
@@ -28,9 +29,17 @@ function LoadingFallback() {
 export default function V3Layout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isRider } = useAuth();
 
   // Theme state - dark mode only (light mode removed)
   const isDark = true;
+
+  // Redirect riders to their dedicated portal
+  useEffect(() => {
+    if (isRider && location.pathname !== "/v3/rider") {
+      navigate("/v3/rider", { replace: true });
+    }
+  }, [isRider, location.pathname, navigate]);
 
   // Modal open/close state (separate from data so vaul can animate close)
   const [isRidersModalOpen, setIsRidersModalOpen] = useState(false);
@@ -189,34 +198,38 @@ export default function V3Layout() {
         <Outlet context={{ onNavTabChange: handleTabChange, isDark }} />
       </Suspense>
 
-      {/* Global Modals */}
-      <RidersModal
-        riders={RIDERS}
-        isOpen={isRidersModalOpen}
-        onClose={handleCloseRidersModal}
-        onSelectRider={handleRiderForBikeFlow}
-        theme={isDark ? "dark" : "light"}
-      />
+      {/* Global Modals - hidden for riders (they use the portal) */}
+      {!isRider && (
+        <>
+          <RidersModal
+            riders={RIDERS}
+            isOpen={isRidersModalOpen}
+            onClose={handleCloseRidersModal}
+            onSelectRider={handleRiderForBikeFlow}
+            theme={isDark ? "dark" : "light"}
+          />
 
-      <BikeTypePicker
-        rider={riderForBikeFlow}
-        isOpen={isBikePickerOpen}
-        onClose={handleCloseBikeTypePicker}
-        onSelectBike={handleSelectBikeType}
-        theme={isDark ? "dark" : "light"}
-      />
+          <BikeTypePicker
+            rider={riderForBikeFlow}
+            isOpen={isBikePickerOpen}
+            onClose={handleCloseBikeTypePicker}
+            onSelectBike={handleSelectBikeType}
+            theme={isDark ? "dark" : "light"}
+          />
 
-      <ActionPicker
-        rider={riderForBikeFlow}
-        bikeType={selectedBikeType}
-        isOpen={isActionPickerOpen}
-        onClose={handleCloseActionPicker}
-        onSelectAction={handleSelectAction}
-        theme={isDark ? "dark" : "light"}
-      />
+          <ActionPicker
+            rider={riderForBikeFlow}
+            bikeType={selectedBikeType}
+            isOpen={isActionPickerOpen}
+            onClose={handleCloseActionPicker}
+            onSelectAction={handleSelectAction}
+            theme={isDark ? "dark" : "light"}
+          />
+        </>
+      )}
 
-      {/* Glass dock navigation - only on landing page to avoid overlapping data pages */}
-      {(location.pathname === "/v3" || location.pathname === "/v3/") && (
+      {/* Glass dock navigation - only on landing page, hidden for riders */}
+      {!isRider && (location.pathname === "/v3" || location.pathname === "/v3/") && (
         <BottomNav activeTab={getActiveTab()} onTabChange={handleTabChange} />
       )}
     </div>

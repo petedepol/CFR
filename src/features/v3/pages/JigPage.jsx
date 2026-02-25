@@ -24,14 +24,7 @@ import { Avatar } from "../components/Avatar.jsx";
 import { EmptyStatePreset, SkeletonList } from "../../../components/ui/index.js";
 import { JigCompareModal } from "../components/JigCompareModal.jsx";
 
-// Riders list (shared with other v3 pages)
-const RIDERS = [
-  { id: "ana", name: "Ana", image: "/riders/ana.png" },
-  { id: "charlie", name: "Charlie", image: "/riders/charlie.png" },
-  { id: "cole", name: "Cole", image: "/riders/cole.png" },
-  { id: "luca", name: "Luca", image: "/riders/luca.png" },
-  { id: "jolanda", name: "Jolanda", image: "/riders/jolanda.png" },
-];
+import { RIDERS, VALID_RIDER_NAMES } from "../constants/riders.js";
 
 const BIKE_TYPES = [
   { id: "race", label: "Race", apiType: "quick_race", image: "/bikes/race.png" },
@@ -149,7 +142,8 @@ export default function JigPage() {
   const isDark = context?.isDark ?? false;
   const theme = isDark ? "dark" : "light";
 
-  const rider = params.get("rider") || "";
+  const riderParam = params.get("rider") || "";
+  const rider = VALID_RIDER_NAMES.has(riderParam) ? riderParam : "";
   const bikeType = (() => {
     const bt = String(params.get("bike") || "race").toLowerCase();
     return ["race", "training", "ebike", "road", "cx"].includes(bt) ? bt : "race";
@@ -158,6 +152,11 @@ export default function JigPage() {
 
   // Get API bike type
   const apiBikeType = BIKE_TYPES.find((bt) => bt.id === bikeType)?.apiType || "quick_race";
+
+  // Redirect to landing if no valid rider
+  useEffect(() => {
+    if (!rider) navigate("/v3", { replace: true });
+  }, [rider, navigate]);
 
   // Picker states
   const [riderPickerOpen, setRiderPickerOpen] = useState(false);

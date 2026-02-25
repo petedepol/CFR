@@ -6,15 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { Toaster } from "sonner";
 
 import { Avatar } from "./components/Avatar.jsx";
-
-// Real CFR riders
-const RIDERS = [
-  { id: "ana", name: "Ana", initial: "A", image: "/riders/ana.png" },
-  { id: "charlie", name: "Charlie", initial: "C", image: "/riders/charlie.png" },
-  { id: "cole", name: "Cole", initial: "C", image: "/riders/cole.png" },
-  { id: "luca", name: "Luca", initial: "L", image: "/riders/luca.png" },
-  { id: "jolanda", name: "Jolanda", initial: "J", image: "/riders/jolanda.png" },
-];
+import { RIDERS } from "./constants/riders.js";
 
 export default function LandingPlayground() {
   const navigate = useNavigate();

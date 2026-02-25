@@ -5,7 +5,6 @@ import { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams, useOutletContext, useLocation } from "react-router-dom";
 import { ArrowLeft, Plus, X, Upload, ChevronDown, Loader2 } from "lucide-react";
 import { Drawer } from "vaul";
-// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "motion/react";
 
 import { useAuth } from "../../auth/AuthProvider.jsx";
@@ -23,14 +22,7 @@ import { NeoTuneCard } from "../components/NeoTuneCard.jsx";
 import { Avatar } from "../components/Avatar.jsx";
 import { EmptyStatePreset, SpinnerOverlay } from "../../../components/ui/index.js";
 
-// Riders list
-const RIDERS = [
-  { id: "ana", name: "Ana", image: "/riders/ana.png" },
-  { id: "charlie", name: "Charlie", image: "/riders/charlie.png" },
-  { id: "cole", name: "Cole", image: "/riders/cole.png" },
-  { id: "luca", name: "Luca", image: "/riders/luca.png" },
-  { id: "jolanda", name: "Jolanda", image: "/riders/jolanda.png" },
-];
+import { RIDERS, VALID_RIDER_NAMES } from "../constants/riders.js";
 
 // Race bike only
 const RACE_BIKE = "Jekyll";
@@ -43,7 +35,8 @@ export default function NeoSettingsPage() {
   const { isDark } = useOutletContext();
 
   // State
-  const [rider, setRider] = useState(searchParams.get("rider") || "");
+  const initialRider = searchParams.get("rider") || "";
+  const [rider, setRider] = useState(VALID_RIDER_NAMES.has(initialRider) ? initialRider : "");
   const [tunes, setTunes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);

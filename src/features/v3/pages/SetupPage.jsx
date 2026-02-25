@@ -5,7 +5,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams, useOutletContext, useLocation } from "react-router-dom";
 import { ArrowLeft, Save, Wifi, WifiOff, Pencil, Trash2, Flag, ChevronDown, ChevronRight, X, Zap } from "lucide-react";
 import { Drawer } from "vaul";
-// eslint-disable-next-line no-unused-vars
 import { motion } from "motion/react";
 
 import { useAuth } from "../../auth/AuthProvider.jsx";
@@ -31,14 +30,7 @@ import { SpecField } from "../components/SpecField.jsx";
 import { Avatar } from "../components/Avatar.jsx";
 import { ConfirmDialog } from "../../../components/ui/ConfirmDialog.jsx";
 
-// Riders list (shared with other v3 pages)
-const RIDERS = [
-  { id: "ana", name: "Ana", image: "/riders/ana.png" },
-  { id: "charlie", name: "Charlie", image: "/riders/charlie.png" },
-  { id: "cole", name: "Cole", image: "/riders/cole.png" },
-  { id: "luca", name: "Luca", image: "/riders/luca.png" },
-  { id: "jolanda", name: "Jolanda", image: "/riders/jolanda.png" },
-];
+import { RIDERS, VALID_RIDER_NAMES } from "../constants/riders.js";
 
 const DEFAULT_SETUP = {
   front_tyre: "",
@@ -236,8 +228,14 @@ export default function SetupPage() {
   const toast = useToast();
   const { isDark } = useOutletContext();
 
-  const rider = params.get("rider") || "";
+  const riderParam = params.get("rider") || "";
+  const rider = VALID_RIDER_NAMES.has(riderParam) ? riderParam : "";
   const mechanic = displayName || "";
+
+  // Redirect to landing if no valid rider
+  useEffect(() => {
+    if (!rider) navigate("/v3", { replace: true });
+  }, [rider, navigate]);
 
   // Rider picker state
   const [riderPickerOpen, setRiderPickerOpen] = useState(false);

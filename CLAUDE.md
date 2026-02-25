@@ -47,8 +47,17 @@ Pete-Projects/
 -
 ```
 
-## Last Session: 2026-02-02
-- Removed staggered entrance animations from main page
-- Added modal cleanup on route changes across all V3 pages
-- Attempted iOS swipe-back fix (parked - browser limitation)
-- Branch: `claude/fix-ios-swipe-back-modals-DuwGh` (merged)
+## Adding New Users
+Two steps required — missing either causes login failure:
+1. Add row to `allowed_users` table (email, name, role, active)
+2. Pre-create `auth.users` + `auth.identities` records (signups disabled via `shouldCreateUser: false`)
+
+See memory file for SQL templates.
+
+## Last Session: 2026-02-25
+- Fixed iOS button freeze: `navigating-back` class now removed on visibility change back to visible
+- Added multi-image Neo tune import (multiple file select, thumbnail grid, batch upload)
+- Added `image_urls` array to Neo data model (backward compat with `image_url`)
+- Fixed multi-upload path collision (added random suffix to storage paths)
+- Pre-created auth.users for all 5 rider emails (Cole, Ana, Charlie, Jolanda, Luca)
+- Branch: `main`

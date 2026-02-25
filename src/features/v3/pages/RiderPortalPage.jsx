@@ -11,6 +11,7 @@ import {
   Zap,
   Wrench,
   ChevronDown,
+  ChevronRight,
   Wifi,
   WifiOff,
 } from "lucide-react";
@@ -20,7 +21,7 @@ import { useAuth } from "../../auth/AuthProvider.jsx";
 import { fetchLatestMtbSettings, fetchMtbSettingsHistory } from "../../settings/api/settingsApi.js";
 import { fetchLatestQuick, fetchLatestFull } from "../../measurements/api/measurementsApi.js";
 import { fetchNeoSettingsByRider } from "../api/neoSettingsApi.js";
-import { fetchServiceHistory, fetchRiderSpend } from "../../service/api/serviceApi.js";
+import { fetchServiceHistory } from "../../service/api/serviceApi.js";
 import { supabase } from "../../../lib/supabaseClient.js";
 
 // Rider photo lookup
@@ -79,7 +80,7 @@ function CollapsibleCard({ title, icon: Icon, defaultOpen = false, children, cou
 
   return (
     <div
-      className="rounded-2xl overflow-hidden border border-glass-border ring-1 ring-chrome-subtle shadow-[0_10px_28px_rgba(0,0,0,0.40)]"
+      className="rounded-xl overflow-hidden border border-glass-border ring-1 ring-glass-border/40 shadow-[0_8px_24px_rgba(0,0,0,0.30)]"
       style={{
         background: "rgba(24,44,41,0.72)",
         backdropFilter: "blur(12px) saturate(150%)",
@@ -90,11 +91,11 @@ function CollapsibleCard({ title, icon: Icon, defaultOpen = false, children, cou
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full px-5 py-3.5 flex items-center justify-between gap-3 active:bg-overlay-hover"
+        className="w-full px-4 py-3 flex items-center justify-between gap-3 active:bg-overlay-hover"
       >
-        <div className="flex items-center gap-2.5">
-          {Icon && <Icon size={15} className="text-brand-orange" />}
-          <span className="text-xs font-semibold tracking-[0.15em] uppercase text-brand-orange">
+        <div className="flex items-center gap-2">
+          {Icon && <Icon size={14} className="text-brand-orange" />}
+          <span className="text-[11px] font-semibold tracking-[0.15em] uppercase text-brand-orange">
             {title}
           </span>
           {count != null && (
@@ -104,7 +105,7 @@ function CollapsibleCard({ title, icon: Icon, defaultOpen = false, children, cou
           )}
         </div>
         <motion.div animate={{ rotate: open ? 180 : 0 }} transition={spring}>
-          <ChevronDown size={16} className={open ? "text-brand-orange" : "text-text-muted"} />
+          <ChevronDown size={14} className={open ? "text-brand-orange" : "text-text-muted"} />
         </motion.div>
       </button>
 
@@ -117,8 +118,8 @@ function CollapsibleCard({ title, icon: Icon, defaultOpen = false, children, cou
             transition={spring}
             className="overflow-hidden"
           >
-            <div className="px-4 pb-4 pt-1">
-              <div className="p-3 rounded-xl bg-[rgba(255,255,255,0.05)]">{children}</div>
+            <div className="px-3.5 pb-3.5 pt-0.5">
+              <div className="p-2.5 rounded-lg bg-[rgba(255,255,255,0.05)]">{children}</div>
             </div>
           </motion.div>
         )}
@@ -130,9 +131,9 @@ function CollapsibleCard({ title, icon: Icon, defaultOpen = false, children, cou
 function DataRow({ label, value }) {
   const display = value != null && String(value).trim() !== "" ? String(value) : "—";
   return (
-    <div className="flex items-baseline justify-between py-1.5 border-b border-glass-border/30 last:border-0">
-      <span className="text-xs text-text-muted font-medium">{label}</span>
-      <span className="text-sm text-text-primary font-semibold tabular-nums">{display}</span>
+    <div className="flex items-baseline justify-between py-1 border-b border-glass-border/20 last:border-0">
+      <span className="text-[11px] text-text-muted font-medium">{label}</span>
+      <span className="text-[13px] text-text-primary font-semibold tabular-nums">{display}</span>
     </div>
   );
 }
@@ -159,6 +160,16 @@ function SetupTab({ rider }) {
   const [latest, setLatest] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [expandedHistoryIds, setExpandedHistoryIds] = useState(new Set());
+
+  const toggleHistoryExpand = (id) => {
+    setExpandedHistoryIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   useEffect(() => {
     let alive = true;
@@ -204,6 +215,19 @@ function SetupTab({ rider }) {
     ["wheelset", "Wheelset"],
   ];
 
+  // Pressure fields shown in collapsed summary tiles
+  const PRESSURE_FIELDS = [
+    ["front_pressure", "F Press"],
+    ["rear_pressure", "R Press"],
+    ["fork_pressure", "Fork"],
+    ["shock_pressure", "Shock"],
+  ];
+
+  // Extra fields revealed on expand (everything except pressures)
+  const EXPANDED_FIELDS = SETUP_FIELDS.filter(
+    ([key]) => !["front_pressure", "rear_pressure", "fork_pressure", "shock_pressure"].includes(key)
+  );
+
   // Filter to only show fields that have values
   const filledFields = SETUP_FIELDS.filter(([key]) => {
     const val = setup[key];
@@ -240,31 +264,106 @@ function SetupTab({ rider }) {
         </div>
       </CollapsibleCard>
 
-      {/* Recent History */}
+      {/* Recent History — expandable entries */}
       {history.length > 1 && (
         <CollapsibleCard title="Recent History" count={history.length - 1}>
-          <div className="space-y-3">
+          <div className="space-y-1">
             {history.slice(1, 6).map((entry) => {
               const s = entry.full_spec?.setup || {};
               const ctx = entry.full_spec?.event_context || "";
               const isRace = entry.full_spec?.is_race;
+              const isExpanded = expandedHistoryIds.has(entry.id);
+
+              // Pressure tiles with values
+              const pressureTiles = PRESSURE_FIELDS.filter(([key]) => {
+                const val = s[key];
+                return val != null && String(val).trim() !== "";
+              });
+
+              // Expanded fields with values
+              const expandedFields = EXPANDED_FIELDS.filter(([key]) => {
+                const val = s[key];
+                return val != null && String(val).trim() !== "";
+              });
+
               return (
-                <div key={entry.id} className="pb-3 border-b border-glass-border/20 last:border-0 last:pb-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs text-text-muted">{formatTimestamp(entry.timestamp)}</span>
-                    {isRace && (
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-brand-orange bg-brand-orange/10 px-1.5 py-0.5 rounded">
-                        Race
-                      </span>
+                <div key={entry.id} className="border-b border-glass-border/20 last:border-0">
+                  {/* Collapsed header — always visible, tappable */}
+                  <button
+                    type="button"
+                    onClick={() => toggleHistoryExpand(entry.id)}
+                    className="w-full text-left py-2.5 flex items-start gap-2 active:bg-overlay-hover rounded-lg px-1 -mx-1"
+                  >
+                    <motion.div
+                      animate={{ rotate: isExpanded ? 90 : 0 }}
+                      transition={spring}
+                      className="mt-0.5 flex-shrink-0"
+                    >
+                      <ChevronRight size={14} className={isExpanded ? "text-brand-orange" : "text-text-muted"} />
+                    </motion.div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-xs text-text-muted">{formatTimestamp(entry.timestamp)}</span>
+                        {isRace && (
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-brand-orange bg-brand-orange/10 px-1.5 py-0.5 rounded">
+                            Race
+                          </span>
+                        )}
+                        {ctx && (
+                          <span className="text-[9px] font-medium text-text-secondary bg-overlay-hover px-1.5 py-0.5 rounded truncate">
+                            {ctx}
+                          </span>
+                        )}
+                      </div>
+                      {/* 2x2 pressure summary tiles */}
+                      {pressureTiles.length > 0 && (
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {pressureTiles.map(([key, label]) => (
+                            <div key={key} className="bg-[rgba(255,255,255,0.04)] rounded-md px-2 py-1">
+                              <span className="text-[9px] text-text-muted block">{label}</span>
+                              <span className="text-xs text-text-primary font-semibold tabular-nums">{s[key]}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+
+                  {/* Expanded detail */}
+                  <AnimatePresence initial={false}>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={spring}
+                        className="overflow-hidden"
+                      >
+                        <div className="pl-6 pb-3">
+                          {/* Remaining setup fields as tiles */}
+                          {expandedFields.length > 0 && (
+                            <div className="grid grid-cols-2 gap-1.5 mb-2">
+                              {expandedFields.map(([key, label]) => (
+                                <div key={key} className="bg-[rgba(255,255,255,0.04)] rounded-md px-2 py-1">
+                                  <span className="text-[9px] text-text-muted block">{label}</span>
+                                  <span className="text-xs text-text-primary font-semibold tabular-nums">{s[key]}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {s.notes && (
+                            <div className="mb-2">
+                              <span className="text-[9px] uppercase tracking-[0.15em] text-text-muted">Notes</span>
+                              <p className="text-xs text-text-secondary mt-0.5 whitespace-pre-wrap">{s.notes}</p>
+                            </div>
+                          )}
+                          <span className="text-[10px] text-text-muted">
+                            by {entry.mechanic || "—"}
+                          </span>
+                        </div>
+                      </motion.div>
                     )}
-                  </div>
-                  {ctx && <p className="text-xs text-text-secondary font-medium mb-1">{ctx}</p>}
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-                    {s.front_pressure && <DataRow label="F Press" value={s.front_pressure} />}
-                    {s.rear_pressure && <DataRow label="R Press" value={s.rear_pressure} />}
-                    {s.fork_pressure && <DataRow label="Fork" value={s.fork_pressure} />}
-                    {s.shock_pressure && <DataRow label="Shock" value={s.shock_pressure} />}
-                  </div>
+                  </AnimatePresence>
                 </div>
               );
             })}
@@ -552,65 +651,44 @@ function NeoTab({ rider }) {
 
 function ServiceTab({ rider }) {
   const [history, setHistory] = useState([]);
-  const [spend, setSpend] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    Promise.all([
-      fetchServiceHistory(rider, { limit: 20 }),
-      fetchRiderSpend(rider),
-    ])
-      .then(([hist, sp]) => {
-        if (!alive) return;
-        setHistory(hist);
-        setSpend(sp);
-      })
+    fetchServiceHistory(rider, { limit: 20 })
+      .then((hist) => alive && setHistory(hist))
       .catch(() => {})
       .finally(() => alive && setLoading(false));
     return () => { alive = false; };
   }, [rider]);
 
   if (loading) return <LoadingSpinner />;
-  if (!spend && history.length === 0) return <EmptyState message="No service records yet" />;
+  if (history.length === 0) return <EmptyState message="No service records yet" />;
 
   return (
     <div className="space-y-4">
-      {/* Spend summary */}
-      {spend && (
-        <CollapsibleCard title="Spend Summary" icon={Wrench} defaultOpen>
-          <DataRow label="Total" value={`\u20AC${(spend.total || 0).toLocaleString()}`} />
-          {Object.entries(spend.byBike || {}).map(([bike, amount]) => (
-            <DataRow key={bike} label={bike} value={`\u20AC${amount.toLocaleString()}`} />
-          ))}
-        </CollapsibleCard>
-      )}
-
-      {/* Recent service history */}
-      {history.length > 0 && (
-        <CollapsibleCard title="Recent Service" count={history.length}>
-          <div className="space-y-3">
-            {history.map((entry) => (
-              <div key={entry.id} className="pb-3 border-b border-glass-border/20 last:border-0 last:pb-0">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-semibold text-text-primary">{entry.item}</span>
-                  <span className="text-xs font-semibold text-brand-orange tabular-nums">
-                    {"\u20AC"}{Number(entry.price || 0).toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-[10px] text-text-muted">
-                  <span>{entry.category}</span>
-                  <span>&middot;</span>
-                  <span>{entry.bike_type}</span>
-                  <span>&middot;</span>
-                  <span>{formatTimestamp(entry.created_at)}</span>
-                </div>
+      <CollapsibleCard title="Recent Service" icon={Wrench} count={history.length} defaultOpen>
+        <div className="space-y-3">
+          {history.map((entry) => (
+            <div key={entry.id} className="pb-3 border-b border-glass-border/20 last:border-0 last:pb-0">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-semibold text-text-primary">{entry.item}</span>
+                <span className="text-xs font-semibold text-brand-orange tabular-nums">
+                  {"\u20AC"}{Number(entry.price || 0).toLocaleString()}
+                </span>
               </div>
-            ))}
-          </div>
-        </CollapsibleCard>
-      )}
+              <div className="flex items-center gap-2 text-[10px] text-text-muted">
+                <span>{entry.category}</span>
+                <span>&middot;</span>
+                <span>{entry.bike_type}</span>
+                <span>&middot;</span>
+                <span>{formatTimestamp(entry.created_at)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CollapsibleCard>
     </div>
   );
 }
@@ -654,14 +732,14 @@ export default function RiderPortalPage() {
     <div className="min-h-dvh font-sans selection:bg-brand-orange/30" style={{ background: pageBackground }}>
       {/* Header */}
       <header className="sticky top-0 z-40 backdrop-blur-xl bg-app-surface/80 border-b border-glass-border">
-        <div className="max-w-lg mx-auto px-5 py-4 flex items-center gap-4">
+        <div className="max-w-lg mx-auto px-5 py-3 flex items-center gap-3">
           {/* Rider photo */}
-          <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-glass-border flex-shrink-0 bg-app-surface">
+          <div className="relative w-11 h-11 rounded-full overflow-hidden ring-1 ring-brand-orange/30 flex-shrink-0 bg-app-surface">
             {riderPhoto ? (
               <img src={riderPhoto} alt={rider} className="w-full h-full object-cover object-[center_35%]" />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-brand-orange/20">
-                <span className="text-lg font-bold text-brand-orange">{rider[0]}</span>
+                <span className="text-base font-bold text-brand-orange">{rider[0]}</span>
               </div>
             )}
             {/* Online indicator */}
@@ -673,23 +751,23 @@ export default function RiderPortalPage() {
           </div>
 
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold text-text-primary truncate">{rider}</h1>
-            <p className="text-[11px] text-text-muted truncate">Cannondale Factory Racing</p>
+            <h1 className="text-base font-bold text-text-primary truncate">{rider}</h1>
+            <p className="text-[10px] text-text-muted truncate uppercase tracking-[0.1em]">Cannondale Factory Racing</p>
           </div>
 
           {/* Sign out */}
           <button
             onClick={handleSignOut}
-            className="p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-overlay-hover transition-colors"
+            className="p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-overlay-hover transition-colors"
             title="Sign out"
           >
-            <LogOut size={18} />
+            <LogOut size={16} />
           </button>
         </div>
       </header>
 
       {/* Tab Bar */}
-      <nav className="sticky top-[73px] z-30 backdrop-blur-xl bg-app-surface/60 border-b border-glass-border">
+      <nav className="sticky top-[65px] z-30 backdrop-blur-xl bg-app-surface/60 border-b border-glass-border">
         <div className="max-w-lg mx-auto px-2 flex">
           {TABS.map((tab) => {
             const Icon = tab.icon;
@@ -699,12 +777,12 @@ export default function RiderPortalPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`
-                  relative flex-1 flex flex-col items-center gap-1 py-2.5 transition-colors
+                  relative flex-1 flex flex-col items-center gap-0.5 py-2 transition-colors
                   ${isActive ? "text-brand-orange" : "text-text-muted"}
                 `}
               >
-                <Icon size={16} strokeWidth={isActive ? 2.5 : 1.8} />
-                <span className="text-[10px] font-semibold uppercase tracking-wider">{tab.label}</span>
+                <Icon size={15} strokeWidth={isActive ? 2.5 : 1.8} />
+                <span className="text-[9px] font-semibold uppercase tracking-wider">{tab.label}</span>
                 {isActive && (
                   <motion.div
                     layoutId="rider-tab-pill"
@@ -719,7 +797,7 @@ export default function RiderPortalPage() {
       </nav>
 
       {/* Content */}
-      <main className="max-w-lg mx-auto px-5 py-6 pb-24">
+      <main className="max-w-lg mx-auto px-4 py-5 pb-20">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}

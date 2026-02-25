@@ -267,7 +267,7 @@ function SetupTab({ rider }) {
       {/* Recent History — expandable entries */}
       {history.length > 1 && (
         <CollapsibleCard title="Recent History" count={history.length - 1}>
-          <div className="space-y-1">
+          <div className="space-y-2.5">
             {history.slice(1, 6).map((entry) => {
               const s = entry.full_spec?.setup || {};
               const ctx = entry.full_spec?.event_context || "";
@@ -287,12 +287,12 @@ function SetupTab({ rider }) {
               });
 
               return (
-                <div key={entry.id} className="border-b border-glass-border/20 last:border-0">
+                <div key={entry.id} className="rounded-lg bg-[rgba(255,255,255,0.03)] border border-glass-border/15 overflow-hidden">
                   {/* Collapsed header — always visible, tappable */}
                   <button
                     type="button"
                     onClick={() => toggleHistoryExpand(entry.id)}
-                    className="w-full text-left py-2.5 flex items-start gap-2 active:bg-overlay-hover rounded-lg px-1 -mx-1"
+                    className="w-full text-left py-2.5 px-3 flex items-start gap-2 active:bg-overlay-hover"
                   >
                     <motion.div
                       animate={{ rotate: isExpanded ? 90 : 0 }}
@@ -303,7 +303,7 @@ function SetupTab({ rider }) {
                     </motion.div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1.5">
-                        <span className="text-xs text-text-muted">{formatTimestamp(entry.timestamp)}</span>
+                        <span className="text-xs text-text-primary font-medium">{formatTimestamp(entry.timestamp)}</span>
                         {isRace && (
                           <span className="text-[9px] font-bold uppercase tracking-wider text-brand-orange bg-brand-orange/10 px-1.5 py-0.5 rounded">
                             Race
@@ -319,9 +319,9 @@ function SetupTab({ rider }) {
                       {pressureTiles.length > 0 && (
                         <div className="grid grid-cols-2 gap-1.5">
                           {pressureTiles.map(([key, label]) => (
-                            <div key={key} className="bg-[rgba(255,255,255,0.04)] rounded-md px-2 py-1">
+                            <div key={key} className="bg-[rgba(255,255,255,0.05)] rounded-md px-2 py-1.5 border border-glass-border/10">
                               <span className="text-[9px] text-text-muted block">{label}</span>
-                              <span className="text-xs text-text-primary font-semibold tabular-nums">{s[key]}</span>
+                              <span className="text-sm text-text-primary font-semibold tabular-nums">{s[key]}</span>
                             </div>
                           ))}
                         </div>
@@ -339,14 +339,14 @@ function SetupTab({ rider }) {
                         transition={spring}
                         className="overflow-hidden"
                       >
-                        <div className="pl-6 pb-3">
+                        <div className="px-3 pb-3 pt-1 ml-5 border-t border-glass-border/15">
                           {/* Remaining setup fields as tiles */}
                           {expandedFields.length > 0 && (
-                            <div className="grid grid-cols-2 gap-1.5 mb-2">
+                            <div className="grid grid-cols-2 gap-1.5 mt-2 mb-2">
                               {expandedFields.map(([key, label]) => (
-                                <div key={key} className="bg-[rgba(255,255,255,0.04)] rounded-md px-2 py-1">
+                                <div key={key} className="bg-[rgba(255,255,255,0.05)] rounded-md px-2 py-1.5 border border-glass-border/10">
                                   <span className="text-[9px] text-text-muted block">{label}</span>
-                                  <span className="text-xs text-text-primary font-semibold tabular-nums">{s[key]}</span>
+                                  <span className="text-sm text-text-primary font-semibold tabular-nums">{s[key]}</span>
                                 </div>
                               ))}
                             </div>
@@ -672,13 +672,8 @@ function ServiceTab({ rider }) {
         <div className="space-y-3">
           {history.map((entry) => (
             <div key={entry.id} className="pb-3 border-b border-glass-border/20 last:border-0 last:pb-0">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-semibold text-text-primary">{entry.item}</span>
-                <span className="text-xs font-semibold text-brand-orange tabular-nums">
-                  {"\u20AC"}{Number(entry.price || 0).toLocaleString()}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-[10px] text-text-muted">
+              <span className="text-xs font-semibold text-text-primary">{entry.item}</span>
+              <div className="flex items-center gap-2 text-[10px] text-text-muted mt-0.5">
                 <span>{entry.category}</span>
                 <span>&middot;</span>
                 <span>{entry.bike_type}</span>

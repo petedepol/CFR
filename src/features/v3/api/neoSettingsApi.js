@@ -72,12 +72,13 @@ export async function fetchNeoSettingsByRiderAndBike(rider, bikeType) {
  * Returns the public URL
  */
 export async function uploadNeoImage(file, rider, mechanic) {
-  // Format: rider/mechanic/YYYY-MM-DD_HH-MM-SS.ext
+  // Format: rider/mechanic/YYYY-MM-DD_HH-MM-SS_xxxx.ext
   const now = new Date();
   const dateTime = now.toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  const rand = Math.random().toString(36).slice(2, 6);
   const ext = file.name.split(".").pop() || "jpg";
   const safeMechanic = (mechanic || "unknown").replace(/[^a-zA-Z0-9]/g, "_");
-  const path = `${rider}/${safeMechanic}/${dateTime}.${ext}`;
+  const path = `${rider}/${safeMechanic}/${dateTime}_${rand}.${ext}`;
 
   const { data, error } = await supabase.storage
     .from(STORAGE_BUCKET)

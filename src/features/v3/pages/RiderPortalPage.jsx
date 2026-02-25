@@ -597,22 +597,31 @@ function NeoTab({ rider }) {
                 <p className="text-sm text-text-secondary mt-1 whitespace-pre-wrap">{spec.notes}</p>
               </div>
             )}
-            {spec.image_url && (
-              <div className="mt-3">
-                <button
-                  type="button"
-                  onClick={() => setExpandedImage(spec.image_url)}
-                  className="w-full rounded-xl overflow-hidden border border-glass-border/30"
-                >
-                  <img
-                    src={spec.image_url}
-                    alt={spec.tune_name || "Neo tune"}
-                    className="w-full h-auto"
-                    loading="lazy"
-                  />
-                </button>
-              </div>
-            )}
+            {(() => {
+              const allImages = spec.image_urls?.length > 0
+                ? spec.image_urls
+                : spec.image_url ? [spec.image_url] : [];
+              if (allImages.length === 0) return null;
+              return (
+                <div className="mt-3 space-y-2">
+                  {allImages.map((url, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setExpandedImage(url)}
+                      className="w-full rounded-xl overflow-hidden border border-glass-border/30"
+                    >
+                      <img
+                        src={url}
+                        alt={`${spec.tune_name || "Neo tune"} ${i + 1}`}
+                        className="w-full h-auto"
+                        loading="lazy"
+                      />
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
             <div className="mt-2 pt-2 border-t border-glass-border/30">
               <span className="text-[10px] text-text-muted">
                 {formatTimestamp(tune.timestamp)} by {tune.mechanic || "—"}

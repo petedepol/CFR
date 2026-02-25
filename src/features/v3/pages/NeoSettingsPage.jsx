@@ -68,8 +68,8 @@ export default function NeoSettingsPage() {
   }, [location.pathname]);
 
   // Import form state
-  const [importFile, setImportFile] = useState(null);
-  const [importPreview, setImportPreview] = useState(null);
+  const [importFiles, setImportFiles] = useState([]);
+  const [importPreviews, setImportPreviews] = useState([]);
   const [importTuneName, setImportTuneName] = useState("");
   const [importNotes, setImportNotes] = useState("");
   const [importing, setImporting] = useState(false);
@@ -106,30 +106,45 @@ export default function NeoSettingsPage() {
   // Filter to race bike only
   const filteredTunes = tunes.filter((t) => t.full_spec?.bike_type === RACE_BIKE);
 
-  // Handle file selection
+  // Handle file selection (multiple)
   function handleFileSelect(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const selected = Array.from(e.target.files || []);
+    if (selected.length === 0) return;
 
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file");
-      return;
+    const validFiles = [];
+    const validPreviews = [];
+
+    for (const file of selected) {
+      if (!file.type.startsWith("image/")) {
+        toast.error(`${file.name} is not an image — skipped`);
+        continue;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`${file.name} exceeds 10MB — skipped`);
+        continue;
+      }
+      validFiles.push(file);
+      validPreviews.push(URL.createObjectURL(file));
     }
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("Image must be under 10MB");
-      return;
-    }
+    if (validFiles.length === 0) return;
 
-    setImportFile(file);
-    setImportPreview(URL.createObjectURL(file));
+    setImportFiles((prev) => [...prev, ...validFiles]);
+    setImportPreviews((prev) => [...prev, ...validPreviews]);
+  }
+
+  // Remove a single file from the import list
+  function removeImportFile(index) {
+    setImportFiles((prev) => prev.filter((_, i) => i !== index));
+    setImportPreviews((prev) => {
+      URL.revokeObjectURL(prev[index]);
+      return prev.filter((_, i) => i !== index);
+    });
   }
 
   // Handle import
   async function handleImport() {
-    if (!importFile || !importTuneName.trim()) {
+    if (importFiles.length === 0 || !importTuneName.trim()) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -138,21 +153,25 @@ export default function NeoSettingsPage() {
     try {
       await ensureSession();
 
-      // Upload image - use display name from allowed_users
+      // Upload all images sequentially
       const mechanic = displayName || user?.email || "unknown";
-      const imageUrl = await uploadNeoImage(importFile, rider, mechanic);
+      const imageUrls = [];
+      for (const file of importFiles) {
+        const url = await uploadNeoImage(file, rider, mechanic);
+        imageUrls.push(url);
+      }
 
-      // Insert record
+      // Insert record with all image URLs
       await insertNeoSettings({
         rider,
         mechanic,
         bikeType: RACE_BIKE,
         tuneName: importTuneName.trim(),
-        imageUrl,
+        imageUrls,
         notes: importNotes.trim(),
       });
 
-      toast.success("Tune imported successfully");
+      toast.success(`Tune imported with ${imageUrls.length} image${imageUrls.length > 1 ? "s" : ""}`);
       setImportModalOpen(false);
       resetImportForm();
 
@@ -169,8 +188,9 @@ export default function NeoSettingsPage() {
   }
 
   function resetImportForm() {
-    setImportFile(null);
-    setImportPreview(null);
+    importPreviews.forEach((url) => URL.revokeObjectURL(url));
+    setImportFiles([]);
+    setImportPreviews([]);
     setImportTuneName("");
     setImportNotes("");
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -498,26 +518,41 @@ export default function NeoSettingsPage() {
               {/* File Input / Preview */}
               <div className="mb-4">
                 <label className={`block text-sm font-medium mb-2 ${isDark ? "text-text-muted" : "text-brand-green"}`}>
-                  Screenshot *
+                  Screenshots *
                 </label>
-                {importPreview ? (
-                  <div className="relative">
-                    <img
-                      src={importPreview}
-                      alt="Preview"
-                      className={`w-full rounded-2xl object-contain max-h-64 ${
-                        isDark ? "bg-app-elevated" : "bg-[rgba(30,51,49,0.06)]"
-                      }`}
-                    />
+                {importPreviews.length > 0 ? (
+                  <div className="space-y-3">
+                    {/* Thumbnail grid */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {importPreviews.map((preview, i) => (
+                        <div key={i} className="relative aspect-[3/4] rounded-xl overflow-hidden">
+                          <img
+                            src={preview}
+                            alt={`Preview ${i + 1}`}
+                            className={`w-full h-full object-cover ${
+                              isDark ? "bg-app-elevated" : "bg-[rgba(30,51,49,0.06)]"
+                            }`}
+                          />
+                          <button
+                            onClick={() => removeImportFile(i)}
+                            className="absolute top-1 right-1 p-1.5 rounded-full bg-[rgba(0,0,0,0.60)]"
+                          >
+                            <X size={12} color="#fff" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Add more button */}
                     <button
-                      onClick={() => {
-                        setImportFile(null);
-                        setImportPreview(null);
-                        if (fileInputRef.current) fileInputRef.current.value = "";
-                      }}
-                      className="absolute top-2 right-2 p-2 rounded-full bg-[rgba(30,51,49,0.70)]"
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`w-full py-3 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 text-sm transition-colors ${
+                        isDark
+                          ? "border-chrome-strong text-text-muted hover:border-[#444444]"
+                          : "border-[rgba(30,51,49,0.20)] text-text-accent-light hover:border-[rgba(30,51,49,0.35)]"
+                      }`}
                     >
-                      <X size={16} color="#fff" />
+                      <Plus size={16} />
+                      Add more images
                     </button>
                   </div>
                 ) : (
@@ -530,13 +565,14 @@ export default function NeoSettingsPage() {
                     }`}
                   >
                     <Upload size={32} />
-                    <span>Tap to select image</span>
+                    <span>Tap to select images</span>
                   </button>
                 )}
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
+                  multiple
                   onChange={handleFileSelect}
                   className="hidden"
                 />
@@ -581,7 +617,7 @@ export default function NeoSettingsPage() {
               {/* Save Button */}
               <button
                 onClick={handleImport}
-                disabled={importing || !importFile || !importTuneName.trim()}
+                disabled={importing || importFiles.length === 0 || !importTuneName.trim()}
                 className="
                   w-full py-4 rounded-2xl font-bold text-white
                   flex items-center justify-center gap-2
@@ -612,51 +648,67 @@ export default function NeoSettingsPage() {
 
       {/* Fullscreen Image Viewer */}
       <AnimatePresence>
-        {fullscreenImage && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(30,51,49,0.95)]"
-            onClick={() => setFullscreenImage(null)}
-          >
-            <button
-              className="absolute top-4 right-4 p-3 rounded-full z-10 bg-[rgba(255,255,255,0.10)]"
-            >
-              <X size={24} color="#fff" />
-            </button>
+        {fullscreenImage && (() => {
+          const spec = fullscreenImage.full_spec || {};
+          const allImages = spec.image_urls?.length > 0
+            ? spec.image_urls
+            : spec.image_url ? [spec.image_url] : [];
+          const totalImages = allImages.length;
 
-            <motion.img
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              src={fullscreenImage.full_spec?.image_url}
-              alt={fullscreenImage.full_spec?.tune_name}
-              className="max-w-full max-h-full object-contain"
-              onClick={(e) => e.stopPropagation()}
-            />
-
-            {/* Info overlay */}
-            <div
-              className="absolute bottom-0 left-0 right-0 p-6"
-              style={{
-                background: "linear-gradient(transparent, rgba(30,51,49,0.90))",
-              }}
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex flex-col bg-[rgba(30,51,49,0.95)]"
+              onClick={() => setFullscreenImage(null)}
             >
-              <p className="text-white font-bold text-lg">
-                {fullscreenImage.full_spec?.tune_name}
-              </p>
-              <p className="text-white/60 text-sm">
-                {fullscreenImage.full_spec?.bike_type}
-              </p>
-              {fullscreenImage.full_spec?.notes && (
-                <p className="text-white/50 text-sm mt-2">
-                  {fullscreenImage.full_spec.notes}
+              <button
+                className="absolute top-4 right-4 p-3 rounded-full z-10 bg-[rgba(255,255,255,0.10)]"
+              >
+                <X size={24} color="#fff" />
+              </button>
+
+              {/* Scrollable images */}
+              <div
+                className="flex-1 overflow-y-auto flex flex-col items-center justify-start gap-4 py-16 px-4"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {allImages.map((url, i) => (
+                  <motion.img
+                    key={i}
+                    initial={{ scale: 0.9 }}
+                    animate={{ scale: 1 }}
+                    exit={{ scale: 0.9 }}
+                    src={url}
+                    alt={`${spec.tune_name || "Neo tune"} ${i + 1}`}
+                    className="max-w-full max-h-[85vh] object-contain rounded-lg"
+                  />
+                ))}
+              </div>
+
+              {/* Info overlay */}
+              <div
+                className="absolute bottom-0 left-0 right-0 p-6 pointer-events-none"
+                style={{
+                  background: "linear-gradient(transparent, rgba(30,51,49,0.90))",
+                }}
+              >
+                <p className="text-white font-bold text-lg">
+                  {spec.tune_name}
                 </p>
-              )}
-            </div>
-          </motion.div>
-        )}
+                <p className="text-white/60 text-sm">
+                  {spec.bike_type}
+                </p>
+                {spec.notes && (
+                  <p className="text-white/50 text-sm mt-2">
+                    {spec.notes}
+                  </p>
+                )}
+              </div>
+            </motion.div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* Edit Modal */}

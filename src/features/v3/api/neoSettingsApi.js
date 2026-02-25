@@ -111,9 +111,12 @@ export async function insertNeoSettings({
   mechanic,
   bikeType,
   tuneName,
+  imageUrls = [],
   imageUrl,
   notes = "",
 }) {
+  // Support both single imageUrl and imageUrls array
+  const urls = imageUrls.length > 0 ? imageUrls : imageUrl ? [imageUrl] : [];
   const payload = {
     rider,
     mechanic,
@@ -123,7 +126,8 @@ export async function insertNeoSettings({
       kind: TYPE,
       bike_type: bikeType,
       tune_name: tuneName,
-      image_url: imageUrl,
+      image_url: urls[0] || null,
+      image_urls: urls,
       notes,
     },
     notes, // Denormalized for search
@@ -207,18 +211,23 @@ export async function deleteNeoSettings(id) {
 
     if (deleteErr) throw deleteErr;
 
-    // Try to delete image from storage (best effort)
-    const imageUrl = existing?.full_spec?.image_url;
-    if (imageUrl) {
+    // Try to delete all images from storage (best effort)
+    const imageUrls = existing?.full_spec?.image_urls
+      || (existing?.full_spec?.image_url ? [existing.full_spec.image_url] : []);
+    if (imageUrls.length > 0) {
       try {
-        // Extract path from URL
-        const url = new URL(imageUrl);
-        const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)/);
-        if (pathMatch?.[1]) {
-          await supabase.storage.from(STORAGE_BUCKET).remove([pathMatch[1]]);
+        const paths = imageUrls
+          .map((imgUrl) => {
+            const url = new URL(imgUrl);
+            const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)/);
+            return pathMatch?.[1];
+          })
+          .filter(Boolean);
+        if (paths.length > 0) {
+          await supabase.storage.from(STORAGE_BUCKET).remove(paths);
         }
       } catch (e) {
-        console.warn("Could not delete image from storage:", e);
+        console.warn("Could not delete images from storage:", e);
       }
     }
 

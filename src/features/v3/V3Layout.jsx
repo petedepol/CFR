@@ -74,6 +74,7 @@ export default function V3Layout() {
     const handlePageHide = () => hideModals();
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') hideModals();
+      else document.body.classList.remove('navigating-back');
     };
 
     // iOS swipe-back starts from left edge - hide modals on edge touch

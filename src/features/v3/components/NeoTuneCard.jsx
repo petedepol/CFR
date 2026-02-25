@@ -24,7 +24,8 @@ export function NeoTuneCard({ tune, onTap, onEdit, onDelete, isAdmin = false, th
   const isDark = theme === "dark";
 
   const { full_spec, timestamp, mechanic } = tune;
-  const { tune_name, image_url } = full_spec || {};
+  const { tune_name, image_url, image_urls } = full_spec || {};
+  const imageCount = image_urls?.length || (image_url ? 1 : 0);
 
   return (
     <div className="relative group">
@@ -41,7 +42,7 @@ export function NeoTuneCard({ tune, onTap, onEdit, onDelete, isAdmin = false, th
         `}
       >
         {/* Image */}
-        <div className={`aspect-[3/4] overflow-hidden ${isDark ? "bg-app-elevated" : "bg-[rgba(30,51,49,0.06)]"}`}>
+        <div className={`relative aspect-[3/4] overflow-hidden ${isDark ? "bg-app-elevated" : "bg-[rgba(30,51,49,0.06)]"}`}>
           {image_url ? (
             <img
               src={image_url}
@@ -52,6 +53,11 @@ export function NeoTuneCard({ tune, onTap, onEdit, onDelete, isAdmin = false, th
           ) : (
             <div className={`w-full h-full flex items-center justify-center ${isDark ? "bg-app-elevated" : "bg-[#1e3331]"}`}>
               <span className={`text-[48px] ${isDark ? "opacity-30" : "opacity-40"}`}>⚡</span>
+            </div>
+          )}
+          {imageCount > 1 && (
+            <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full bg-[rgba(0,0,0,0.60)] text-white text-[10px] font-semibold backdrop-blur-sm">
+              {imageCount} images
             </div>
           )}
         </div>

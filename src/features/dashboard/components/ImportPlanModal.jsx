@@ -90,7 +90,7 @@ export function ImportPlanModal({ isOpen, onClose, onImport, currentDate, existi
         <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 outline-none">
           <div
             className={`rounded-t-[28px] overflow-hidden ${sheetBg}`}
-            style={{ maxHeight: "90vh" }}
+            style={{ maxHeight: "85dvh" }}
           >
             {/* Handle */}
             <div className="flex justify-center pt-4 pb-2">
@@ -98,7 +98,7 @@ export function ImportPlanModal({ isOpen, onClose, onImport, currentDate, existi
             </div>
 
             <Drawer.Title className="sr-only">Import Plan</Drawer.Title>
-            <div className="px-6 pb-8 overflow-y-auto" style={{ maxHeight: "80vh" }}>
+            <div className="px-6 pb-8 overflow-y-auto" style={{ maxHeight: "75dvh" }}>
               {/* Title */}
               <h2 className={`text-lg font-bold ${titleColor} text-center mb-6`}>
                 Import Plan

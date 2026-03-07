@@ -7,9 +7,12 @@ export async function sendWhatsApp(to: string, body: string): Promise<string> {
   const authToken = getAuthToken();
   const from = getWhatsAppNumber();
 
+  const toNum = to.startsWith("whatsapp:") ? to : `whatsapp:${to}`;
+  const fromNum = from.startsWith("whatsapp:") ? from : `whatsapp:${from}`;
+
   const params = new URLSearchParams({
-    To: `whatsapp:${to}`,
-    From: `whatsapp:${from}`,
+    To: toNum,
+    From: fromNum,
     Body: body,
   });
 

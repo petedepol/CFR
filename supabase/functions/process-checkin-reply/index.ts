@@ -20,7 +20,7 @@ serve(async (req: Request) => {
     const body = await req.text();
     const webhook = parseTwilioWebhook(body);
 
-    const fromNumber = webhook.From?.replace("whatsapp:", "") || "";
+    const fromNumber = webhook.From || "";
     const messageBody = webhook.Body || "";
     const numMedia = parseInt(webhook.NumMedia || "0", 10);
     const mediaUrl = webhook.MediaUrl0 || "";
@@ -57,7 +57,6 @@ serve(async (req: Request) => {
       .single();
 
     if (checkinError || !checkin) {
-      // No pending checkin — could be an unsolicited message, ignore gracefully
       console.log("No pending checkin for", rider.name);
       return new Response(
         '<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
@@ -128,14 +127,7 @@ serve(async (req: Request) => {
     if (status === "nothing_to_report") {
       peteSummary = `✅ ${rider.name}: Nothing to report`;
     } else {
-      const fb = structuredData!;
-      peteSummary =
-        `🚴 ${rider.name} check-in:\n` +
-        `📋 ${fb.summary}\n` +
-        `🏷️ ${fb.category} | ${fb.severity}\n` +
-        (fb.action_items.length > 0
-          ? `\n🔧 Action items:\n${fb.action_items.map((a: string) => `• ${a}`).join("\n")}`
-          : "");
+      peteSummary = `🚴 ${rider.name} check-in:\n${feedbackText}`;
     }
 
     await sendWhatsApp(peteNumber, peteSummary);

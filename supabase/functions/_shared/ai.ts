@@ -111,7 +111,8 @@ NOTHING`,
     return { transcription, feedback: null };
   }
 
-  const feedback = JSON.parse(jsonPart);
+  const cleanJson = jsonPart.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+  const feedback = JSON.parse(cleanJson);
   return { transcription, feedback };
 }
 
@@ -144,5 +145,6 @@ export async function structureFeedback(
   }
 
   const data = await res.json();
-  return JSON.parse(data.content[0].text);
+  const text = data.content[0].text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+  return JSON.parse(text);
 }

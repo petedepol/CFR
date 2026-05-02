@@ -124,6 +124,7 @@ export function ImportPlanModal({ isOpen, onClose, onImport, currentDate, existi
                   {/* Text Input */}
                   <div className="mb-4">
                     <textarea
+                      data-vaul-no-drag
                       value={text}
                       onChange={(e) => setText(e.target.value)}
                       placeholder={`Paste race day plan here...
